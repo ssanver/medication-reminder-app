@@ -30,7 +30,7 @@
 | PBI | Durum | Kanit |
 |---|---|---|
 | PBI-001 | Done | `dotnet build medication-reminder-app.slnx`, `dotnet test medication-reminder-app.slnx` (2/2), `api/data/migrations/*InitialCreate*` |
-| PBI-002 | Todo | - |
+| PBI-002 | Done | `mobile-app/src/screens/auth/onboarding-screen.tsx`, `npm test` (3/3), `npx tsc --noEmit` |
 | PBI-003 | Todo | - |
 | PBI-004 | Todo | - |
 | PBI-005 | Todo | - |
@@ -76,6 +76,6 @@
 - iOS/Android bildirim farkliliklari icin cihaz matris testi gerekir.
 
 ## 7. Sonraki Adimlar (Hemen)
-1. Paket bagimliliklari kurularak `api` ve `mobile-app` build dogrulanacak.
-2. `PBI-002` kapsaminda onboarding + dil secimi akisi implement edilecek.
-3. `PBI-003` icin medication CRUD endpoint ve mobil form tamamlanacak.
+1. `PBI-003` icin medication CRUD endpoint ve mobil form tamamlanacak.
+2. `PBI-004` tekrarlayan planlama motoru ile 30 gunluk plan uretimi eklenecek.
+3. `PBI-005` bildirim aksiyon servisleri ve event log modeli tamamlanacak.

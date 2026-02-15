@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { getTranslations, type Locale } from '../features/localization/localization';
+import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
+import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { TodayScreen } from '../screens/today-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
 import { AddMedsScreen } from '../screens/add-meds-screen';
@@ -9,33 +12,75 @@ import { theme } from '../theme';
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
 
 export function AppNavigator() {
+  const [locale, setLocale] = useState<Locale>('tr');
   const [activeTab, setActiveTab] = useState<TabKey>('today');
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [notificationGranted, setNotificationGranted] = useState(false);
+
+  const t = getTranslations(locale);
+  const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
+
+  if (!isOnboardingStepCountValid(steps)) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Onboarding step count must be between 1 and 5.</Text>
+      </View>
+    );
+  }
+
+  if (!isOnboardingCompleted) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <OnboardingScreen
+            locale={locale}
+            stepIndex={onboardingStep}
+            consentAccepted={consentAccepted}
+            notificationGranted={notificationGranted}
+            onToggleConsent={setConsentAccepted}
+            onLocaleChange={setLocale}
+            onNotificationDecision={setNotificationGranted}
+            onNextStep={() => {
+              const lastStepIndex = steps.length - 1;
+              if (onboardingStep < lastStepIndex) {
+                setOnboardingStep((previous) => previous + 1);
+              } else {
+                setIsOnboardingCompleted(true);
+              }
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>{renderTab(activeTab)}</View>
+      <View style={styles.content}>{renderTab(activeTab, locale, setLocale)}</View>
       <View style={styles.tabBar}>
-        {renderTabButton('today', 'Today', activeTab, setActiveTab)}
-        {renderTabButton('my-meds', 'My Meds', activeTab, setActiveTab)}
-        {renderTabButton('add-meds', 'Add Meds', activeTab, setActiveTab)}
-        {renderTabButton('settings', 'Settings', activeTab, setActiveTab)}
+        {renderTabButton('today', t.today, activeTab, setActiveTab)}
+        {renderTabButton('my-meds', t.myMeds, activeTab, setActiveTab)}
+        {renderTabButton('add-meds', t.addMeds, activeTab, setActiveTab)}
+        {renderTabButton('settings', t.settings, activeTab, setActiveTab)}
       </View>
     </View>
   );
 }
 
-function renderTab(tab: TabKey) {
+function renderTab(tab: TabKey, locale: Locale, onLocaleChange: (locale: Locale) => void) {
   switch (tab) {
     case 'today':
-      return <TodayScreen />;
+      return <TodayScreen locale={locale} />;
     case 'my-meds':
-      return <MyMedsScreen />;
+      return <MyMedsScreen locale={locale} />;
     case 'add-meds':
-      return <AddMedsScreen />;
+      return <AddMedsScreen locale={locale} />;
     case 'settings':
-      return <SettingsScreen />;
+      return <SettingsScreen locale={locale} onLocaleChange={onLocaleChange} />;
     default:
-      return <TodayScreen />;
+      return <TodayScreen locale={locale} />;
   }
 }
 
@@ -82,5 +127,10 @@ const styles = StyleSheet.create({
   activeTabLabel: {
     color: theme.colors.semantic.brandPrimary,
     fontWeight: '600',
+  },
+  errorText: {
+    ...theme.typography.body,
+    color: theme.colors.semantic.stateError,
+    padding: theme.spacing[16],
   },
 });

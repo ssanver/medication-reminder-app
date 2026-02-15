@@ -1,16 +1,28 @@
-export type Locale = 'tr' | 'en';
-
 export const translations = {
   tr: {
     today: 'Bugun',
     myMeds: 'Ilaclarim',
     addMeds: 'Ilac Ekle',
     settings: 'Ayarlar',
+    next: 'Ileri',
+    finish: 'Basla',
+    allowNotifications: 'Bildirimlere izin ver',
+    denyNotifications: 'Simdilik izin verme',
+    notificationDeniedHint: 'Bildirim izni olmadan da uygulama ici hatirlatma adimlari gosterilir.',
+    consentLabel: 'Acik riza metnini okudum ve onayliyorum.',
+    languageTitle: 'Dil',
   },
   en: {
     today: 'Today',
     myMeds: 'My Meds',
     addMeds: 'Add Meds',
     settings: 'Settings',
+    next: 'Next',
+    finish: 'Start',
+    allowNotifications: 'Allow notifications',
+    denyNotifications: 'Not now',
+    notificationDeniedHint: 'Without notification permission, in-app reminder guidance is shown.',
+    consentLabel: 'I have read and accept the explicit consent text.',
+    languageTitle: 'Language',
   },
 } as const;
