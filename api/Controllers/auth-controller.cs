@@ -17,6 +17,11 @@ public sealed class AuthController : ControllerBase
             return BadRequest("Provider must be 'apple' or 'google'.");
         }
 
+        if (string.IsNullOrWhiteSpace(request.ProviderToken))
+        {
+            return BadRequest("Provider token is required.");
+        }
+
         var now = DateTimeOffset.UtcNow;
         var providerName = provider == "apple" ? "Apple" : "Google";
 

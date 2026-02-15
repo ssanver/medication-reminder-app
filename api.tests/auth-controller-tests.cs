@@ -16,6 +16,7 @@ public sealed class AuthControllerTests
         var result = controller.SocialLogin(new SocialLoginRequest
         {
             Provider = provider,
+            ProviderToken = "provider-token",
         });
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -35,9 +36,25 @@ public sealed class AuthControllerTests
         var result = controller.SocialLogin(new SocialLoginRequest
         {
             Provider = "facebook",
+            ProviderToken = "provider-token",
         });
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Provider must be 'apple' or 'google'.", badRequest.Value);
+    }
+
+    [Fact]
+    public void SocialLogin_ShouldReturnBadRequest_WhenProviderTokenIsMissing()
+    {
+        var controller = new AuthController();
+
+        var result = controller.SocialLogin(new SocialLoginRequest
+        {
+            Provider = "google",
+            ProviderToken = "",
+        });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Provider token is required.", badRequest.Value);
     }
 }

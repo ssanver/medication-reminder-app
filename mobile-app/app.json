@@ -2,6 +2,7 @@
   "expo": {
     "name": "Medication Reminder",
     "slug": "medication-reminder",
+    "scheme": "medication-reminder",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -22,6 +23,9 @@
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      "expo-apple-authentication"
+    ]
   }
 }

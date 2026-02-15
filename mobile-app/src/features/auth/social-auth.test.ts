@@ -1,21 +1,59 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loginWithSocial } from './social-auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const promptAsyncMock = vi.fn();
+const makeRedirectUriMock = vi.fn(() => 'medication-reminder://oauth2redirect');
+const isAppleAvailableMock = vi.fn();
+const appleSignInMock = vi.fn();
+
+vi.mock('expo-web-browser', () => ({
+  maybeCompleteAuthSession: vi.fn(),
+}));
+
+vi.mock('expo-auth-session', () => ({
+  makeRedirectUri: (...args: unknown[]) => makeRedirectUriMock(...args),
+  AuthRequest: class {
+    promptAsync = promptAsyncMock;
+  },
+}));
+
+vi.mock('expo-apple-authentication', () => ({
+  isAvailableAsync: (...args: unknown[]) => isAppleAvailableMock(...args),
+  signInAsync: (...args: unknown[]) => appleSignInMock(...args),
+  AppleAuthenticationScope: {
+    FULL_NAME: 0,
+    EMAIL: 1,
+  },
+}));
 
 describe('loginWithSocial', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
+  beforeEach(() => {
+    vi.stubEnv('EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID', 'google-client-id');
+    vi.stubGlobal('fetch', vi.fn());
   });
 
-  it('api basariliysa response degerini doner', async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    promptAsyncMock.mockReset();
+    isAppleAvailableMock.mockReset();
+    appleSignInMock.mockReset();
+  });
+
+  it('google flow sonrasi apiye token gonderir', async () => {
+    promptAsyncMock.mockResolvedValue({
+      type: 'success',
+      params: { id_token: 'google-id-token' },
+    });
+
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
         ok: true,
         json: async () => ({
           provider: 'Google',
-          accessToken: 'token',
-          refreshToken: 'refresh',
+          accessToken: 'at',
+          refreshToken: 'rt',
           expiresAt: '2026-01-01T00:00:00.000Z',
           displayName: 'Google User',
           email: 'google.user@pillmind.app',
@@ -23,34 +61,54 @@ describe('loginWithSocial', () => {
       })),
     );
 
+    const { loginWithSocial } = await import('./social-auth');
     const result = await loginWithSocial('Google');
+
     expect(result.provider).toBe('Google');
-    expect(result.accessToken).toBe('token');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:5047/api/auth/social-login',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
   });
 
-  it('api hata donerse fallback mock basari doner', async () => {
+  it('apple flow sonrasi apiye token gonderir', async () => {
+    isAppleAvailableMock.mockResolvedValue(true);
+    appleSignInMock.mockResolvedValue({
+      identityToken: 'apple-identity-token',
+    });
+
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
-        ok: false,
+        ok: true,
+        json: async () => ({
+          provider: 'Apple',
+          accessToken: 'at',
+          refreshToken: 'rt',
+          expiresAt: '2026-01-01T00:00:00.000Z',
+          displayName: 'Apple User',
+          email: 'apple.user@pillmind.app',
+        }),
       })),
     );
 
-    const result = await loginWithSocial('Google');
-    expect(result.provider).toBe('Google');
-    expect(result.email).toBe('google.user@pillmind.app');
+    const { loginWithSocial } = await import('./social-auth');
+    const result = await loginWithSocial('Apple');
+
+    expect(result.provider).toBe('Apple');
+    expect(fetch).toHaveBeenCalled();
   });
 
-  it('network exception olursa fallback mock basari doner', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new Error('network');
-      }),
-    );
+  it('google client id yoksa hata verir', async () => {
+    vi.unstubAllEnvs();
+    promptAsyncMock.mockResolvedValue({
+      type: 'success',
+      params: { id_token: 'token' },
+    });
 
-    const result = await loginWithSocial('Apple');
-    expect(result.provider).toBe('Apple');
-    expect(result.email).toBe('apple.user@pillmind.app');
+    const { loginWithSocial } = await import('./social-auth');
+    await expect(loginWithSocial('Google')).rejects.toThrow('Google OAuth client id bulunamadi');
   });
 });
