@@ -10,10 +10,10 @@ type AppIconProps = {
 };
 
 const glyphByName: Record<AppIconName, string> = {
-  home: 'H',
-  pill: 'P',
-  add: '+',
-  settings: 'S',
+  home: '⌂',
+  pill: '💊',
+  add: '⊕',
+  settings: '⚙',
   back: '<',
   forward: '>',
   close: 'x',

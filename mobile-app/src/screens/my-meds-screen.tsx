@@ -17,35 +17,52 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 
 export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
   const store = useMedicationStore();
-  const t = locale === 'tr' ? {
-    title: 'Ilaclarim',
-    all: 'Tum',
-    active: 'Aktif',
-    inactive: 'Pasif',
-  } : {
-    title: 'My medication',
-    all: 'All',
-    active: 'Active',
-    inactive: 'Inactive',
-  };
+  const t =
+    locale === 'tr'
+      ? {
+          title: 'Ilaclarim',
+          all: 'Tum',
+          active: 'Aktif',
+          inactive: 'Pasif',
+        }
+      : {
+          title: 'My medication',
+          all: 'All',
+          active: 'Active',
+          inactive: 'Inactive',
+        };
   const [filter, setFilter] = useState<MedStatus>('All');
 
   const items = useMemo(
     () =>
       store.medications.map((item) => {
-        const detailsUnit = item.form.toLowerCase() === 'drop' ? 'Drops' : item.form.toLowerCase() === 'injection' ? 'Injection' : 'Capsules';
-        const icon = item.form.toLowerCase() === 'drop' ? '🫙' : item.form.toLowerCase() === 'injection' ? '💉' : item.form.toLowerCase() === 'pill' ? '💊' : '🧴';
+        const normalizedForm = item.form.toLowerCase();
+        const icon =
+          normalizedForm === 'drop'
+            ? '🫙'
+            : normalizedForm === 'injection'
+              ? '💉'
+              : normalizedForm === 'pill' || normalizedForm === 'capsule'
+                ? '💊'
+                : '🧴';
+        const startedAt = new Date(`${item.startDate}T00:00:00`);
+        const startedLabel = Number.isNaN(startedAt.getTime())
+          ? item.startDate
+          : startedAt.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
+              day: 'numeric',
+              month: 'long',
+            });
 
         return {
           id: item.id,
           name: item.name,
           details: `${localizeFrequencyLabel(item.frequencyLabel, locale)} | ${item.dosage} ${localizeFormLabel(item.form, locale)}`,
-          remaining: locale === 'tr' ? `${item.startDate} baslangic | 10 adet kaldi` : `Started ${item.startDate} | 10 Capsules remain`,
+          remaining: locale === 'tr' ? `${startedLabel} baslangic | 10 kapsul kaldi` : `Started ${startedLabel} | 10 Capsules remain`,
           active: item.active,
           emoji: icon,
         };
       }),
-    [store.medications],
+    [store.medications, locale],
   );
 
   const filtered = useMemo(() => {
@@ -88,10 +105,9 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
             schedule={item.remaining}
             active={item.active}
             showToggle
+            compact
             medEmoji={item.emoji}
-            onToggle={(value) =>
-              void setMedicationActive(item.id, value)
-            }
+            onToggle={(value) => void setMedicationActive(item.id, value)}
           />
         ))}
       </View>
@@ -117,7 +133,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[8],
   },
   list: {
-    gap: theme.spacing[16],
+    gap: theme.spacing[8],
   },
   bottomSpacer: {
     height: theme.spacing[8],

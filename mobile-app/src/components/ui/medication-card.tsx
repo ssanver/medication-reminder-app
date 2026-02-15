@@ -14,6 +14,7 @@ type MedicationCardProps = {
   actionVariant?: 'filled' | 'success' | 'danger';
   statusBadge?: 'ontime' | 'missed';
   medEmoji?: string;
+  compact?: boolean;
   onToggle?: (value: boolean) => void;
   onActionPress?: () => void;
 };
@@ -30,11 +31,12 @@ export function MedicationCard({
   actionVariant = 'filled',
   statusBadge,
   medEmoji = '💊',
+  compact = false,
   onToggle,
   onActionPress,
 }: MedicationCardProps) {
   return (
-    <View style={[styles.card, !active && styles.cardDisabled]}>
+    <View style={[styles.card, compact && styles.cardCompact, !active && styles.cardDisabled]}>
       {statusBadge ? (
         <View style={[styles.badge, statusBadge === 'missed' ? styles.badgeMissed : styles.badgeOnTime]}>
           <Text style={styles.badgeText}>{statusBadge === 'missed' ? 'Missed' : '2h 23m'}</Text>
@@ -42,14 +44,14 @@ export function MedicationCard({
       ) : null}
 
       <View style={styles.topRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarIcon}>{medEmoji}</Text>
+        <View style={[styles.avatar, compact && styles.avatarCompact]}>
+          <Text style={[styles.avatarIcon, compact && styles.avatarIconCompact]}>{medEmoji}</Text>
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.title}>{name}</Text>
-          <Text style={styles.meta}>{details}</Text>
-          <Text style={styles.meta}>{schedule}</Text>
+          <Text style={[styles.title, compact && styles.titleCompact]}>{name}</Text>
+          <Text style={[styles.meta, compact && styles.metaCompact]}>{details}</Text>
+          <Text style={[styles.meta, compact && styles.metaCompact]}>{schedule}</Text>
           {remaining ? <Text style={styles.metaMuted}>{remaining}</Text> : null}
         </View>
 
@@ -80,6 +82,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing[8],
     position: 'relative',
     ...theme.elevation.card,
+  },
+  cardCompact: {
+    borderRadius: theme.radius[8],
+    paddingHorizontal: theme.spacing[8],
+    paddingVertical: theme.spacing[8],
   },
   cardDisabled: {
     opacity: 0.45,
@@ -116,8 +123,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radius[8],
+  },
   avatarIcon: {
     fontSize: 24,
+  },
+  avatarIconCompact: {
+    fontSize: 16,
   },
   content: {
     flex: 1,
@@ -127,9 +142,15 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mBold,
     color: theme.colors.semantic.textPrimary,
   },
+  titleCompact: {
+    ...theme.typography.bodyScale.xmMedium,
+  },
   meta: {
     ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.textPrimary,
+    color: theme.colors.semantic.textSecondary,
+  },
+  metaCompact: {
+    ...theme.typography.captionScale.mRegular,
   },
   metaMuted: {
     ...theme.typography.captionScale.lRegular,
