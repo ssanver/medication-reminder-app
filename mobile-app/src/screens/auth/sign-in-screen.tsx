@@ -51,8 +51,8 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       />
 
       <Text style={styles.legal}>By signing in, you agree to our Terms of Service and Privacy Policy.</Text>
-      <Button label="Continue with Apple" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
-      <Button label="Continue with Google" variant="outlined" onPress={() => handleSocialAuth('Google')} />
+      <Button label="Continue with Apple" leadingIcon="" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
+      <Button label="Continue with Google" leadingIcon="G" variant="outlined" onPress={() => handleSocialAuth('Google')} />
 
       <Pressable onPress={onOpenSignUp}>
         <Text style={styles.signUpText}>{locale === 'tr' ? 'Hesabin yok mu? Sign up' : "Don't have an account? Sign up"}</Text>

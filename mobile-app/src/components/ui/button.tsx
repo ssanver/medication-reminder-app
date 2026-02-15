@@ -6,6 +6,7 @@ type ButtonSize = 'xs' | 's' | 'm' | 'l';
 
 type ButtonProps = {
   label: string;
+  leadingIcon?: string;
   disabled?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -15,6 +16,7 @@ type ButtonProps = {
 
 export function Button({
   label,
+  leadingIcon,
   disabled = false,
   variant = 'filled',
   size = 'm',
@@ -33,7 +35,10 @@ export function Button({
         disabled && styles.disabled,
       ]}
     >
-      <Text style={[textSizeStyles[size], textVariantStyles[variant], disabled && styles.disabledText]}>{label}</Text>
+      <Text style={[textSizeStyles[size], textVariantStyles[variant], disabled && styles.disabledText]}>
+        {leadingIcon ? `${leadingIcon}  ` : ''}
+        {label}
+      </Text>
     </Pressable>
   );
 }

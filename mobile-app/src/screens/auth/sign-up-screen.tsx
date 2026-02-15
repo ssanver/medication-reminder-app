@@ -77,8 +77,8 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         <Text style={styles.orText}>Or</Text>
         <View style={styles.divider} />
       </View>
-      <Button label="Continue with Apple" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
-      <Button label="Continue with Google" variant="outlined" onPress={() => handleSocialAuth('Google')} />
+      <Button label="Continue with Apple" leadingIcon="" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
+      <Button label="Continue with Google" leadingIcon="G" variant="outlined" onPress={() => handleSocialAuth('Google')} />
       <Pressable onPress={onOpenSignIn}>
         <Text style={styles.signInText}>{locale === 'tr' ? 'Zaten hesabin var mi? Sign in' : 'Already have an account? Sign in'}</Text>
       </Pressable>
