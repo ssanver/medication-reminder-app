@@ -38,7 +38,7 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 - Reçete yenileme hatırlatmaları.
 - Doktor randevusu ve tahlil hatırlatmaları.
 - Erişilebilirlik ayarları (yazı boyutu, tema).
-- Türkçe dil desteği.
+- Türkçe ve İngilizce çoklu dil desteği.
 - Offline temel hatırlatma çalışma desteği.
 - Acil durumda ilaç listesi paylaşımı.
 - Aile/bakıcı erişim modeli (izinli takip).
@@ -84,7 +84,7 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 - FR-11: Kullanıcı verileri cihazlar arasında senkronize edilebilmelidir.
 - FR-12: Kullanıcı bir bakıcıyı davet ederek sınırlı takip erişimi verebilmelidir.
 - FR-13: Kullanıcı acil durum ilaç listesini hızlıca paylaşabilmelidir.
-- FR-14: Kullanıcı arayüzünde Türkçe dil desteği bulunmalıdır.
+- FR-14: Kullanıcı arayüzü Türkçe ve İngilizce dillerini desteklemelidir.
 - FR-15: Onboarding süreci en fazla 5 adımda temel kullanım kurulumu sağlamalıdır.
 
 ## 11. Fonksiyonel Olmayan Gereksinimler

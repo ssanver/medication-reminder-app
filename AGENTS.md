@@ -60,6 +60,7 @@ Son kullanıcı ihtiyaçlarını iş hedeflerine, kapsam maddelerine ve BRD form
 - Gereksinimleri numaralandır (`BR-`, `FR-`, `NFR-`).
 - Kapsamı net sınırlarla yaz.
 - Ölçülebilir KPI ve kabul kriterleri ekle.
+- Son kullanıcı dil ihtiyaçlarını BRD'ye açık gereksinim olarak yansıt (örn. TR/EN çoklu dil desteği).
 
 ### Do Not
 - Yoruma açık, test edilemeyen gereksinim yazımı.
@@ -68,6 +69,7 @@ Son kullanıcı ihtiyaçlarını iş hedeflerine, kapsam maddelerine ve BRD form
 ### Definition of Done
 - BRD bölümleri eksiksiz olmalı: amaç, kapsam, paydaş, gereksinim, KPI, risk, kabul kriteri.
 - Her kritik ihtiyaç en az bir gereksinime izlenebilir olmalı.
+- Dil desteği ihtiyacı varsa kapsam ve fonksiyonel gereksinimlerde açıkça yer almalı.
 
 ## Business Analyst Agent
 ### Purpose

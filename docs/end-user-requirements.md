@@ -21,5 +21,5 @@ Bu doküman, İlaç Hatırlatma Uygulaması için son kullanıcı ihtiyaçların
 - Yakınımın (aile bireyi/bakıcı) gerektiğinde benim yerime takip edebilmesini istiyorum.
 - Farklı cihazlarda senkronizasyon (telefon/tablet) olmasını istiyorum.
 - Acil durumda ilaç listemi tek ekranda paylaşabilmek istiyorum.
-- Türkçe dil desteği ve sade bir onboarding süreci istiyorum.
+- Türkçe yanında İngilizceyi de destekleyen çoklu dil desteği ve sade bir onboarding süreci istiyorum.
 - Reklamsız veya rahatsız etmeyen bir kullanım deneyimi istiyorum.
