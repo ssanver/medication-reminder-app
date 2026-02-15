@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { type Locale } from '../../features/localization/localization';
 import { loginWithSocial } from '../../features/auth/social-auth';
+import { isSignUpFormValid } from '../../features/auth/signup-validation';
 import { theme } from '../../theme';
 
 type SignUpScreenProps = {
@@ -23,7 +24,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
   const [socialMessage, setSocialMessage] = useState('');
   const [isSocialLoading, setIsSocialLoading] = useState(false);
 
-  const canSubmit = useMemo(() => name.trim().length > 1 && email.includes('@') && password.trim().length >= 6, [name, email, password]);
+  const canSubmit = useMemo(() => isSignUpFormValid({ name, email, password }), [name, email, password]);
 
   async function handleSocialAuth(provider: 'Apple' | 'Google') {
     try {
@@ -74,7 +75,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         label="Create an account"
         onPress={() => {
           if (!canSubmit) {
-            setErrorText(locale === 'tr' ? 'Lutfen tum alanlari dogru doldurun.' : 'Please enter valid name, email and password.');
+            setErrorText(locale === 'tr' ? 'Lutfen tum alanlari doldurun ve gecerli e-posta/sifre girin.' : 'Please fill all fields with valid email and password.');
             return;
           }
           setErrorText('');
