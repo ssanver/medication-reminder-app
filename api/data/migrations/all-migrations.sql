@@ -241,3 +241,46 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120033_AddHealthEvents'
+)
+BEGIN
+    CREATE TABLE [health-events] (
+        [Id] uniqueidentifier NOT NULL,
+        [MedicationId] uniqueidentifier NOT NULL,
+        [EventType] nvarchar(30) NOT NULL,
+        [EventAt] datetimeoffset NOT NULL,
+        [Note] nvarchar(500) NULL,
+        [ReminderOffsetsCsv] nvarchar(60) NOT NULL,
+        [UpdatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_health-events] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120033_AddHealthEvents'
+)
+BEGIN
+    CREATE INDEX [IX_health-events_MedicationId_EventAt] ON [health-events] ([MedicationId], [EventAt]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120033_AddHealthEvents'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260215120033_AddHealthEvents', N'8.0.12');
+END;
+GO
+
+COMMIT;
+GO
+

@@ -38,7 +38,7 @@
 | PBI-007 | Done | `api/Controllers/inventory-controller.cs`, `api.tests/inventory-controller-tests.cs`, `dotnet test` (18/18) |
 | PBI-008 | Done | `api/Controllers/prescription-reminders-controller.cs`, `api.tests/prescription-reminders-controller-tests.cs`, `dotnet test` (20/20) |
 | PBI-009 | Done | `api/Controllers/sync-controller.cs`, `mobile-app/src/features/sync/offline-queue.ts`, `dotnet test` (22/22), `npm test` (5/5) |
-| PBI-010 | Todo | - |
+| PBI-010 | Done | `api/Controllers/health-events-controller.cs`, `api.tests/health-events-controller-tests.cs`, `dotnet test` (24/24) |
 | PBI-011 | Todo | - |
 | PBI-012 | Todo | - |
 | PBI-013 | Todo | - |

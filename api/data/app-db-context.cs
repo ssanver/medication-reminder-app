@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<InventoryRecord> InventoryRecords => Set<InventoryRecord>();
     public DbSet<PrescriptionReminder> PrescriptionReminders => Set<PrescriptionReminder>();
     public DbSet<SyncEvent> SyncEvents => Set<SyncEvent>();
+    public DbSet<HealthEvent> HealthEvents => Set<HealthEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,6 +97,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.ClientUpdatedAt).IsRequired();
             entity.Property(x => x.ReceivedAt).IsRequired();
             entity.HasIndex(x => x.EventId).IsUnique();
+        });
+
+        modelBuilder.Entity<HealthEvent>(entity =>
+        {
+            entity.ToTable("health-events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventType).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.Property(x => x.ReminderOffsetsCsv).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.EventAt).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => new { x.MedicationId, x.EventAt });
         });
     }
 }
