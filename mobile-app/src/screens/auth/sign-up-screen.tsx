@@ -17,8 +17,15 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn }: SignUpScreenPr
   const [password, setPassword] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [socialMessage, setSocialMessage] = useState('');
 
   const canSubmit = useMemo(() => name.trim().length > 1 && email.includes('@') && password.trim().length >= 6, [name, email, password]);
+
+  function handleSocialAuth(provider: 'Apple' | 'Google') {
+    setErrorText('');
+    setSocialMessage(locale === 'tr' ? `${provider} ile giris basarili.` : `Signed in with ${provider}.`);
+    setTimeout(() => onSuccess(), 500);
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -32,6 +39,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn }: SignUpScreenPr
         </View>
       ) : null}
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+      {socialMessage ? <Text style={styles.successInline}>{socialMessage}</Text> : null}
 
       <View style={styles.form}>
         <TextField label="Name" value={name} placeholder="Enter your name" onChangeText={setName} />
@@ -65,8 +73,8 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn }: SignUpScreenPr
         <Text style={styles.orText}>Or</Text>
         <View style={styles.divider} />
       </View>
-      <Button label="Continue with Apple" variant="outlined" onPress={() => undefined} />
-      <Button label="Continue with Google" variant="outlined" onPress={() => undefined} />
+      <Button label="Continue with Apple" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
+      <Button label="Continue with Google" variant="outlined" onPress={() => handleSocialAuth('Google')} />
       <Pressable onPress={onOpenSignIn}>
         <Text style={styles.signInText}>{locale === 'tr' ? 'Zaten hesabin var mi? Sign in' : 'Already have an account? Sign in'}</Text>
       </Pressable>
@@ -110,6 +118,11 @@ const styles = StyleSheet.create({
   errorText: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.error[500],
+    textAlign: 'center',
+  },
+  successInline: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.success[500],
     textAlign: 'center',
   },
   form: {

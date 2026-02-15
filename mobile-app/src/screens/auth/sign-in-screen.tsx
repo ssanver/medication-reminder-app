@@ -15,8 +15,15 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorText, setErrorText] = useState('');
+  const [socialMessage, setSocialMessage] = useState('');
 
   const canSubmit = useMemo(() => email.includes('@') && password.trim().length >= 6, [email, password]);
+
+  function handleSocialAuth(provider: 'Apple' | 'Google') {
+    setErrorText('');
+    setSocialMessage(locale === 'tr' ? `${provider} ile giris basarili.` : `Signed in with ${provider}.`);
+    setTimeout(() => onSuccess(), 500);
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -24,6 +31,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       <Text style={styles.subtitle}>Enter your credentials to continue</Text>
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+      {socialMessage ? <Text style={styles.successText}>{socialMessage}</Text> : null}
 
       <View style={styles.form}>
         <TextField label="Email" value={email} placeholder="Enter your email address" onChangeText={setEmail} />
@@ -43,6 +51,8 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       />
 
       <Text style={styles.legal}>By signing in, you agree to our Terms of Service and Privacy Policy.</Text>
+      <Button label="Continue with Apple" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
+      <Button label="Continue with Google" variant="outlined" onPress={() => handleSocialAuth('Google')} />
 
       <Pressable onPress={onOpenSignUp}>
         <Text style={styles.signUpText}>{locale === 'tr' ? 'Hesabin yok mu? Sign up' : "Don't have an account? Sign up"}</Text>
@@ -71,6 +81,11 @@ const styles = StyleSheet.create({
   errorText: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.error[500],
+    textAlign: 'center',
+  },
+  successText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.success[500],
     textAlign: 'center',
   },
   form: {
