@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { type Locale } from '../../features/localization/localization';
@@ -8,15 +8,17 @@ import { theme } from '../../theme';
 type SignUpScreenProps = {
   locale: Locale;
   onSuccess: () => void;
+  onOpenSignIn: () => void;
 };
 
-export function SignUpScreen({ locale, onSuccess }: SignUpScreenProps) {
+export function SignUpScreen({ locale, onSuccess, onOpenSignIn }: SignUpScreenProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorText, setErrorText] = useState('');
 
-  const canSubmit = useMemo(() => name.trim().length > 1 && email.includes('@') && password.length >= 8, [name, email, password]);
+  const canSubmit = useMemo(() => name.trim().length > 1 && email.includes('@') && password.trim().length >= 6, [name, email, password]);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -29,6 +31,7 @@ export function SignUpScreen({ locale, onSuccess }: SignUpScreenProps) {
           <Text style={styles.successText}>Account has been created successfully.</Text>
         </View>
       ) : null}
+      {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
       <View style={styles.form}>
         <TextField label="Name" value={name} placeholder="Enter your name" onChangeText={setName} />
@@ -46,10 +49,14 @@ export function SignUpScreen({ locale, onSuccess }: SignUpScreenProps) {
       <Button
         label="Create an account"
         onPress={() => {
+          if (!canSubmit) {
+            setErrorText(locale === 'tr' ? 'Lutfen tum alanlari dogru doldurun.' : 'Please enter valid name, email and password.');
+            return;
+          }
+          setErrorText('');
           setShowSuccess(true);
           setTimeout(() => onSuccess(), 800);
         }}
-        disabled={!canSubmit}
       />
 
       <Text style={styles.legal}>By signing in, you agree to our Terms of Service and Privacy Policy.</Text>
@@ -60,7 +67,9 @@ export function SignUpScreen({ locale, onSuccess }: SignUpScreenProps) {
       </View>
       <Button label="Continue with Apple" variant="outlined" onPress={() => undefined} />
       <Button label="Continue with Google" variant="outlined" onPress={() => undefined} />
-      <Text style={styles.signInText}>{locale === 'tr' ? 'Zaten hesabin var mi? Sign in' : 'Already have an account? Sign in'}</Text>
+      <Pressable onPress={onOpenSignIn}>
+        <Text style={styles.signInText}>{locale === 'tr' ? 'Zaten hesabin var mi? Sign in' : 'Already have an account? Sign in'}</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -97,6 +106,11 @@ const styles = StyleSheet.create({
   successText: {
     ...theme.typography.captionScale.mRegular,
     color: theme.colors.success[800],
+  },
+  errorText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.error[500],
+    textAlign: 'center',
   },
   form: {
     gap: theme.spacing[8],

@@ -7,6 +7,7 @@ import { getTranslations, type Locale } from '../features/localization/localizat
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
+import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
@@ -18,7 +19,7 @@ import { theme } from '../theme';
 
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
 type OverlayScreen = 'none' | 'reports' | 'profile';
-type AppPhase = 'splash' | 'onboarding' | 'signup' | 'app';
+type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
 
 const tabGlyph: Record<TabKey, AppIconName> = {
   today: 'home',
@@ -87,7 +88,17 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <SignUpScreen locale={locale} onSuccess={() => setPhase('app')} />
+          <SignUpScreen locale={locale} onSuccess={() => setPhase('app')} onOpenSignIn={() => setPhase('signin')} />
+        </View>
+      </View>
+    );
+  }
+
+  if (phase === 'signin') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <SignInScreen locale={locale} onSuccess={() => setPhase('app')} onOpenSignUp={() => setPhase('signup')} />
         </View>
       </View>
     );
