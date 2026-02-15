@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { addMedication } from '../features/medications/medication-store';
 import { theme } from '../theme';
 
 type AddMedsScreenProps = {
@@ -42,12 +43,19 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
     return true;
   }, [step, name]);
 
-  function goNext() {
+  async function goNext() {
     if (!canGoNext) {
       return;
     }
 
     if (isLastStep) {
+      await addMedication({
+        name,
+        form,
+        frequencyLabel: frequency,
+        dosage,
+        note,
+      });
       setSavedMessage(t.medicationCreated);
       return;
     }

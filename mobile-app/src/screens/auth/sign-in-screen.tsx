@@ -17,6 +17,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
   const t = getTranslations(locale);
   const [email, setEmail] = useState('suleymansanver@gmail.com');
   const [password, setPassword] = useState('1234');
+  const [isPasswordHidden, setIsPasswordHidden] = useState(true);
   const [errorText, setErrorText] = useState('');
   const [socialMessage, setSocialMessage] = useState('');
   const [isSocialLoading, setIsSocialLoading] = useState(false);
@@ -48,7 +49,15 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
 
       <View style={styles.form}>
         <TextField label={t.email} value={email} placeholder={t.enterYourEmail} onChangeText={setEmail} />
-        <TextField label={t.password} value={password} secureTextEntry placeholder={t.enterYourPassword} onChangeText={setPassword} />
+        <TextField
+          label={t.password}
+          value={password}
+          secureTextEntry={isPasswordHidden}
+          placeholder={t.enterYourPassword}
+          trailingIcon={isPasswordHidden ? '👁' : '🙈'}
+          onTrailingPress={() => setIsPasswordHidden((prev) => !prev)}
+          onChangeText={setPassword}
+        />
       </View>
 
       <Button

@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { type Locale } from '../features/localization/localization';
+import { setMedicationActive } from '../features/medications/medication-store';
+import { useMedicationStore } from '../features/medications/use-medication-store';
 import { theme } from '../theme';
 
 type MyMedsScreenProps = {
@@ -12,33 +14,8 @@ type MyMedsScreenProps = {
 
 type MedStatus = 'All' | 'Active' | 'Inactive';
 
-type MedItem = {
-  id: string;
-  name: string;
-  details: string;
-  remaining: string;
-  active: boolean;
-  emoji: string;
-};
-
-const initialItems: MedItem[] = [
-  { id: '1', name: 'Metformin', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '💊' },
-  { id: '2', name: 'Captopril', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '🧴' },
-  {
-    id: '3',
-    name: 'Sudafed Blocked Nose',
-    details: 'Daily | 2 Drops',
-    remaining: 'Started 25 July | ? Capsules remains',
-    active: false,
-    emoji: '🫙',
-  },
-  { id: '4', name: 'B 12', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '💉' },
-  { id: '5', name: 'Magaldrate', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: false, emoji: '🧪' },
-  { id: '6', name: 'Niacin', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '🧫' },
-  { id: '7', name: 'I-DROP MGD', details: 'Daily | 2 Drops', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '🧯' },
-];
-
 export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
+  const store = useMedicationStore();
   const t = locale === 'tr' ? {
     title: 'Ilaclarim',
     all: 'Tum',
@@ -51,7 +28,24 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
     inactive: 'Inactive',
   };
   const [filter, setFilter] = useState<MedStatus>('All');
-  const [items, setItems] = useState(initialItems);
+
+  const items = useMemo(
+    () =>
+      store.medications.map((item) => {
+        const detailsUnit = item.form.toLowerCase() === 'drop' ? 'Drops' : item.form.toLowerCase() === 'injection' ? 'Injection' : 'Capsules';
+        const icon = item.form.toLowerCase() === 'drop' ? '🫙' : item.form.toLowerCase() === 'injection' ? '💉' : item.form.toLowerCase() === 'pill' ? '💊' : '🧴';
+
+        return {
+          id: item.id,
+          name: item.name,
+          details: `${item.frequencyLabel} | ${item.dosage} ${detailsUnit}`,
+          remaining: `Started ${item.startDate} | 10 Capsules remain`,
+          active: item.active,
+          emoji: icon,
+        };
+      }),
+    [store.medications],
+  );
 
   const filtered = useMemo(() => {
     if (filter === 'All') {
@@ -95,7 +89,7 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
             showToggle
             medEmoji={item.emoji}
             onToggle={(value) =>
-              setItems((prev) => prev.map((current) => (current.id === item.id ? { ...current, active: value } : current)))
+              void setMedicationActive(item.id, value)
             }
           />
         ))}

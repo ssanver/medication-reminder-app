@@ -20,6 +20,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordHidden, setIsPasswordHidden] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [socialMessage, setSocialMessage] = useState('');
@@ -65,9 +66,10 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         <TextField
           label={t.password}
           value={password}
-          secureTextEntry
+          secureTextEntry={isPasswordHidden}
           placeholder={t.enterYourDesiredPassword}
-          trailingIcon="o"
+          trailingIcon={isPasswordHidden ? '👁' : '🙈'}
+          onTrailingPress={() => setIsPasswordHidden((prev) => !prev)}
           onChangeText={setPassword}
         />
       </View>

@@ -1,39 +1,47 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
+import { type Locale } from '../features/localization/localization';
+import { getAdherenceSummary, getMedicationReport, getWeeklyTrend } from '../features/medications/medication-store';
+import { useMedicationStore } from '../features/medications/use-medication-store';
 import { theme } from '../theme';
 
 type ReportsScreenProps = {
+  locale: Locale;
   onBack: () => void;
 };
 
-export function ReportsScreen({ onBack }: ReportsScreenProps) {
-  const weekly = [
-    { label: 'Mon', value: 92 },
-    { label: 'Tue', value: 76 },
-    { label: 'Wed', value: 88 },
-    { label: 'Thu', value: 60 },
-    { label: 'Fri', value: 95 },
-  ];
+export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
+  const store = useMedicationStore();
+  const summary = getAdherenceSummary(new Date());
+  const weekly = getWeeklyTrend(new Date());
+  const medicationRows = getMedicationReport(new Date());
+  const isTr = locale === 'tr';
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title="Reports" subtitle="Weekly and monthly adherence" leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader
+        title={isTr ? 'Raporlar' : 'Reports'}
+        subtitle={isTr ? 'Haftalik ve aylik uyum ozeti' : 'Weekly and monthly adherence'}
+        leftAction={{ icon: '<', onPress: onBack }}
+      />
 
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Adherence</Text>
-          <Text style={styles.summaryValue}>86%</Text>
-          <Text style={styles.summaryHint}>18 of 21 doses taken</Text>
+          <Text style={styles.summaryLabel}>{isTr ? 'Uyum' : 'Adherence'}</Text>
+          <Text style={styles.summaryValue}>{`${summary.adherence}%`}</Text>
+          <Text style={styles.summaryHint}>
+            {isTr ? `${summary.taken} / ${summary.totalScheduled} doz alindi` : `${summary.taken} of ${summary.totalScheduled} doses taken`}
+          </Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Missed</Text>
-          <Text style={[styles.summaryValue, styles.errorText]}>3</Text>
-          <Text style={styles.summaryHint}>This month</Text>
+          <Text style={styles.summaryLabel}>{isTr ? 'Kacirilan' : 'Missed'}</Text>
+          <Text style={[styles.summaryValue, styles.errorText]}>{summary.missed}</Text>
+          <Text style={styles.summaryHint}>{isTr ? 'Son 7 gun' : 'Last 7 days'}</Text>
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Weekly trend</Text>
+        <Text style={styles.cardTitle}>{isTr ? 'Haftalik trend' : 'Weekly trend'}</Text>
         {weekly.map((item) => (
           <View key={item.label} style={styles.barRow}>
             <Text style={styles.barLabel}>{item.label}</Text>
@@ -46,23 +54,22 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Medication report</Text>
+        <Text style={styles.cardTitle}>{isTr ? 'Ilac raporu' : 'Medication report'}</Text>
         <View style={styles.tableRow}>
-          <Text style={styles.tableHead}>Medication</Text>
-          <Text style={styles.tableHead}>Taken</Text>
-          <Text style={styles.tableHead}>Missed</Text>
+          <Text style={styles.tableHead}>{isTr ? 'Ilac' : 'Medication'}</Text>
+          <Text style={styles.tableHead}>{isTr ? 'Alinan' : 'Taken'}</Text>
+          <Text style={styles.tableHead}>{isTr ? 'Kacirilan' : 'Missed'}</Text>
         </View>
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Metformin</Text>
-          <Text style={styles.tableCell}>12</Text>
-          <Text style={[styles.tableCell, styles.errorText]}>1</Text>
-        </View>
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Captopril</Text>
-          <Text style={styles.tableCell}>8</Text>
-          <Text style={[styles.tableCell, styles.errorText]}>2</Text>
-        </View>
+        {medicationRows.map((row) => (
+          <View key={row.medication} style={styles.tableRow}>
+            <Text style={styles.tableCell}>{row.medication}</Text>
+            <Text style={styles.tableCell}>{row.taken}</Text>
+            <Text style={[styles.tableCell, styles.errorText]}>{row.missed}</Text>
+          </View>
+        ))}
+        {medicationRows.length === 0 ? <Text style={styles.summaryHint}>{isTr ? 'Rapor verisi yok' : 'No report data yet'}</Text> : null}
       </View>
+      <Text style={styles.hidden}>{store.events.length}</Text>
     </ScrollView>
   );
 }
@@ -162,5 +169,9 @@ const styles = StyleSheet.create({
     flex: 1,
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.semantic.textPrimary,
+  },
+  hidden: {
+    opacity: 0,
+    height: 0,
   },
 });

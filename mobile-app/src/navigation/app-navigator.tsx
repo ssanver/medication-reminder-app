@@ -116,7 +116,7 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <ReportsScreen onBack={() => setOverlayScreen('none')} />
+          <ReportsScreen locale={locale} onBack={() => setOverlayScreen('none')} />
         </View>
       </View>
     );
@@ -126,7 +126,7 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <ProfileScreen onBack={() => setOverlayScreen('none')} />
+          <ProfileScreen locale={locale} onBack={() => setOverlayScreen('none')} />
         </View>
       </View>
     );
