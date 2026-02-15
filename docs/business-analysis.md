@@ -3,7 +3,7 @@
 ## 1. Doküman Bilgisi
 - Proje Adı: İlaç Hatırlatma Uygulaması
 - Doküman Tipi: İş Analizi Dokümanı
-- Versiyon: 1.1
+- Versiyon: 1.2
 - Tarih: 2026-02-15
 - Kaynak Dokümanlar:
   - `docs/business-requirements-document.md`
@@ -32,6 +32,12 @@ Kapsam, BRD kapsam dahil maddeleriyle birebir hizalıdır. Kapsam dışı maddel
 | 5 adım onboarding | FR-15 | US-13 |
 | Güvenlik ve KVKK | NFR-03, NFR-04, NFR-07 | US-14 |
 | Erişilebilirlik | NFR-05 | US-15 |
+| Detaylı frekans tanımlama | FR-16, FR-17, FR-26, FR-30 | US-16 |
+| Tarih bazlı ve döngüsel planlama | FR-20, FR-21, FR-29 | US-17 |
+| PRN ve güvenli limit yönetimi | FR-22, FR-28 | US-18 |
+| Tapering ve gelişmiş tedavi şablonları | FR-23, FR-24 | US-19 |
+| Sessiz saat ve çakışma yönetimi | FR-25, FR-27, NFR-10 | US-20 |
+| Frekans UX ve hesaplama performansı | NFR-08, NFR-09 | US-21 |
 
 ## 4. İş Kuralları ve İstisnalar (Detaylandırma)
 
@@ -45,12 +51,20 @@ Kapsam, BRD kapsam dahil maddeleriyle birebir hizalıdır. Kapsam dışı maddel
 - BK-07: TR/EN dil seçimi onboarding'de zorunlu adım değildir; sistem dili varsayılanı önerilir.
 - BK-08: Reklamsız deneyim, abonelik paketine bağlı özellik olarak sunulabilir.
 - BK-09: Veri saklama politikası Faz 1 ve Faz 2 için süresiz saklama olarak uygulanır; Faz 3'te yeniden değerlendirilir.
+- BK-10: Frekans tipi seçimi zorunludur; hazır şablon veya özel tanım olmadan kayıt tamamlanamaz.
+- BK-11: PRN kullanımında minimum tekrar aralığı ve günlük maksimum doz limiti olmadan kayıt tamamlanamaz.
+- BK-12: Frekans güncellemesi mevcut geçmiş kayıtları değiştirmez; yalnızca gelecekteki planlara uygulanır.
+- BK-13: Aynı ilaçta aynı dakikaya düşen planlar tek bildirim olarak gönderilir.
+- BK-14: Kür veya tarih aralıklı planlarda bitiş tarihi geçildiğinde plan otomatik pasifleşir.
 
 ### 4.2 İstisnalar
 - IST-01: Bildirim izni yoksa, kullanıcıya uygulama içinde kalıcı uyarı bandı gösterilir.
 - IST-02: Cihaz saati değişirse bir sonraki hatırlatma planı otomatik yeniden hesaplanır.
 - IST-03: Offline durumda yapılan doz işaretlemeleri "senkron bekliyor" statüsüyle tutulur.
 - IST-04: Silinen ilaç geçmiş kayıtları raporlama bütünlüğü için anonimleştirilmiş olarak saklanır.
+- IST-05: Cihaz saat dilimi değişirse frekans planı yeni saat dilimine göre yeniden üretilir ve kullanıcı bilgilendirilir.
+- IST-06: Sessiz saat aralığında kritik olmayan bildirimler ilk uygun zaman dilimine ertelenir.
+- IST-07: PRN limit aşımı durumunda kullanıcıya engelleme mesajı gösterilir; olay denetim izine yazılır.
 
 ## 5. User Story Seti (INVEST Uyumlu)
 
@@ -133,6 +147,60 @@ Kabul Kriterleri:
 2. Kullanıcı 2 dakika içinde ilk ilaç ekleme akışına ulaşabilir.
 3. Bildirim izni reddedilirse alternatif rehber adımı gösterilir.
 
+### US-16 (P1) - Detaylı Frekans Tanımlama
+As a kullanıcı, I want ilaç eklerken hazır ve özel frekans seçeneklerini detaylı girebilmek, so that tedavi planımı doğru yansıtayım.
+
+Kabul Kriterleri:
+1. Kullanıcı hazır frekans şablonu veya özel frekans tanımı seçeneklerinden birini seçebilir.
+2. Özel tanımda N saatte bir, haftalık gün ve belirli saat kombinasyonları desteklenir.
+3. Frekans tipi seçilmeden kayıt tamamlanamaz.
+4. Frekans doğrulama hatalarında alan bazlı açıklayıcı mesaj gösterilir.
+
+### US-17 (P1) - Tarih Bazlı ve Döngüsel Plan
+As a kullanıcı, I want başlangıç-bitiş tarihli ve döngüsel kullanım planı tanımlamak, so that kür tedavilerimi doğru takip edeyim.
+
+Kabul Kriterleri:
+1. Başlangıç-bitiş tarihli planlarda bitişten sonra bildirim üretilmez.
+2. Döngüsel planda ara günlerde bildirim oluşturulmaz.
+3. Plan güncellendiğinde sadece gelecekteki zamanlar yeniden hesaplanır.
+4. Kullanıcı sonraki 30 günlük planı önizlemede görebilir.
+
+### US-18 (P1) - PRN ve Limit Kontrolü
+As a kullanıcı, I want gerektiğinde kullanımda güvenli limitlerle hatırlatma almak, so that doz aşımı riskini azaltayım.
+
+Kabul Kriterleri:
+1. PRN planında minimum tekrar aralığı zorunludur.
+2. Günlük maksimum doz limiti zorunludur.
+3. Minimum aralık ihlalinde yeni doz kaydı engellenir.
+4. Limit ihlali durumunda kullanıcıya net geri bildirim verilir ve olay kaydı tutulur.
+
+### US-19 (P1) - Tapering ve Öğün Kuralları
+As a kullanıcı, I want tarih aralıklarına göre değişen doz/frekans ve öğün ilişkisi tanımlamak, so that doktor planına uyum sağlayayım.
+
+Kabul Kriterleri:
+1. En az iki zaman dilimli tapering planı tanımlanabilir.
+2. Her tapering diliminde frekans ve doz alanları ayrı düzenlenebilir.
+3. Aç/tok/öğün öncesi/sonrası bilgisi hatırlatma metninde görüntülenir.
+4. Çakışan tapering dilimleri kaydedilemez.
+
+### US-20 (P1) - Sessiz Saat ve Çakışma Yönetimi
+As a kullanıcı, I want sessiz saatlerde kritik olmayan bildirimlerin ertelenmesini ve çakışan bildirimlerin birleşmesini, so that bildirim yükü azalsın.
+
+Kabul Kriterleri:
+1. Sessiz saat aralığı kullanıcı tarafından başlangıç-bitiş olarak tanımlanabilir.
+2. Kritik olmayan bildirimler sessiz saat dışındaki ilk uygun zamana ertelenir.
+3. Aynı dakikaya denk gelen bildirimler tek bildirim olarak gönderilir.
+4. Ertelenen bildirimler geçmişte "sessiz saat nedeniyle ertelendi" olarak işaretlenir.
+
+### US-21 (P1) - Frekans Performansı ve Kullanılabilirlik
+As a kullanıcı, I want frekans ayarını hızlı tamamlayıp anında plan sonucunu görmek, so that ilaç kaydını zorlanmadan bitireyim.
+
+Kabul Kriterleri:
+1. Frekans akışı ortalama 60 saniye altında tamamlanır.
+2. Kaydet sonrası plan hesaplama sonucu 2 saniye içinde ekranda gösterilir.
+3. Planlama doğruluğu testlerinde zaman sapması en fazla 1 dakika olur.
+4. Hatalı girişlerde form seviyesinde engelleme ve düzeltme önerisi sunulur.
+
 ## 5.2 Should-Have
 
 ### US-07 (P2) - Randevu ve Tahlil Hatırlatma
@@ -205,6 +273,12 @@ Kabul Kriterleri:
 | US-11 | P2 | Faz 3 | US-01, US-10 | Acil paylaşım |
 | US-14 | P1 | Faz 1-3 | Tüm modüller | Yatay gereksinim |
 | US-15 | P1 | Faz 1-3 | Tüm ekranlar | Yatay gereksinim |
+| US-16 | P1 | Faz 1 | US-01 | Frekans temel modeli |
+| US-17 | P1 | Faz 1 | US-16 | Kür ve döngüsel plan |
+| US-18 | P1 | Faz 1 | US-16 | PRN güvenlik kuralı |
+| US-19 | P1 | Faz 2 | US-16, US-17 | Tapering ve öğün ilişkisi |
+| US-20 | P1 | Faz 1 | US-03, US-16 | Sessiz saat ve tekilleştirme |
+| US-21 | P1 | Faz 1 | US-16 | UX ve performans hedefi |
 
 ## 7. NFR Analizi ve Doğrulama Yaklaşımı
 
@@ -217,6 +291,9 @@ Kabul Kriterleri:
 | NFR-05 | Erişilebilirlik | WCAG tabanlı UI testi | Kritik akışlarda geçer |
 | NFR-06 | Erişilebilirlik oranı | Aylık servis raporu | >= %99.5 |
 | NFR-07 | Log maskeleme | Log örneklem kontrolü | PHI sızıntısı 0 |
+| NFR-08 | Frekans akışı süresi | Görev tamamlama testi | Ortalama <= 60 sn |
+| NFR-09 | Plan hesaplama süresi | Uygulama içi performans metriği | <= 2 sn |
+| NFR-10 | Bildirim zaman doğruluğu | Planlanan-zamanlanan karşılaştırma | Sapma <= +/-1 dk |
 
 ## 8. İş Birimi Kararları ve Açık Konu
 
@@ -227,6 +304,9 @@ Karara Bağlananlar:
 4. Reklamsız deneyim abonelik paketi kapsamında sunulabilecek.
 5. Veri saklama Faz 1 ve Faz 2'de süresiz olacak; ileri fazlarda politika tekrar değerlendirilecek.
 6. Senkron çakışma kuralı: son güncelleyen kayıt esas alınır.
+7. Frekans modeli Faz 1'de hazır şablon + özel tanım birlikte sunulacak.
+8. PRN için minimum aralık ve günlük üst limit zorunlu alan olarak işlenecek.
+9. Sessiz saat kuralı kritik olmayan bildirimleri erteleyecek şekilde uygulanacak.
 
 ## 9. Kabul ve Çıkış Kriterleri
 

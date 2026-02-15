@@ -3,7 +3,7 @@
 ## 1. Doküman Bilgisi
 - Proje Adı: İlaç Hatırlatma Uygulaması
 - Doküman Tipi: İş Gereksinimleri Dokümanı (BRD)
-- Doküman Versiyonu: 1.0
+- Doküman Versiyonu: 1.1
 - Hazırlayan Birim: İş Birimi
 - Tarih: 2026-02-15
 
@@ -19,6 +19,7 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 - Kullanıcıya kolay, güvenilir ve erişilebilir bir takip deneyimi sunmak.
 - Yakın destek (aile/bakıcı) ile dolaylı takip olanağını sağlamak.
 - Reçete ve stok yönetimini dijitalleştirerek aksama riskini düşürmek.
+- Farklı tedavi tiplerini tek ve esnek frekans modeliyle desteklemek.
 
 ## 5. Başarı Kriterleri (KPI)
 - 3 ay sonunda aktif kullanıcıların en az %70'inin haftalık en az 5 gün uygulamayı kullanması.
@@ -26,11 +27,13 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 - İlk 60 gün içinde "doz kaçırma" olaylarında başlangıca göre en az %25 azalma.
 - Bildirim teslim başarısı en az %98.
 - Kullanıcı memnuniyeti puanı (CSAT) en az 4.2/5.
+- İlaç frekansı tanımlama akışında yarım bırakma oranında 3 ay içinde en az %20 azalma.
 
 ## 6. Kapsam
 ### 6.1 Kapsam Dahili
 - İlaç kartı oluşturma, düzenleme, silme.
 - Tekrarlayan hatırlatma planlama (günlük/haftalık, çoklu saat).
+- Gelişmiş frekans tanımlama (saat aralıklı, döngüsel, PRN, tapering).
 - Bildirim gönderimi ve erteleme.
 - Doz durumu işaretleme (aldım/almadım).
 - Kullanım geçmişi görüntüleme.
@@ -65,10 +68,13 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 
 ## 9. İş Kuralları
 - Kullanıcı, ilaç için en az bir hatırlatma saati tanımlamadan kaydedemez.
+- Kullanıcı, ilaç kaydında en az bir frekans tipi seçmeden kaydı tamamlayamaz.
 - Geçmişe dönük doz işaretleme kullanıcı tarafından yapılabilir, ancak kayıt zamanı loglanır.
 - Stok seviyesi sıfırın altına düşemez.
 - Bakıcı erişimi sadece açık kullanıcı onayı ile aktif olur.
 - Acil paylaşım çıktısı sadece kullanıcının seçtiği temel alanları içerir.
+- PRN (gerektiğinde) kullanımda minimum tekrar aralığı ve günlük maksimum doz limiti zorunludur.
+- Bitiş tarihi geçen frekans planları otomatik pasif duruma çekilir.
 
 ## 10. Fonksiyonel Gereksinimler
 - FR-01: Kullanıcı ilaç ekleyebilmelidir (isim, doz, kullanım tipi, aç/tok, başlangıç-bitiş tarihi).
@@ -86,6 +92,21 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 - FR-13: Kullanıcı acil durum ilaç listesini hızlıca paylaşabilmelidir.
 - FR-14: Kullanıcı arayüzü Türkçe ve İngilizce dillerini desteklemelidir.
 - FR-15: Onboarding süreci en fazla 5 adımda temel kullanım kurulumu sağlamalıdır.
+- FR-16: Sistem sabit günlük frekans tipini desteklemelidir (günde 1/2/3/4 doz).
+- FR-17: Sistem saat aralıklı frekans tipini desteklemelidir (N saatte bir).
+- FR-18: Sistem haftalık gün bazlı frekansı desteklemelidir (seçili günler + saatler).
+- FR-19: Sistem aylık gün bazlı frekansı desteklemelidir (ayın belirli günü + saat).
+- FR-20: Sistem başlangıç-bitiş tarihli kür planını desteklemelidir.
+- FR-21: Sistem döngüsel kullanım planını desteklemelidir (X gün kullan + Y gün ara).
+- FR-22: Sistem PRN planını desteklemelidir (minimum aralık + günlük üst limit).
+- FR-23: Sistem kademeli azaltım/artırım (tapering) planını desteklemelidir (tarih aralıklarına göre farklı frekans).
+- FR-24: Sistem öğün ilişkisi bilgisini frekans planına bağlayabilmelidir (aç/tok/öğün öncesi/sonrası).
+- FR-25: Sistem sessiz saat kuralı tanımlanmasına izin vermelidir; kritik olmayan bildirimleri sessiz saat dışına ötelemelidir.
+- FR-26: Frekans kayıt ekranında hazır şablonlar (günde 1/2, 8 saatte 1, haftada 1, PRN) ve özel tanım birlikte sunulmalıdır.
+- FR-27: Çakışan bildirimler aynı dakika içinde tekilleştirilmelidir.
+- FR-28: Kaçırılan doz için tekrar hatırlatma kuralı tanımlanabilmelidir (15/30/60 dk).
+- FR-29: Frekans güncellemesi sonrası yeni kurallar bir sonraki planlama döngüsünde uygulanmalıdır.
+- FR-30: Frekans planı doğrulama kuralları sağlanmadığında kayıt engellenmeli ve açıklayıcı hata mesajı gösterilmelidir.
 
 ## 11. Fonksiyonel Olmayan Gereksinimler
 - NFR-01: Bildirim tetikleme gecikmesi ortalama 5 saniyenin altında olmalıdır.
@@ -95,6 +116,9 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 - NFR-05: Uygulama erişilebilirlik standartlarını karşılamalıdır (okunabilir metin, kontrast, ölçeklenebilir yazı).
 - NFR-06: Sistem en az %99.5 aylık erişilebilirlik hedeflemelidir (senkronizasyon servisleri için).
 - NFR-07: Hata kayıtları kişisel sağlık verisini maskeleyecek şekilde tutulmalıdır.
+- NFR-08: Frekans kayıt akışı ortalama 60 saniye içinde tamamlanabilmelidir.
+- NFR-09: Frekans hesaplama çıktısı kayıt sonrası en geç 2 saniye içinde üretilmelidir.
+- NFR-10: Bildirim zamanlama doğruluğu ±1 dakika tolerans içinde olmalıdır.
 
 ## 12. Kullanıcı Yolculuğu Özeti
 - İlk kurulum: Kullanıcı uygulamayı açar, dil ve bildirim izinlerini ayarlar, ilk ilacını ekler.
@@ -108,6 +132,12 @@ Kullanıcılar ilaçlarını zamanında alma, doz takibi, stok yönetimi ve reç
 - Offline durumda önceden kurulmuş hatırlatmaların en az %95'i tetiklenmelidir.
 - Stok eşiği aşıldığında kullanıcıya en geç 1 dakika içinde uyarı gösterilmelidir.
 - Bakıcı erişimi, kullanıcı onayı kaldırıldığında anında pasifleşmelidir.
+- Saat aralıklı (N saatte bir) frekansta 24 saatlik plan doğru üretilmelidir.
+- Başlangıç-bitiş tarihli planlarda bitiş tarihinden sonra bildirim üretilmemelidir.
+- PRN planında minimum aralık ihlalinde yeni doz kaydı engellenmelidir.
+- Döngüsel planda ara günlerde bildirim oluşturulmamalıdır.
+- Sessiz saat aktifken kritik olmayan bildirimler sessiz saat dışında gönderilmelidir.
+- Frekans güncellemesi yapıldıktan sonra bir sonraki döngüde yeni kural uygulanmalıdır.
 
 ## 14. Riskler ve Önlemler
 - Risk: Kullanıcıların bildirim izni vermemesi.
