@@ -36,7 +36,7 @@
 | PBI-005 | Done | `api/Controllers/dose-events-controller.cs`, `api.tests/dose-events-controller-tests.cs`, `dotnet test` (12/12) |
 | PBI-006 | Done | `api/Controllers/dose-events-controller.cs` (history/summary), `dotnet test` (14/14) |
 | PBI-007 | Done | `api/Controllers/inventory-controller.cs`, `api.tests/inventory-controller-tests.cs`, `dotnet test` (18/18) |
-| PBI-008 | Todo | - |
+| PBI-008 | Done | `api/Controllers/prescription-reminders-controller.cs`, `api.tests/prescription-reminders-controller-tests.cs`, `dotnet test` (20/20) |
 | PBI-009 | Todo | - |
 | PBI-010 | Todo | - |
 | PBI-011 | Todo | - |

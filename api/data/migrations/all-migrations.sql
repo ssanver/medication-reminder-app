@@ -157,3 +157,45 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115620_AddPrescriptionReminders'
+)
+BEGIN
+    CREATE TABLE [prescription-reminders] (
+        [Id] uniqueidentifier NOT NULL,
+        [MedicationId] uniqueidentifier NOT NULL,
+        [RenewalDate] date NOT NULL,
+        [OffsetsCsv] nvarchar(120) NOT NULL,
+        [UpdatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_prescription-reminders] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_prescription-reminders_medications_MedicationId] FOREIGN KEY ([MedicationId]) REFERENCES [medications] ([Id]) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115620_AddPrescriptionReminders'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_prescription-reminders_MedicationId] ON [prescription-reminders] ([MedicationId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115620_AddPrescriptionReminders'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260215115620_AddPrescriptionReminders', N'8.0.12');
+END;
+GO
+
+COMMIT;
+GO
+
