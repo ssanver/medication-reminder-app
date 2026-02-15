@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
 import { Button } from '../components/ui/button';
-import { TextField } from '../components/ui/text-field';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { addMedication } from '../features/medications/medication-store';
@@ -14,12 +14,18 @@ type AddMedsScreenProps = {
   onMedicationSaved: () => void;
 };
 
-type PickerSheet = 'none' | 'form' | 'frequency' | 'dosage' | 'date' | 'time';
+type WizardStep = 'name' | 'form-dose' | 'frequency' | 'note';
+type SheetType = 'none' | 'date' | 'time';
 
 type FormOption = {
   key: string;
   emoji: string;
 };
+
+const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
+const dosageOptions = ['0.5', '1', '2', '3'];
+const frequencyOptions = ['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'];
+const quickTimes = ['08:00', '12:00', '18:00', '24:00'];
 
 const formOptions: FormOption[] = [
   { key: 'Capsule', emoji: '💊' },
@@ -27,18 +33,10 @@ const formOptions: FormOption[] = [
   { key: 'Drop', emoji: '🫙' },
   { key: 'Syrup', emoji: '🧴' },
   { key: 'Injection', emoji: '💉' },
-  { key: 'Other', emoji: '• • •' },
+  { key: 'Other', emoji: '•••' },
 ];
 
-const frequencyOptions = ['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'];
-const dosageOptions = ['0.5', '1', '2', '3'];
-
-const timeOptions = Array.from({ length: 96 }, (_, index) => {
-  const minutes = index * 15;
-  const hour = `${Math.floor(minutes / 60)}`.padStart(2, '0');
-  const minute = `${minutes % 60}`.padStart(2, '0');
-  return `${hour}:${minute}`;
-});
+const medicationSuggestions = ['Metformin', 'Metoprolol tartrate', 'Methotrexate', 'Methadone', 'Metolazone'];
 
 function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -47,310 +45,398 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function getUpcomingDates(start: Date, count: number): Date[] {
-  return Array.from({ length: count }, (_, offset) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + offset);
-    return d;
-  });
+function parseDateKey(value: string): Date {
+  return new Date(`${value}T00:00:00`);
 }
 
-function getSelectedFormEmoji(form: string): string {
-  return formOptions.find((option) => option.key === form)?.emoji ?? '💊';
+function shiftMonth(base: Date, delta: number): Date {
+  return new Date(base.getFullYear(), base.getMonth() + delta, 1);
 }
 
-export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps) {
+function buildCalendarCells(month: Date): Array<Date | null> {
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const firstDay = new Date(year, monthIndex, 1);
+  const mondayStartOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const cells: Array<Date | null> = Array.from({ length: mondayStartOffset }, () => null);
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push(new Date(year, monthIndex, day));
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return cells;
+}
+
+function toFrequencyLabel(value: string): string {
+  if (value === 'Every 3 Days') {
+    return 'Every 3 Days';
+  }
+
+  if (value === 'Every 1 Hour') {
+    return 'Every 1 Hour';
+  }
+
+  return 'Every 1 Day';
+}
+
+export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);
-  const [sheet, setSheet] = useState<PickerSheet>('none');
+  const [step, setStep] = useState<WizardStep>('name');
+  const [sheet, setSheet] = useState<SheetType>('none');
+
   const [name, setName] = useState('');
-  const [form, setForm] = useState('Capsule');
+  const [form, setForm] = useState('');
+  const [dosage, setDosage] = useState('0.5');
   const [frequency, setFrequency] = useState('Every 1 Day');
-  const [dosage, setDosage] = useState('1');
+  const [startDate, setStartDate] = useState(formatDate(new Date()));
+  const [time, setTime] = useState('');
   const [note, setNote] = useState('');
-  const [startDate, setStartDate] = useState(() => formatDate(new Date()));
-  const [time, setTime] = useState('09:00');
-  const [isActive, setIsActive] = useState(true);
-  const [savedMessage, setSavedMessage] = useState('');
 
-  const canSave = useMemo(() => name.trim().length > 1, [name]);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [draftDate, setDraftDate] = useState(startDate);
+  const [draftTime, setDraftTime] = useState('08:00');
 
-  const localizedStartDate = useMemo(() => {
-    const parsed = new Date(`${startDate}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) {
-      return startDate;
+  const stepIndex = steps.indexOf(step);
+  const progress = (stepIndex + 1) / steps.length;
+
+  const filteredSuggestions = useMemo(() => {
+    const query = name.trim().toLowerCase();
+    if (!query) {
+      return medicationSuggestions;
     }
 
+    return medicationSuggestions.filter((item) => item.toLowerCase().includes(query));
+  }, [name]);
+
+  const localizedDate = useMemo(() => {
+    const parsed = parseDateKey(startDate);
     return parsed.toLocaleDateString(getLocaleTag(locale), {
-      day: 'numeric',
+      day: '2-digit',
       month: 'short',
       year: 'numeric',
     });
   }, [locale, startDate]);
 
-  const upcomingDates = useMemo(() => getUpcomingDates(new Date(), 30), []);
+  const canProceed =
+    (step === 'name' && name.trim().length > 1) ||
+    (step === 'form-dose' && form.length > 0) ||
+    (step === 'frequency' && Boolean(startDate && time)) ||
+    step === 'note';
 
-  async function saveMedication() {
-    if (!canSave) {
+  const headerTitle =
+    step === 'name'
+      ? t.medicationName
+      : step === 'form-dose'
+        ? `${t.selectForm} & ${t.dose}`
+        : step === 'frequency'
+          ? t.frequency
+          : t.note;
+
+  async function handleSave(shouldSkipNote = false) {
+    const normalizedName = name.trim();
+    if (!normalizedName || !form || !time) {
       return;
     }
 
     await addMedication({
-      name,
+      name: normalizedName,
       form,
-      frequencyLabel: frequency,
       dosage,
-      note,
+      frequencyLabel: toFrequencyLabel(frequency),
+      note: shouldSkipNote ? '' : note.trim(),
       startDate,
       time,
-      active: isActive,
+      active: true,
     });
 
-    setSavedMessage(t.medicationCreated);
     setName('');
-    setForm('Capsule');
+    setForm('');
+    setDosage('0.5');
     setFrequency('Every 1 Day');
-    setDosage('1');
-    setNote('');
     setStartDate(formatDate(new Date()));
-    setTime('09:00');
-    setIsActive(true);
-    setSheet('none');
-    setTimeout(() => onMedicationSaved(), 400);
+    setTime('');
+    setNote('');
+    setStep('name');
+    onMedicationSaved();
   }
 
-  return (
-    <>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{t.medicationDetails}</Text>
+  function onNext() {
+    if (!canProceed) {
+      return;
+    }
 
-        <View style={styles.medicationCard}>
-          <View style={styles.medicationIconWrap}>
-            <Text style={styles.medicationIcon}>{getSelectedFormEmoji(form)}</Text>
+    if (step === 'note') {
+      void handleSave(false);
+      return;
+    }
+
+    setStep(steps[stepIndex + 1]);
+  }
+
+  function onBack() {
+    if (stepIndex === 0) {
+      return;
+    }
+    setStep(steps[stepIndex - 1]);
+  }
+
+  function openDateSheet() {
+    setDraftDate(startDate);
+    setCalendarMonth(parseDateKey(startDate));
+    setSheet('date');
+  }
+
+  function openTimeSheet() {
+    setDraftTime(time || '08:00');
+    setSheet('time');
+  }
+
+  function renderStepContent() {
+    if (step === 'name') {
+      return (
+        <View style={styles.stepBody}>
+          <View style={styles.searchBox}>
+            <Text style={styles.searchIcon}>⌕</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder={t.medicationNamePlaceholder}
+              placeholderTextColor={theme.colors.neutral[400]}
+              style={styles.searchInput}
+              autoCapitalize="words"
+            />
           </View>
-          <View style={styles.medicationTextWrap}>
-            <Text style={styles.medicationTitle}>{name.trim() || t.medicationName}</Text>
-            <Text style={styles.medicationSubtitle}>{`${dosage} ${localizeFormLabel(form, locale)} | ${localizeFrequencyLabel(frequency, locale)}`}</Text>
+
+          <View style={styles.suggestionList}>
+            {name.trim().length > 0 ? (
+              <Pressable onPress={() => setName(name.trim())} style={styles.suggestionRow}>
+                <Text style={styles.addNewBullet}>＋</Text>
+                <Text numberOfLines={1} style={styles.suggestionPrimaryText}>{`${t.addMedication} ${name.trim()}`}</Text>
+              </Pressable>
+            ) : null}
+
+            {filteredSuggestions.map((item) => (
+              <Pressable key={item} onPress={() => setName(item)} style={styles.suggestionRow}>
+                <Text numberOfLines={1} style={styles.suggestionText}>{item}</Text>
+              </Pressable>
+            ))}
           </View>
-          <Pressable style={[styles.toggleTrack, isActive && styles.toggleTrackActive]} onPress={() => setIsActive((prev) => !prev)}>
-            <View style={[styles.toggleThumb, isActive && styles.toggleThumbActive]} />
+        </View>
+      );
+    }
+
+    if (step === 'form-dose') {
+      return (
+        <View style={styles.stepBody}>
+          <View style={styles.dosageRow}>
+            {dosageOptions.map((item) => {
+              const selected = item === dosage;
+              return (
+                <Pressable key={item} onPress={() => setDosage(item)} style={[styles.dosageChip, selected && styles.dosageChipSelected]}>
+                  <Text style={[styles.dosageChipText, selected && styles.dosageChipTextSelected]}>{item}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.formGrid}>
+            {formOptions.map((item) => {
+              const selected = form === item.key;
+              return (
+                <Pressable key={item.key} onPress={() => setForm(item.key)} style={[styles.formCard, selected && styles.formCardSelected]}>
+                  <Text style={styles.formIcon}>{item.emoji}</Text>
+                  <Text numberOfLines={1} style={[styles.formLabel, selected && styles.formLabelSelected]}>
+                    {localizeFormLabel(item.key, locale)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      );
+    }
+
+    if (step === 'frequency') {
+      return (
+        <View style={styles.stepBody}>
+          <View style={styles.frequencyRow}>
+            {frequencyOptions.map((item) => {
+              const selected = item === frequency;
+              return (
+                <Pressable key={item} onPress={() => setFrequency(item)} style={[styles.frequencyChip, selected && styles.frequencyChipSelected]}>
+                  <Text style={[styles.frequencyChipText, selected && styles.frequencyChipTextSelected]}>{localizeFrequencyLabel(item, locale)}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable style={styles.selectionRow} onPress={openDateSheet}>
+            <View style={styles.selectionLeft}>
+              <Text style={styles.selectionIcon}>🗓</Text>
+              <Text style={styles.selectionLabel}>{t.startDate}</Text>
+            </View>
+            <View style={styles.selectionRight}>
+              <Text style={styles.selectionValue}>{localizedDate}</Text>
+              <Text style={styles.selectionChevron}>›</Text>
+            </View>
+          </Pressable>
+
+          <Pressable style={styles.selectionRow} onPress={openTimeSheet}>
+            <View style={styles.selectionLeft}>
+              <Text style={styles.selectionIcon}>⏰</Text>
+              <Text style={styles.selectionLabel}>{t.time}</Text>
+            </View>
+            <View style={styles.selectionRight}>
+              <Text style={styles.selectionValue}>{time || '--:--'}</Text>
+              <Text style={styles.selectionChevron}>›</Text>
+            </View>
           </Pressable>
         </View>
+      );
+    }
 
-        <TextField
-          label={t.medicationName}
-          value={name}
-          placeholder={t.medicationNamePlaceholder}
-          helperText={t.required}
-          onChangeText={setName}
+    return (
+      <View style={styles.stepBody}>
+        <Text style={styles.noteLabel}>{t.note}</Text>
+        <TextInput
+          value={note}
+          onChangeText={setNote}
+          placeholder={t.notePlaceholder}
+          placeholderTextColor={theme.colors.neutral[400]}
+          style={styles.noteInput}
+          multiline
+          numberOfLines={6}
+          textAlignVertical="top"
         />
+      </View>
+    );
+  }
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t.schedule}</Text>
-          <View style={styles.rowTwoCol}>
-            <SelectorField
-              label={t.startDate}
-              value={localizedStartDate}
-              icon="📅"
-              onPress={() => setSheet('date')}
-            />
-            <SelectorField
-              label={t.time}
-              value={time}
-              icon="⏰"
-              onPress={() => setSheet('time')}
-            />
-          </View>
-          <SelectorField
-            label={t.frequency}
-            value={localizeFrequencyLabel(frequency, locale)}
-            icon="↻"
-            onPress={() => setSheet('frequency')}
-          />
+  const calendarCells = buildCalendarCells(calendarMonth);
+  const dayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.topProgressTrack}>
+        <View style={[styles.topProgressFill, { width: `${progress * 100}%` }]} />
+      </View>
+
+      <View style={styles.headerRow}>
+        <Pressable onPress={onBack} disabled={stepIndex === 0} style={styles.headerIconButton}>
+          {stepIndex > 0 ? <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} /> : null}
+        </Pressable>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <View style={styles.headerIconButton}>
+          {step === 'note' ? (
+            <Pressable onPress={() => void handleSave(true)} hitSlop={8}>
+              <Text style={styles.skipText}>{locale === 'tr' ? 'Atla' : 'Skip'}</Text>
+            </Pressable>
+          ) : null}
         </View>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t.dose}</Text>
-          <View style={styles.rowTwoCol}>
-            <SelectorField label={t.dosage} value={dosage} icon="💧" onPress={() => setSheet('dosage')} />
-            <SelectorField
-              label={t.form}
-              value={localizeFormLabel(form, locale)}
-              icon={getSelectedFormEmoji(form)}
-              onPress={() => setSheet('form')}
-            />
-          </View>
-          <TextField
-            label={t.note}
-            value={note}
-            placeholder={t.notePlaceholder}
-            helperText={t.optional}
-            onChangeText={setNote}
-          />
-        </View>
-
-        {savedMessage ? <Text style={styles.success}>{savedMessage}</Text> : null}
-
-        <Button label={t.save} onPress={saveMedication} disabled={!canSave} />
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {renderStepContent()}
       </ScrollView>
+
+      <View style={styles.footer}>
+        <Button label={step === 'note' ? t.done : t.next} onPress={onNext} disabled={!canProceed} size="m" />
+      </View>
 
       <Modal transparent visible={sheet !== 'none'} animationType="slide" onRequestClose={() => setSheet('none')}>
         <Pressable style={styles.overlay} onPress={() => setSheet('none')}>
-          <Pressable style={styles.sheetContainer} onPress={() => undefined}>
+          <Pressable style={styles.sheet} onPress={() => undefined}>
             <BottomSheetHandle />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{getSheetTitle(sheet, locale)}</Text>
+              <Text style={styles.sheetTitle}>{sheet === 'date' ? t.selectDate : t.setTime}</Text>
               <Pressable onPress={() => setSheet('none')} hitSlop={8}>
                 <Text style={styles.sheetClose}>✕</Text>
               </Pressable>
             </View>
 
-            {sheet === 'form'
-              ? formOptions.map((option) => {
-                  const selected = option.key === form;
-                  return (
-                    <Pressable
-                      key={option.key}
-                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
-                      onPress={() => {
-                        setForm(option.key);
-                        setSheet('none');
-                      }}
-                    >
-                      <Text style={styles.sheetOptionIcon}>{option.emoji}</Text>
-                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{localizeFormLabel(option.key, locale)}</Text>
-                    </Pressable>
-                  );
-                })
-              : null}
+            {sheet === 'date' ? (
+              <View style={styles.calendarWrap}>
+                <View style={styles.calendarHeader}>
+                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, -1))} hitSlop={8}>
+                    <Text style={styles.monthArrow}>‹</Text>
+                  </Pressable>
+                  <Text style={styles.monthTitle}>
+                    {calendarMonth.toLocaleDateString(getLocaleTag(locale), { month: 'short', year: 'numeric' })}
+                  </Text>
+                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, 1))} hitSlop={8}>
+                    <Text style={styles.monthArrow}>›</Text>
+                  </Pressable>
+                </View>
 
-            {sheet === 'frequency'
-              ? frequencyOptions.map((option) => {
-                  const selected = option === frequency;
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
-                      onPress={() => {
-                        setFrequency(option);
-                        setSheet('none');
-                      }}
-                    >
-                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{localizeFrequencyLabel(option, locale)}</Text>
-                    </Pressable>
-                  );
-                })
-              : null}
+                <View style={styles.dayHeaderRow}>
+                  {dayHeaders.map((day, index) => (
+                    <Text key={`${day}-${index}`} style={styles.dayHeaderText}>{day}</Text>
+                  ))}
+                </View>
 
-            {sheet === 'dosage'
-              ? dosageOptions.map((option) => {
-                  const selected = option === dosage;
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
-                      onPress={() => {
-                        setDosage(option);
-                        setSheet('none');
-                      }}
-                    >
-                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{option}</Text>
-                    </Pressable>
-                  );
-                })
-              : null}
+                <View style={styles.calendarGrid}>
+                  {calendarCells.map((dateCell, index) => {
+                    if (!dateCell) {
+                      return <View key={`empty-${index}`} style={styles.calendarCell} />;
+                    }
 
-            {sheet === 'date'
-              ? upcomingDates.map((date) => {
-                  const key = formatDate(date);
-                  const selected = key === startDate;
-                  const label = date.toLocaleDateString(getLocaleTag(locale), {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  });
-                  return (
-                    <Pressable
-                      key={key}
-                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
-                      onPress={() => {
-                        setStartDate(key);
-                        setSheet('none');
-                      }}
-                    >
-                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{label}</Text>
-                    </Pressable>
-                  );
-                })
-              : null}
+                    const dateKey = formatDate(dateCell);
+                    const selected = draftDate === dateKey;
 
-            {sheet === 'time'
-              ? timeOptions.map((option) => {
-                  const selected = option === time;
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
-                      onPress={() => {
-                        setTime(option);
-                        setSheet('none');
-                      }}
-                    >
-                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{option}</Text>
-                    </Pressable>
-                  );
-                })
-              : null}
+                    return (
+                      <Pressable
+                        key={dateKey}
+                        onPress={() => setDraftDate(dateKey)}
+                        style={[styles.calendarCell, selected && styles.calendarCellSelected]}
+                      >
+                        <Text style={[styles.calendarCellText, selected && styles.calendarCellTextSelected]}>{dateCell.getDate()}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Button
+                  label={t.done}
+                  onPress={() => {
+                    setStartDate(draftDate);
+                    setSheet('none');
+                  }}
+                />
+              </View>
+            ) : null}
+
+            {sheet === 'time' ? (
+              <View style={styles.timeWrap}>
+                <View style={styles.timeGrid}>
+                  {quickTimes.map((option) => {
+                    const selected = draftTime === option;
+                    return (
+                      <Pressable key={option} onPress={() => setDraftTime(option)} style={[styles.timeChip, selected && styles.timeChipSelected]}>
+                        <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>{option}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Button
+                  label={t.done}
+                  onPress={() => {
+                    setTime(draftTime);
+                    setSheet('none');
+                  }}
+                />
+              </View>
+            ) : null}
           </Pressable>
         </Pressable>
       </Modal>
-    </>
-  );
-}
-
-type SelectorFieldProps = {
-  label: string;
-  value: string;
-  icon: string;
-  onPress: () => void;
-};
-
-function SelectorField({ label, value, icon, onPress }: SelectorFieldProps) {
-  return (
-    <View style={styles.selectorWrap}>
-      <Text style={styles.selectorLabel}>{label}</Text>
-      <Pressable style={styles.selectorBox} onPress={onPress}>
-        <Text style={styles.selectorValue} numberOfLines={1}>
-          {`${icon} ${value}`}
-        </Text>
-        <Text style={styles.selectorChevron}>›</Text>
-      </Pressable>
     </View>
   );
-}
-
-function getSheetTitle(sheet: PickerSheet, locale: Locale): string {
-  if (sheet === 'date') {
-    return getTranslations(locale).selectDate;
-  }
-
-  if (sheet === 'time') {
-    return getTranslations(locale).setTime;
-  }
-
-  if (sheet === 'frequency') {
-    return getTranslations(locale).setFrequency;
-  }
-
-  if (sheet === 'dosage') {
-    return locale === 'tr' ? 'Doz secin' : 'Select dosage';
-  }
-
-  if (sheet === 'form') {
-    return locale === 'tr' ? 'Form secin' : 'Select form';
-  }
-
-  return '';
 }
 
 const styles = StyleSheet.create({
@@ -358,96 +444,180 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.semantic.screenBackground,
   },
-  content: {
-    gap: theme.spacing[16],
-    paddingBottom: theme.spacing[24],
-  },
-  title: {
-    ...theme.typography.heading.h5Semibold,
-    color: theme.colors.semantic.textPrimary,
-    textAlign: 'center',
-  },
-  medicationCard: {
-    borderRadius: theme.radius[16],
-    borderWidth: 1,
-    borderColor: theme.colors.semantic.borderSoft,
-    backgroundColor: theme.colors.semantic.cardBackground,
-    padding: theme.spacing[8],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing[8],
-    ...theme.elevation.card,
-  },
-  medicationIconWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: theme.radius[8],
-    backgroundColor: theme.colors.neutral[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  medicationIcon: {
-    fontSize: 24,
-  },
-  medicationTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  medicationTitle: {
-    ...theme.typography.bodyScale.mBold,
-    color: theme.colors.semantic.textPrimary,
-  },
-  medicationSubtitle: {
-    ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.textSecondary,
-  },
-  toggleTrack: {
-    width: 48,
-    height: 28,
-    borderRadius: 16,
-    padding: 2,
+  topProgressTrack: {
+    height: 2,
     backgroundColor: theme.colors.neutral[200],
-    justifyContent: 'center',
   },
-  toggleTrackActive: {
+  topProgressFill: {
+    height: 2,
     backgroundColor: theme.colors.primaryBlue[500],
   },
-  toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+  headerRow: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: theme.spacing[8],
   },
-  toggleThumbActive: {
-    alignSelf: 'flex-end',
+  headerIconButton: {
+    width: 32,
+    minHeight: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  section: {
-    borderRadius: theme.radius[16],
-    borderWidth: 1,
-    borderColor: theme.colors.semantic.borderSoft,
-    backgroundColor: theme.colors.semantic.cardBackground,
-    padding: theme.spacing[8],
-    gap: theme.spacing[8],
-    ...theme.elevation.card,
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    ...theme.typography.heading.h8Semibold,
+    color: theme.colors.semantic.textPrimary,
   },
-  sectionTitle: {
+  skipText: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  rowTwoCol: {
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: theme.spacing[8],
+    paddingBottom: theme.spacing[16],
+  },
+  stepBody: {
+    gap: theme.spacing[16],
+  },
+  searchBox: {
+    minHeight: 34,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[8],
     gap: theme.spacing[8],
   },
-  selectorWrap: {
+  searchIcon: {
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textMuted,
+  },
+  searchInput: {
     flex: 1,
-    gap: theme.spacing[4],
-  },
-  selectorLabel: {
-    ...theme.typography.captionScale.lRegular,
+    ...theme.typography.bodyScale.xmRegular,
     color: theme.colors.semantic.textPrimary,
+    paddingVertical: theme.spacing[8],
   },
-  selectorBox: {
-    minHeight: 44,
+  suggestionList: {
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  suggestionRow: {
+    minHeight: 34,
+    paddingHorizontal: theme.spacing[8],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.semantic.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+  },
+  addNewBullet: {
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.primaryBlue[500],
+  },
+  suggestionPrimaryText: {
+    flex: 1,
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.primaryBlue[500],
+  },
+  suggestionText: {
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  dosageRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing[8],
+  },
+  dosageChip: {
+    minWidth: 52,
+    minHeight: 32,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  dosageChipSelected: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  dosageChipText: {
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  dosageChipTextSelected: {
+    color: theme.colors.primaryBlue[600],
+  },
+  formGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[8],
+  },
+  formCard: {
+    width: '31%',
+    minHeight: 62,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  formCardSelected: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  formIcon: {
+    fontSize: 18,
+  },
+  formLabel: {
+    ...theme.typography.captionScale.mRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  formLabelSelected: {
+    color: theme.colors.primaryBlue[600],
+  },
+  frequencyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[8],
+  },
+  frequencyChip: {
+    minHeight: 34,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frequencyChipSelected: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  frequencyChipText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  frequencyChipTextSelected: {
+    color: theme.colors.primaryBlue[600],
+  },
+  selectionRow: {
+    minHeight: 42,
     borderRadius: theme.radius[8],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
@@ -456,43 +626,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  selectionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing[8],
   },
-  selectorValue: {
-    flex: 1,
-    ...theme.typography.bodyScale.xmMedium,
+  selectionRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+  },
+  selectionIcon: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textMuted,
+  },
+  selectionLabel: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  selectionValue: {
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textPrimary,
   },
-  selectorChevron: {
+  selectionChevron: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textMuted,
   },
-  success: {
-    ...theme.typography.bodyScale.xmMedium,
-    color: theme.colors.success[500],
-    textAlign: 'center',
+  noteLabel: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textPrimary,
+  },
+  noteInput: {
+    minHeight: 170,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[8],
+    paddingVertical: theme.spacing[8],
+    ...theme.typography.bodyScale.mRegular,
+    color: theme.colors.semantic.textPrimary,
+  },
+  footer: {
+    paddingBottom: theme.spacing[8],
   },
   overlay: {
     flex: 1,
-    backgroundColor: theme.colors.semantic.overlay,
     justifyContent: 'flex-end',
+    backgroundColor: theme.colors.semantic.overlay,
   },
-  sheetContainer: {
-    maxHeight: '70%',
+  sheet: {
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: theme.radius[24],
     borderTopRightRadius: theme.radius[24],
-    paddingTop: theme.spacing[8],
     paddingHorizontal: theme.spacing[16],
+    paddingTop: theme.spacing[8],
     paddingBottom: theme.spacing[16],
-    backgroundColor: theme.colors.semantic.backgroundDefault,
-    gap: theme.spacing[8],
+    gap: theme.spacing[16],
   },
   sheetHeader: {
-    minHeight: 30,
+    minHeight: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: theme.spacing[4],
   },
   sheetTitle: {
     ...theme.typography.bodyScale.mMedium,
@@ -502,29 +699,82 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  sheetOption: {
-    minHeight: 44,
+  calendarWrap: {
+    gap: theme.spacing[16],
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  monthArrow: {
+    ...theme.typography.heading.h6Medium,
+    color: theme.colors.semantic.textSecondary,
+  },
+  monthTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
+  },
+  dayHeaderRow: {
+    flexDirection: 'row',
+  },
+  dayHeaderText: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textMuted,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius[8],
+  },
+  calendarCellSelected: {
+    backgroundColor: theme.colors.primaryBlue[50],
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[500],
+  },
+  calendarCellText: {
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  calendarCellTextSelected: {
+    color: theme.colors.primaryBlue[600],
+    fontWeight: '600',
+  },
+  timeWrap: {
+    gap: theme.spacing[16],
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing[8],
+  },
+  timeChip: {
+    flex: 1,
+    minHeight: 40,
     borderRadius: theme.radius[8],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
-    backgroundColor: theme.colors.neutral[50],
-    paddingHorizontal: theme.spacing[8],
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    gap: theme.spacing[8],
+    justifyContent: 'center',
   },
-  sheetOptionActive: {
+  timeChipSelected: {
     borderColor: theme.colors.primaryBlue[500],
     backgroundColor: theme.colors.primaryBlue[50],
   },
-  sheetOptionText: {
+  timeChipText: {
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.semantic.textSecondary,
   },
-  sheetOptionTextActive: {
-    color: theme.colors.primaryBlue[500],
-  },
-  sheetOptionIcon: {
-    fontSize: 16,
+  timeChipTextSelected: {
+    color: theme.colors.primaryBlue[600],
   },
 });
