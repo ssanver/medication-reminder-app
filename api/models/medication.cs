@@ -13,4 +13,5 @@ public sealed class Medication
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<MedicationSchedule> Schedules { get; set; } = [];
+    public ICollection<DoseEvent> DoseEvents { get; set; } = [];
 }

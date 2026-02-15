@@ -33,7 +33,7 @@
 | PBI-002 | Done | `mobile-app/src/screens/auth/onboarding-screen.tsx`, `npm test` (3/3), `npx tsc --noEmit` |
 | PBI-003 | Done | `api/Controllers/medications-controller.cs`, `api.tests/medications-controller-tests.cs`, `dotnet test` (6/6) |
 | PBI-004 | Done | `api/services/schedule-planner.cs`, `api.tests/schedule-planner-tests.cs`, `dotnet test` (9/9) |
-| PBI-005 | Todo | - |
+| PBI-005 | Done | `api/Controllers/dose-events-controller.cs`, `api.tests/dose-events-controller-tests.cs`, `dotnet test` (12/12) |
 | PBI-006 | Todo | - |
 | PBI-007 | Todo | - |
 | PBI-008 | Todo | - |
