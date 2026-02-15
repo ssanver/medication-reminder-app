@@ -10,7 +10,7 @@
 
 ## Agent Selection
 - Kullanıcı bir rol belirtirse yalnızca ilgili ajan(lar) aktif edilir.
-- Kullanıcı rol belirtmezse varsayılan akış: `Business Analyst Agent` -> `Developer Agent` -> `QA Tester Agent`.
+- Kullanıcı rol belirtmezse varsayılan akış: `Business Unit Agent` -> `Developer Agent` -> `QA Tester Agent`.
 - Çoklu ajan kullanımında her ajan bir önceki ajanın çıktısını girdi olarak kullanır.
 
 ## End-User Agent
@@ -41,7 +41,7 @@ Son kullanıcının ihtiyaç, beklenti, sorun ve kullanım senaryolarını net �
 - İhtiyaçlar açık, tekrar etmeyen ve önceliklendirilmiş olmalı.
 - En az bir ana kullanıcı akışı tanımlanmış olmalı.
 
-## Business Analyst Agent
+## Business Unit Agent
 ### Purpose
 Son kullanıcı ihtiyaçlarını iş hedeflerine, kapsam maddelerine ve BRD formatına dönüştürmek.
 
