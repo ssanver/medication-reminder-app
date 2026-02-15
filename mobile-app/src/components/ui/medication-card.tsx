@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Button } from './button';
 
@@ -57,7 +57,15 @@ export function MedicationCard({
           {remaining ? <Text style={styles.metaMuted}>{remaining}</Text> : null}
         </View>
 
-        {showToggle ? <Switch value={active} onValueChange={onToggle} /> : null}
+        {showToggle ? (
+          <Pressable
+            style={[styles.toggleTrack, active && styles.toggleTrackActive]}
+            onPress={() => onToggle?.(!active)}
+            hitSlop={8}
+          >
+            <View style={[styles.toggleThumb, active && styles.toggleThumbActive]} />
+          </Pressable>
+        ) : null}
       </View>
 
       {showAction ? (
@@ -86,12 +94,12 @@ const styles = StyleSheet.create({
     ...theme.elevation.card,
   },
   cardCompact: {
-    borderRadius: theme.radius[8],
-    paddingHorizontal: theme.spacing[8],
-    paddingVertical: theme.spacing[8],
+    borderRadius: theme.radius[16],
+    paddingHorizontal: theme.spacing[16],
+    paddingVertical: theme.spacing[16],
   },
   cardDisabled: {
-    opacity: 0.45,
+    opacity: 0.58,
   },
   topRow: {
     flexDirection: 'row',
@@ -126,15 +134,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarCompact: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.radius[8],
+    width: 56,
+    height: 56,
+    borderRadius: theme.radius[16],
   },
   avatarIcon: {
     fontSize: 24,
   },
   avatarIconCompact: {
-    fontSize: 16,
+    fontSize: 30,
   },
   content: {
     flex: 1,
@@ -145,14 +153,34 @@ const styles = StyleSheet.create({
     color: theme.colors.semantic.textPrimary,
   },
   titleCompact: {
-    ...theme.typography.bodyScale.xmMedium,
+    ...theme.typography.bodyScale.mBold,
   },
   meta: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
   metaCompact: {
-    ...theme.typography.captionScale.mRegular,
+    ...theme.typography.bodyScale.xmMedium,
+  },
+  toggleTrack: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: theme.colors.neutral[200],
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleTrackActive: {
+    backgroundColor: theme.colors.primaryBlue[500],
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
   },
   metaMuted: {
     ...theme.typography.captionScale.lRegular,

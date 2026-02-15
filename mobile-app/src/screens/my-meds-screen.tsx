@@ -54,11 +54,17 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyM
               month: 'long',
             });
 
+        const formLabel = localizeFormLabel(item.form, locale);
+        const frequencyLabel = localizeFrequencyLabel(item.frequencyLabel, locale);
+
         return {
           id: item.id,
           name: item.name,
-          details: `${localizeFrequencyLabel(item.frequencyLabel, locale)} | ${item.dosage} ${localizeFormLabel(item.form, locale)}`,
-          remaining: locale === 'tr' ? `${startedLabel} baslangic | 10 kapsul kaldi` : `Started ${startedLabel} | 10 Capsules remain`,
+          details:
+            locale === 'tr'
+              ? `${frequencyLabel} | ${item.dosage} ${formLabel}`
+              : `${frequencyLabel} | ${item.dosage} ${formLabel}`,
+          schedule: locale === 'tr' ? `${startedLabel} baslangic | 10 ${formLabel.toLowerCase()} kaldi` : `Started ${startedLabel} | 10 ${formLabel}s remain`,
           active: item.active,
           emoji: icon,
         };
@@ -103,7 +109,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyM
             key={item.id}
             name={item.name}
             details={item.details}
-            schedule={item.remaining}
+            schedule={item.schedule}
             active={item.active}
             showToggle
             compact
@@ -126,16 +132,17 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: theme.spacing[16],
+    paddingTop: theme.spacing[8],
     paddingBottom: theme.spacing[16],
   },
   title: {
-    ...theme.typography.heading.h4Medium,
+    ...theme.typography.heading.h5Semibold,
     color: theme.colors.semantic.textPrimary,
     textAlign: 'center',
-    marginBottom: theme.spacing[8],
+    marginBottom: theme.spacing[4],
   },
   list: {
-    gap: theme.spacing[8],
+    gap: theme.spacing[16],
   },
   bottomSpacer: {
     height: theme.spacing[8],
