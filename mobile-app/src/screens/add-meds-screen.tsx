@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/ui/app-header';
 import { PrimaryButton } from '../components/ui/primary-button';
+import { TextField } from '../components/ui/text-field';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
@@ -25,10 +26,16 @@ export function AddMedsScreen({ locale, fontScale }: AddMedsScreenProps) {
       <AppHeader title={t.addMeds} subtitle="5 adimli hizli ilac ekleme" />
 
       <View style={styles.form}>
-        <TextInput style={styles.input} placeholder="Medication name" value={name} onChangeText={setName} />
-        <TextInput style={styles.input} placeholder="Dosage" value={dosage} onChangeText={setDosage} />
-        <TextInput style={styles.input} placeholder="Frequency (Daily/Weekly)" value={frequency} onChangeText={setFrequency} />
-        <TextInput style={styles.input} placeholder="Reminder time (HH:mm)" value={reminder} onChangeText={setReminder} />
+        <TextField label="Medication name" value={name} placeholder="Input" helperText="Required" onChangeText={setName} />
+        <TextField label="Dosage" value={dosage} placeholder="Input" helperText="Optional" onChangeText={setDosage} />
+        <TextField
+          label="Frequency"
+          value={frequency}
+          placeholder="Daily / Weekly"
+          helperText="Required"
+          onChangeText={setFrequency}
+        />
+        <TextField label="Reminder time" value={reminder} placeholder="08:00" helperText="HH:mm" onChangeText={setReminder} />
       </View>
 
       <PrimaryButton
@@ -66,12 +73,5 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: theme.spacing[16],
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[300],
-    borderRadius: theme.radius[8],
-    backgroundColor: '#FFFFFF',
-    padding: theme.spacing[16],
   },
 });

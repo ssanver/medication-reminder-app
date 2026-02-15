@@ -48,3 +48,14 @@
 - `mobile-app/src/theme/grid.ts` dosyasinda `4-column`, `gutter 16`, `margin 20` degerleri bulunmalidir.
 - `mobile-app/src/navigation/app-navigator.tsx` ekran icerik padding degeri `theme.grid.marginWidth` olmalidir.
 - `mobile-app/src/components/ui/primary-button.tsx` buton etiketi `theme.typography.button.sMedium` kullanmalidir.
+
+## Component Uygulama Durumu
+- `button`: `filled`, `filled-dark`, `outlined`, `ghost`, `success`, `danger` varyantlari eklendi.
+- `icon-button`: `filled`, `outlined`, `ghost` varyantlari eklendi.
+- `text-field`: `default`, `focused`, `disabled`, `error` gorunumleri eklendi.
+- `screen-header`: sol/sag aksiyonlu header komponeti eklendi.
+- `bottom-nav`: ikon + label tab bar komponeti eklendi.
+- `medication-card`: aksiyon butonlu ve switch'li kart varyantlari eklendi.
+- `slide-indicator`: onboarding ve carousel noktali gosterge eklendi.
+- `logo-badge`: marka rozet komponenti eklendi.
+- `bottom-sheet-handle`: alt sheet tutamacı komponeti eklendi.

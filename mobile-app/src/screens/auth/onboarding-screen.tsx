@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { PrimaryButton } from '../../components/ui/primary-button';
+import { LogoBadge } from '../../components/ui/logo-badge';
+import { SlideIndicator } from '../../components/ui/slide-indicator';
 import { type Locale, getTranslations } from '../../features/localization/localization';
 import { getOnboardingSteps } from '../../features/onboarding/onboarding-steps';
 import { theme } from '../../theme';
@@ -45,15 +47,12 @@ export function OnboardingScreen({
       </View>
 
       <View style={styles.heroCard}>
+        {stepIndex === 0 ? <LogoBadge compact /> : null}
         <Text style={styles.title}>{step.title}</Text>
         <Text style={styles.secondaryText}>{step.description}</Text>
       </View>
 
-      <View style={styles.dotsRow}>
-        {steps.map((item, index) => (
-          <View key={item.id} style={[styles.dot, index === stepIndex && styles.dotActive]} />
-        ))}
-      </View>
+      <SlideIndicator count={steps.length} activeIndex={stepIndex} />
 
       {step.id === 'consent' ? (
         <View style={styles.card}>
@@ -120,21 +119,6 @@ const styles = StyleSheet.create({
   secondaryText: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: theme.spacing[8],
-    justifyContent: 'center',
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.neutral[300],
-  },
-  dotActive: {
-    width: 18,
-    backgroundColor: theme.colors.semantic.brandPrimary,
   },
   card: {
     padding: theme.spacing[16],

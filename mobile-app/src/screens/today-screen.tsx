@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '../components/ui/app-header';
 import { EmptyState } from '../components/ui/empty-state';
+import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
@@ -45,19 +46,16 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
       ) : (
         <View style={styles.cardList}>
           {list.map((item) => (
-            <View key={item.id} style={styles.card}>
-              <Text
-                style={{
-                  ...theme.typography.bodyScale.mMedium,
-                  fontSize: theme.typography.bodyScale.mMedium.fontSize * fontScale,
-                  lineHeight: theme.typography.bodyScale.mMedium.lineHeight * fontScale,
-                  color: theme.colors.semantic.textPrimary,
-                }}
-              >
-                {item.name}
-              </Text>
-              <Text style={[styles.badge, item.status === 'Taken' ? styles.taken : styles.missed]}>{item.status}</Text>
-            </View>
+            <MedicationCard
+              key={item.id}
+              name={item.name}
+              details="1 Capsules"
+              schedule="09:00 | Daily"
+              actionLabel={item.status === 'Taken' ? 'Taken' : 'Take'}
+              actionVariant={item.status === 'Taken' ? 'success' : 'filled'}
+              showAction
+              onActionPress={() => undefined}
+            />
           ))}
         </View>
       )}
@@ -71,30 +69,5 @@ const styles = StyleSheet.create({
   },
   cardList: {
     gap: theme.spacing[16],
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    borderRadius: theme.radius[16],
-    padding: theme.spacing[16],
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  badge: {
-    ...theme.typography.captionScale.lRegular,
-    paddingHorizontal: theme.spacing[8],
-    paddingVertical: theme.spacing[4],
-    borderRadius: theme.radius[8],
-    overflow: 'hidden',
-  },
-  taken: {
-    color: theme.colors.semantic.stateSuccess,
-    backgroundColor: theme.colors.semantic.stateSuccessSoft,
-  },
-  missed: {
-    color: theme.colors.semantic.stateError,
-    backgroundColor: theme.colors.semantic.stateErrorSoft,
   },
 });

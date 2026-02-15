@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppHeader } from '../components/ui/app-header';
 import { EmptyState } from '../components/ui/empty-state';
+import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
@@ -44,24 +45,18 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
       ) : (
         <View style={styles.list}>
           {filtered.map((item) => (
-            <View key={item.id} style={[styles.card, !item.active && styles.cardInactive]}>
-              <Text
-                style={{
-                  ...theme.typography.bodyScale.mRegular,
-                  fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale,
-                  lineHeight: theme.typography.bodyScale.mRegular.lineHeight * fontScale,
-                  color: theme.colors.semantic.textPrimary,
-                }}
-              >
-                {item.name}
-              </Text>
-              <Switch
-                value={item.active}
-                onValueChange={(value) =>
-                  setItems((prev) => prev.map((current) => (current.id === item.id ? { ...current, active: value } : current)))
-                }
-              />
-            </View>
+            <MedicationCard
+              key={item.id}
+              name={item.name}
+              details="Daily | 2 Capsules"
+              schedule="Started 25 July"
+              remaining="7 Capsules remains"
+              showToggle
+              active={item.active}
+              onToggle={(value) =>
+                setItems((prev) => prev.map((current) => (current.id === item.id ? { ...current, active: value } : current)))
+              }
+            />
           ))}
         </View>
       )}
@@ -75,18 +70,5 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: theme.spacing[16],
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    borderRadius: theme.radius[16],
-    padding: theme.spacing[16],
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardInactive: {
-    opacity: 0.55,
   },
 });

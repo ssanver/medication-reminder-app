@@ -10,10 +10,10 @@ type SegmentedControlProps = {
 export function SegmentedControl({ options, value, onChange }: SegmentedControlProps) {
   return (
     <View style={styles.container}>
-      {options.map((option) => {
+      {options.map((option, index) => {
         const selected = option === value;
         return (
-          <Pressable key={option} onPress={() => onChange(option)} style={[styles.item, selected && styles.selected]}>
+          <Pressable key={option} onPress={() => onChange(option)} style={[styles.item, selected && styles.selected, index === 0 && styles.first]}>
             <Text style={[styles.text, selected && styles.selectedText]}>{option}</Text>
           </Pressable>
         );
@@ -25,29 +25,34 @@ export function SegmentedControl({ options, value, onChange }: SegmentedControlP
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: theme.spacing[8],
+    borderRadius: theme.radius[16],
+    backgroundColor: theme.colors.neutral[50],
+    padding: theme.spacing[4],
+    gap: theme.spacing[4],
     marginBottom: theme.spacing[16],
   },
   item: {
     flex: 1,
-    minHeight: 36,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[300],
-    borderRadius: theme.radius[8],
+    minHeight: 42,
+    borderRadius: theme.radius[16],
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.neutral[50],
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  first: {
+    marginLeft: 0,
   },
   selected: {
-    borderColor: theme.colors.semantic.brandPrimary,
-    backgroundColor: theme.colors.primaryBlue[50],
+    backgroundColor: theme.colors.primaryBlue[500],
+    borderColor: theme.colors.primaryBlue[500],
   },
   text: {
-    ...theme.typography.captionScale.lRegular,
+    ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
   selectedText: {
-    color: theme.colors.semantic.brandPrimary,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
 });
