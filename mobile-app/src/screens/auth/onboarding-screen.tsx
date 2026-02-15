@@ -1,5 +1,5 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { PrimaryButton } from '../../components/ui/primary-button';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button } from '../../components/ui/button';
 import { LogoBadge } from '../../components/ui/logo-badge';
 import { SlideIndicator } from '../../components/ui/slide-indicator';
 import { type Locale, getTranslations } from '../../features/localization/localization';
@@ -9,24 +9,11 @@ import { theme } from '../../theme';
 type OnboardingScreenProps = {
   locale: Locale;
   stepIndex: number;
-  consentAccepted: boolean;
-  notificationGranted: boolean;
   onNextStep: () => void;
-  onToggleConsent: (value: boolean) => void;
-  onNotificationDecision: (granted: boolean) => void;
-  onLocaleChange: (locale: Locale) => void;
+  onSkip: () => void;
 };
 
-export function OnboardingScreen({
-  locale,
-  stepIndex,
-  consentAccepted,
-  notificationGranted,
-  onNextStep,
-  onToggleConsent,
-  onNotificationDecision,
-  onLocaleChange,
-}: OnboardingScreenProps) {
+export function OnboardingScreen({ locale, stepIndex, onNextStep, onSkip }: OnboardingScreenProps) {
   const t = getTranslations(locale);
   const steps = getOnboardingSteps(locale);
   const step = steps[stepIndex];
@@ -34,46 +21,29 @@ export function OnboardingScreen({
 
   return (
     <View style={styles.container}>
-      <View style={styles.languageRow}>
-        <Text style={styles.secondaryText}>{t.languageTitle}</Text>
-        <View style={styles.languageButtons}>
-          <Pressable onPress={() => onLocaleChange('tr')} style={[styles.chip, locale === 'tr' && styles.chipActive]}>
-            <Text>TR</Text>
-          </Pressable>
-          <Pressable onPress={() => onLocaleChange('en')} style={[styles.chip, locale === 'en' && styles.chipActive]}>
-            <Text>EN</Text>
+      <View style={styles.topRow}>
+        <View style={styles.sideSpacer} />
+        <View style={styles.sideSpacer}>
+          <Pressable onPress={onSkip}>
+            <Text style={styles.skip}>Skip</Text>
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.heroCard}>
-        {stepIndex === 0 ? <LogoBadge compact /> : null}
-        <Text style={styles.title}>{step.title}</Text>
-        <Text style={styles.secondaryText}>{step.description}</Text>
+      {stepIndex === 0 ? <LogoBadge /> : null}
+
+      <View style={styles.hero}>
+        <Text style={styles.heroEmoji}>{step.heroEmoji}</Text>
       </View>
 
       <SlideIndicator count={steps.length} activeIndex={stepIndex} />
 
-      {step.id === 'consent' ? (
-        <View style={styles.card}>
-          <View style={styles.switchRow}>
-            <Text style={styles.secondaryText}>{t.consentLabel}</Text>
-            <Switch value={consentAccepted} onValueChange={onToggleConsent} />
-          </View>
-          <View style={styles.switchRow}>
-            <Pressable style={styles.secondaryButton} onPress={() => onNotificationDecision(true)}>
-              <Text>{t.allowNotifications}</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => onNotificationDecision(false)}>
-              <Text>{t.denyNotifications}</Text>
-            </Pressable>
-          </View>
-          {!notificationGranted ? <Text style={styles.hint}>{t.notificationDeniedHint}</Text> : null}
-        </View>
-      ) : null}
+      <View style={styles.copyBlock}>
+        <Text style={styles.title}>{step.title}</Text>
+        <Text style={styles.description}>{step.description}</Text>
+      </View>
 
-      <PrimaryButton label={isLastStep ? t.finish : t.next} onPress={onNextStep} disabled={isLastStep && !consentAccepted} />
-      <Text style={styles.secondaryText}>{`${stepIndex + 1}/${steps.length}`}</Text>
+      <Button label={isLastStep ? (locale === 'tr' ? 'Create an account' : 'Create an account') : t.next} onPress={onNextStep} />
     </View>
   );
 }
@@ -81,69 +51,46 @@ export function OnboardingScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    gap: theme.spacing[16],
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing[8],
   },
-  languageRow: {
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  languageButtons: {
-    flexDirection: 'row',
+  sideSpacer: {
+    minWidth: 52,
+    alignItems: 'flex-end',
+  },
+  skip: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textSecondary,
+  },
+  hero: {
+    minHeight: 220,
+    borderRadius: theme.radius[24],
+    backgroundColor: theme.colors.semantic.cardBackground,
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.elevation.card,
+  },
+  heroEmoji: {
+    fontSize: 84,
+  },
+  copyBlock: {
     gap: theme.spacing[8],
-  },
-  chip: {
-    paddingHorizontal: theme.spacing[16],
-    paddingVertical: theme.spacing[8],
-    borderRadius: theme.radius[16],
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[300],
-  },
-  chipActive: {
-    borderColor: theme.colors.semantic.brandPrimary,
-    backgroundColor: theme.colors.primaryBlue[50],
-  },
-  heroCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    borderRadius: theme.radius[16],
-    backgroundColor: '#FFFFFF',
-    padding: theme.spacing[16],
-    gap: theme.spacing[16],
   },
   title: {
-    ...theme.typography.heading.h5Semibold,
+    ...theme.typography.heading.h4Medium,
     color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
   },
-  secondaryText: {
+  description: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
-  },
-  card: {
-    padding: theme.spacing[16],
-    borderRadius: theme.radius[16],
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    gap: theme.spacing[16],
-    backgroundColor: '#FFFFFF',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing[8],
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[300],
-    borderRadius: theme.radius[8],
-    paddingHorizontal: theme.spacing[16],
-    paddingVertical: theme.spacing[8],
-    backgroundColor: '#FFFFFF',
-  },
-  hint: {
-    ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
   },
 });

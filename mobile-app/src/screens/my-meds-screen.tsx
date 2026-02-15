@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { AppHeader } from '../components/ui/app-header';
-import { EmptyState } from '../components/ui/empty-state';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
-import { getTranslations, type Locale } from '../features/localization/localization';
+import { type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
 type MyMedsScreenProps = {
@@ -14,13 +12,35 @@ type MyMedsScreenProps = {
 
 type MedStatus = 'All' | 'Active' | 'Inactive';
 
-export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
-  const t = getTranslations(locale);
+type MedItem = {
+  id: string;
+  name: string;
+  details: string;
+  remaining: string;
+  active: boolean;
+  emoji: string;
+};
+
+const initialItems: MedItem[] = [
+  { id: '1', name: 'Metformin', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '💊' },
+  { id: '2', name: 'Captopril', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '🧴' },
+  {
+    id: '3',
+    name: 'Sudafed Blocked Nose',
+    details: 'Daily | 2 Drops',
+    remaining: 'Started 25 July | ? Capsules remains',
+    active: false,
+    emoji: '🫙',
+  },
+  { id: '4', name: 'B 12', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '💉' },
+  { id: '5', name: 'Magaldrate', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: false, emoji: '🧪' },
+  { id: '6', name: 'Niacin', details: 'Daily | 1 Capsule', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '🧫' },
+  { id: '7', name: 'I-DROP MGD', details: 'Daily | 2 Drops', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '🧯' },
+];
+
+export function MyMedsScreen({ fontScale }: MyMedsScreenProps) {
   const [filter, setFilter] = useState<MedStatus>('All');
-  const [items, setItems] = useState([
-    { id: '1', name: 'Parol 500mg', active: true },
-    { id: '2', name: 'Aferin 200mg', active: false },
-  ]);
+  const [items, setItems] = useState(initialItems);
 
   const filtered = useMemo(() => {
     if (filter === 'All') {
@@ -30,45 +50,70 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
     return items.filter((item) => (filter === 'Active' ? item.active : !item.active));
   }, [items, filter]);
 
-  return (
-    <View style={styles.container}>
-      <AppHeader title={t.myMeds} subtitle="Aktif ve pasif ilaclar" />
-      <SegmentedControl options={['All', 'Active', 'Inactive']} value={filter} onChange={(v) => setFilter(v as MedStatus)} />
+  const counts = useMemo(
+    () => ({
+      all: items.length,
+      active: items.filter((item) => item.active).length,
+      inactive: items.filter((item) => !item.active).length,
+    }),
+    [items],
+  );
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          title="Ilac bulunamadi"
-          description="Bu filtrede goruntulenecek ilac yok."
-          ctaLabel="Tumunu goster"
-          onPress={() => setFilter('All')}
-        />
-      ) : (
-        <View style={styles.list}>
-          {filtered.map((item) => (
-            <MedicationCard
-              key={item.id}
-              name={item.name}
-              details="Daily | 2 Capsules"
-              schedule="Started 25 July"
-              remaining="7 Capsules remains"
-              showToggle
-              active={item.active}
-              onToggle={(value) =>
-                setItems((prev) => prev.map((current) => (current.id === item.id ? { ...current, active: value } : current)))
-              }
-            />
-          ))}
-        </View>
-      )}
-    </View>
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>My medication</Text>
+
+      <SegmentedControl
+        options={[
+          { label: 'All', value: 'All', count: counts.all },
+          { label: 'Active', value: 'Active', count: counts.active },
+          { label: 'Inactive', value: 'Inactive', count: counts.inactive },
+        ]}
+        value={filter}
+        onChange={(next) => setFilter(next as MedStatus)}
+      />
+
+      <View style={styles.list}>
+        {filtered.map((item) => (
+          <MedicationCard
+            key={item.id}
+            name={item.name}
+            details={item.details}
+            schedule={item.remaining}
+            active={item.active}
+            showToggle
+            medEmoji={item.emoji}
+            onToggle={(value) =>
+              setItems((prev) => prev.map((current) => (current.id === item.id ? { ...current, active: value } : current)))
+            }
+          />
+        ))}
+      </View>
+
+      <View style={styles.bottomSpacer} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
+    backgroundColor: theme.colors.semantic.screenBackground,
+  },
+  content: {
+    gap: theme.spacing[16],
+    paddingBottom: theme.spacing[16],
+  },
+  title: {
+    ...theme.typography.heading.h4Medium,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+    marginBottom: theme.spacing[8],
   },
   list: {
     gap: theme.spacing[16],
+  },
+  bottomSpacer: {
+    height: theme.spacing[8],
   },
 });

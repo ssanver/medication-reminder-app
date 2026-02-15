@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { BottomNav } from '../components/ui/bottom-nav';
+import type { AppIconName } from '../components/ui/app-icon';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
-import { BottomNav } from '../components/ui/bottom-nav';
-import type { AppIconName } from '../components/ui/app-icon';
-import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { AddMedsScreen } from '../screens/add-meds-screen';
+import { OnboardingScreen } from '../screens/auth/onboarding-screen';
+import { SignUpScreen } from '../screens/auth/sign-up-screen';
+import { SplashScreen } from '../screens/auth/splash-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
 import { ProfileScreen } from '../screens/profile-screen';
 import { ReportsScreen } from '../screens/reports-screen';
@@ -16,6 +18,7 @@ import { theme } from '../theme';
 
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
 type OverlayScreen = 'none' | 'reports' | 'profile';
+type AppPhase = 'splash' | 'onboarding' | 'signup' | 'app';
 
 const tabGlyph: Record<TabKey, AppIconName> = {
   today: 'home',
@@ -25,17 +28,25 @@ const tabGlyph: Record<TabKey, AppIconName> = {
 };
 
 export function AppNavigator() {
-  const [locale, setLocale] = useState<Locale>('tr');
+  const [phase, setPhase] = useState<AppPhase>('splash');
+  const [locale, setLocale] = useState<Locale>('en');
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
   const [activeTab, setActiveTab] = useState<TabKey>('today');
-  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
-  const [consentAccepted, setConsentAccepted] = useState(false);
-  const [notificationGranted, setNotificationGranted] = useState(false);
   const [overlayScreen, setOverlayScreen] = useState<OverlayScreen>('none');
 
   const t = getTranslations(locale);
   const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
+
+  useEffect(() => {
+    if (phase !== 'splash') {
+      return;
+    }
+
+    const timer = setTimeout(() => setPhase('onboarding'), 1200);
+
+    return () => clearTimeout(timer);
+  }, [phase]);
 
   if (!isOnboardingStepCountValid(steps)) {
     return (
@@ -45,27 +56,38 @@ export function AppNavigator() {
     );
   }
 
-  if (!isOnboardingCompleted) {
+  if (phase === 'splash') {
+    return <SplashScreen />;
+  }
+
+  if (phase === 'onboarding') {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
           <OnboardingScreen
             locale={locale}
             stepIndex={onboardingStep}
-            consentAccepted={consentAccepted}
-            notificationGranted={notificationGranted}
-            onToggleConsent={setConsentAccepted}
-            onLocaleChange={setLocale}
-            onNotificationDecision={setNotificationGranted}
+            onSkip={() => setPhase('signup')}
             onNextStep={() => {
               const lastStepIndex = steps.length - 1;
+
               if (onboardingStep < lastStepIndex) {
-                setOnboardingStep((previous) => previous + 1);
+                setOnboardingStep((prev) => prev + 1);
               } else {
-                setIsOnboardingCompleted(true);
+                setPhase('signup');
               }
             }}
           />
+        </View>
+      </View>
+    );
+  }
+
+  if (phase === 'signup') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <SignUpScreen locale={locale} onSuccess={() => setPhase('app')} />
         </View>
       </View>
     );
@@ -94,8 +116,14 @@ export function AppNavigator() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {renderTab(activeTab, locale, setLocale, fontScale, setFontScale, () => setOverlayScreen('reports'), () =>
-          setOverlayScreen('profile'),
+        {renderTab(
+          activeTab,
+          locale,
+          setLocale,
+          fontScale,
+          setFontScale,
+          () => setOverlayScreen('reports'),
+          () => setOverlayScreen('profile'),
         )}
       </View>
       <BottomNav
@@ -151,14 +179,15 @@ function renderTab(
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.primaryBlue[50],
+    backgroundColor: theme.colors.semantic.screenBackground,
   },
   content: {
     flex: 1,
-    padding: theme.grid.marginWidth,
+    paddingHorizontal: theme.grid.marginWidth,
+    paddingTop: theme.spacing[8],
   },
   errorText: {
-    ...theme.typography.body,
+    ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.stateError,
     padding: theme.spacing[16],
   },

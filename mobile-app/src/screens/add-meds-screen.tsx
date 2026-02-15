@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { AppHeader } from '../components/ui/app-header';
-import { PrimaryButton } from '../components/ui/primary-button';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
-import { getTranslations, type Locale } from '../features/localization/localization';
+import { type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
 type AddMedsScreenProps = {
@@ -11,67 +10,282 @@ type AddMedsScreenProps = {
   fontScale: number;
 };
 
-export function AddMedsScreen({ locale, fontScale }: AddMedsScreenProps) {
-  const t = getTranslations(locale);
-  const [name, setName] = useState('');
-  const [dosage, setDosage] = useState('');
-  const [frequency, setFrequency] = useState('Daily');
-  const [reminder, setReminder] = useState('08:00');
-  const [feedback, setFeedback] = useState('');
+type WizardStep = 'name' | 'form' | 'frequency' | 'dosage' | 'note';
 
-  const canSave = name.trim().length > 0 && reminder.trim().length > 0;
+const stepLabels: Record<WizardStep, string> = {
+  name: 'Medication Name',
+  form: 'Select Form',
+  frequency: 'Frequency',
+  dosage: 'Select Dosage',
+  note: 'Note',
+};
+
+const stepOrder: WizardStep[] = ['name', 'form', 'frequency', 'dosage', 'note'];
+
+export function AddMedsScreen({ locale }: AddMedsScreenProps) {
+  const [step, setStep] = useState<WizardStep>('name');
+  const [name, setName] = useState('');
+  const [form, setForm] = useState('Capsule');
+  const [frequency, setFrequency] = useState('Every 1 Day');
+  const [dosage, setDosage] = useState('1 - 1');
+  const [note, setNote] = useState('');
+  const [savedMessage, setSavedMessage] = useState('');
+
+  const stepIndex = stepOrder.indexOf(step);
+  const isLastStep = step === 'note';
+
+  const canGoNext = useMemo(() => {
+    if (step === 'name') {
+      return name.trim().length > 1;
+    }
+
+    return true;
+  }, [step, name]);
+
+  function goNext() {
+    if (!canGoNext) {
+      return;
+    }
+
+    if (isLastStep) {
+      setSavedMessage(locale === 'tr' ? 'Ilac kaydi olusturuldu.' : 'Medication has been created.');
+      return;
+    }
+
+    setStep(stepOrder[stepIndex + 1]);
+  }
 
   return (
-    <View style={styles.container}>
-      <AppHeader title={t.addMeds} subtitle="5 adimli hizli ilac ekleme" />
-
-      <View style={styles.form}>
-        <TextField label="Medication name" value={name} placeholder="Input" helperText="Required" onChangeText={setName} />
-        <TextField label="Dosage" value={dosage} placeholder="Input" helperText="Optional" onChangeText={setDosage} />
-        <TextField
-          label="Frequency"
-          value={frequency}
-          placeholder="Daily / Weekly"
-          helperText="Required"
-          onChangeText={setFrequency}
-        />
-        <TextField label="Reminder time" value={reminder} placeholder="08:00" helperText="HH:mm" onChangeText={setReminder} />
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Text style={styles.title}>{stepLabels[step]}</Text>
+      <View style={styles.progressRow}>
+        {stepOrder.map((key, index) => (
+          <View key={key} style={[styles.progressDot, index <= stepIndex && styles.progressDotActive]} />
+        ))}
       </View>
 
-      <PrimaryButton
-        label="Done"
-        disabled={!canSave}
-        onPress={() => {
-          setFeedback(`${name} kaydedildi.`);
-          setName('');
-          setDosage('');
-          setFrequency('Daily');
-          setReminder('08:00');
-        }}
-      />
+      <View style={styles.card}>
+        {step === 'name' ? (
+          <View style={styles.block}>
+            <TextField label="Medication Name" value={name} placeholder="Metformin" helperText="Required" onChangeText={setName} />
+            <View style={styles.suggestList}>
+              {['Acetaminophen', 'Ibuprofen', 'Aspirin', 'Amoxicillin'].map((suggestion) => (
+                <Pressable key={suggestion} style={styles.suggestItem} onPress={() => setName(suggestion)}>
+                  <Text style={styles.suggestText}>{suggestion}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
-      {feedback ? (
-        <Text
-          style={{
-            ...theme.typography.bodyScale.mRegular,
-            fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale,
-            lineHeight: theme.typography.bodyScale.mRegular.lineHeight * fontScale,
-            color: theme.colors.semantic.stateSuccess,
-          }}
-        >
-          {feedback}
-        </Text>
-      ) : null}
-    </View>
+        {step === 'form' ? (
+          <View style={styles.choiceGrid}>
+            {['Capsule', 'Pill', 'Drop', 'Syrup', 'Injection', 'Other'].map((option) => {
+              const selected = form === option;
+
+              return (
+                <Pressable key={option} style={[styles.choiceItem, selected && styles.choiceItemActive]} onPress={() => setForm(option)}>
+                  <Text style={[styles.choiceIcon, selected && styles.choiceIconActive]}>💊</Text>
+                  <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{option}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {step === 'frequency' ? (
+          <View style={styles.block}>
+            {['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'].map((option) => {
+              const selected = frequency === option;
+
+              return (
+                <Pressable key={option} style={[styles.rowButton, selected && styles.rowButtonActive]} onPress={() => setFrequency(option)}>
+                  <Text style={[styles.rowButtonText, selected && styles.rowButtonTextActive]}>{option}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {step === 'dosage' ? (
+          <View style={styles.block}>
+            {['0.5 - 0.5', '1 - 1', '2 - 2'].map((option) => {
+              const selected = dosage === option;
+
+              return (
+                <Pressable key={option} style={[styles.rowButton, selected && styles.rowButtonActive]} onPress={() => setDosage(option)}>
+                  <Text style={[styles.rowButtonText, selected && styles.rowButtonTextActive]}>{option}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {step === 'note' ? (
+          <View style={styles.block}>
+            <TextField
+              label="Note"
+              value={note}
+              placeholder="Optional note about the medication"
+              helperText="Optional"
+              onChangeText={setNote}
+            />
+            <View style={styles.summary}>
+              <Text style={styles.summaryLine}>Name: {name || '-'}</Text>
+              <Text style={styles.summaryLine}>Form: {form}</Text>
+              <Text style={styles.summaryLine}>Frequency: {frequency}</Text>
+              <Text style={styles.summaryLine}>Dosage: {dosage}</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
+
+      {savedMessage ? <Text style={styles.success}>{savedMessage}</Text> : null}
+
+      <View style={styles.actions}>
+        {stepIndex > 0 ? (
+          <Button
+            label="Back"
+            variant="outlined"
+            onPress={() => {
+              setSavedMessage('');
+              setStep(stepOrder[stepIndex - 1]);
+            }}
+          />
+        ) : null}
+        <Button label={isLastStep ? 'Done' : 'Next'} onPress={goNext} disabled={!canGoNext} />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    gap: theme.spacing[16],
+    backgroundColor: theme.colors.semantic.screenBackground,
   },
-  form: {
+  content: {
     gap: theme.spacing[16],
+    paddingBottom: theme.spacing[16],
+  },
+  title: {
+    ...theme.typography.heading.h5Semibold,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+  },
+  progressRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
+    alignSelf: 'center',
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.neutral[300],
+  },
+  progressDotActive: {
+    width: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primaryBlue[500],
+  },
+  card: {
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.semantic.cardBackground,
+    padding: theme.spacing[16],
+    ...theme.elevation.card,
+  },
+  block: {
+    gap: theme.spacing[8],
+  },
+  suggestList: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.semantic.divider,
+    paddingTop: theme.spacing[8],
+    gap: theme.spacing[4],
+  },
+  suggestItem: {
+    minHeight: 30,
+    justifyContent: 'center',
+  },
+  suggestText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textSecondary,
+  },
+  choiceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[8],
+  },
+  choiceItem: {
+    width: '31%',
+    minHeight: 72,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing[4],
+    backgroundColor: theme.colors.neutral[50],
+  },
+  choiceItemActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  choiceIcon: {
+    fontSize: 18,
+  },
+  choiceIconActive: {
+    color: theme.colors.primaryBlue[500],
+  },
+  choiceText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  choiceTextActive: {
+    color: theme.colors.primaryBlue[500],
+    fontWeight: '700',
+  },
+  rowButton: {
+    minHeight: 40,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing[16],
+    backgroundColor: theme.colors.neutral[50],
+  },
+  rowButtonActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  rowButtonText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textSecondary,
+  },
+  rowButtonTextActive: {
+    color: theme.colors.primaryBlue[500],
+  },
+  summary: {
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    padding: theme.spacing[8],
+    gap: theme.spacing[4],
+    backgroundColor: theme.colors.neutral[50],
+  },
+  summaryLine: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textPrimary,
+  },
+  success: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.success[500],
+    textAlign: 'center',
+  },
+  actions: {
+    gap: theme.spacing[8],
   },
 });

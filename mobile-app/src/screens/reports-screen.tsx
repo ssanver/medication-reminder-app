@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { theme } from '../theme';
 
@@ -7,104 +7,116 @@ type ReportsScreenProps = {
 };
 
 export function ReportsScreen({ onBack }: ReportsScreenProps) {
+  const weekly = [
+    { label: 'Mon', value: 92 },
+    { label: 'Tue', value: 76 },
+    { label: 'Wed', value: 88 },
+    { label: 'Thu', value: 60 },
+    { label: 'Fri', value: 95 },
+  ];
+
   return (
-    <View style={styles.container}>
-      <ScreenHeader title="Raporlar" subtitle="Haftalik ve aylik doz ozeti" leftAction={{ icon: '<', onPress: onBack }} />
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <ScreenHeader title="Reports" subtitle="Weekly and monthly adherence" leftAction={{ icon: '<', onPress: onBack }} />
 
-      <View style={styles.calendarCard}>
-        <Text style={styles.cardTitle}>Ocak 2025</Text>
-        <Text style={styles.cardText}>21 doz planlandi</Text>
-        <Text style={styles.cardText}>18 doz alindi</Text>
-      </View>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Basari</Text>
-          <Text style={styles.statValue}>86%</Text>
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Adherence</Text>
+          <Text style={styles.summaryValue}>86%</Text>
+          <Text style={styles.summaryHint}>18 of 21 doses taken</Text>
         </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Kacirilan</Text>
-          <Text style={styles.statValueError}>3</Text>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Missed</Text>
+          <Text style={[styles.summaryValue, styles.errorText]}>3</Text>
+          <Text style={styles.summaryHint}>This month</Text>
         </View>
       </View>
 
-      <View style={styles.trendCard}>
-        <Text style={styles.cardTitle}>Haftalik trend</Text>
-        <View style={styles.barRow}>
-          <Text style={styles.barLabel}>Pzt</Text>
-          <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: '85%' }]} />
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Weekly trend</Text>
+        {weekly.map((item) => (
+          <View key={item.label} style={styles.barRow}>
+            <Text style={styles.barLabel}>{item.label}</Text>
+            <View style={styles.barTrack}>
+              <View style={[styles.barFill, { width: `${item.value}%` }]} />
+            </View>
+            <Text style={styles.barPercent}>{item.value}%</Text>
           </View>
+        ))}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Medication report</Text>
+        <View style={styles.tableRow}>
+          <Text style={styles.tableHead}>Medication</Text>
+          <Text style={styles.tableHead}>Taken</Text>
+          <Text style={styles.tableHead}>Missed</Text>
         </View>
-        <View style={styles.barRow}>
-          <Text style={styles.barLabel}>Sal</Text>
-          <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: '72%' }]} />
-          </View>
+        <View style={styles.tableRow}>
+          <Text style={styles.tableCell}>Metformin</Text>
+          <Text style={styles.tableCell}>12</Text>
+          <Text style={[styles.tableCell, styles.errorText]}>1</Text>
         </View>
-        <View style={styles.barRow}>
-          <Text style={styles.barLabel}>Car</Text>
-          <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: '90%' }]} />
-          </View>
+        <View style={styles.tableRow}>
+          <Text style={styles.tableCell}>Captopril</Text>
+          <Text style={styles.tableCell}>8</Text>
+          <Text style={[styles.tableCell, styles.errorText]}>2</Text>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.semantic.screenBackground,
+  },
+  content: {
     gap: theme.spacing[16],
+    paddingBottom: theme.spacing[24],
   },
-  calendarCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    borderRadius: theme.radius[16],
-    padding: theme.spacing[16],
-    gap: theme.spacing[8],
-  },
-  cardTitle: {
-    ...theme.typography.heading.h6Medium,
-    color: theme.colors.semantic.textPrimary,
-  },
-  cardText: {
-    ...theme.typography.bodyScale.mRegular,
-    color: theme.colors.semantic.textSecondary,
-  },
-  statsRow: {
+  summaryRow: {
     flexDirection: 'row',
     gap: theme.spacing[16],
   },
-  statBox: {
+  summaryCard: {
     flex: 1,
     borderRadius: theme.radius[16],
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    backgroundColor: '#FFFFFF',
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.semantic.cardBackground,
     padding: theme.spacing[16],
-    gap: theme.spacing[8],
+    gap: theme.spacing[4],
+    ...theme.elevation.card,
   },
-  statLabel: {
+  summaryLabel: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  statValue: {
-    ...theme.typography.heading.h4Medium,
-    color: theme.colors.semantic.stateSuccess,
+  summaryValue: {
+    ...theme.typography.heading.h3Regular,
+    color: theme.colors.primaryBlue[500],
   },
-  statValueError: {
-    ...theme.typography.heading.h4Medium,
-    color: theme.colors.semantic.stateError,
+  summaryHint: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textMuted,
   },
-  trendCard: {
+  errorText: {
+    color: theme.colors.error[500],
+  },
+  card: {
     borderRadius: theme.radius[16],
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    backgroundColor: '#FFFFFF',
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.semantic.cardBackground,
     padding: theme.spacing[16],
     gap: theme.spacing[8],
+    ...theme.elevation.card,
+  },
+  cardTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
   },
   barRow: {
     flexDirection: 'row',
@@ -118,7 +130,7 @@ const styles = StyleSheet.create({
   },
   barTrack: {
     flex: 1,
-    height: 10,
+    height: 8,
     borderRadius: theme.radius[8],
     backgroundColor: theme.colors.neutral[100],
     overflow: 'hidden',
@@ -126,6 +138,29 @@ const styles = StyleSheet.create({
   barFill: {
     height: '100%',
     backgroundColor: theme.colors.primaryBlue[500],
-    borderRadius: theme.radius[8],
+  },
+  barPercent: {
+    width: 30,
+    textAlign: 'right',
+    ...theme.typography.captionScale.mRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  tableRow: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.semantic.divider,
+  },
+  tableHead: {
+    flex: 1,
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  tableCell: {
+    flex: 1,
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textPrimary,
   },
 });

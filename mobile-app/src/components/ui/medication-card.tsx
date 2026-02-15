@@ -11,7 +11,9 @@ type MedicationCardProps = {
   showToggle?: boolean;
   showAction?: boolean;
   actionLabel?: string;
-  actionVariant?: 'filled' | 'success';
+  actionVariant?: 'filled' | 'success' | 'danger';
+  statusBadge?: 'ontime' | 'missed';
+  medEmoji?: string;
   onToggle?: (value: boolean) => void;
   onActionPress?: () => void;
 };
@@ -26,14 +28,22 @@ export function MedicationCard({
   showAction,
   actionLabel = 'Take',
   actionVariant = 'filled',
+  statusBadge,
+  medEmoji = '💊',
   onToggle,
   onActionPress,
 }: MedicationCardProps) {
   return (
     <View style={[styles.card, !active && styles.cardDisabled]}>
+      {statusBadge ? (
+        <View style={[styles.badge, statusBadge === 'missed' ? styles.badgeMissed : styles.badgeOnTime]}>
+          <Text style={styles.badgeText}>{statusBadge === 'missed' ? 'Missed' : '2h 23m'}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.topRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarIcon}>💊</Text>
+          <Text style={styles.avatarIcon}>{medEmoji}</Text>
         </View>
 
         <View style={styles.content}>
@@ -48,7 +58,12 @@ export function MedicationCard({
 
       {showAction ? (
         <View style={styles.actionWrap}>
-          <Button label={actionLabel} size="s" variant={actionVariant === 'success' ? 'success' : 'filled'} onPress={onActionPress ?? (() => undefined)} />
+          <Button
+            label={actionLabel}
+            size="xs"
+            variant={actionVariant === 'success' ? 'success' : actionVariant === 'danger' ? 'danger' : 'filled'}
+            onPress={onActionPress ?? (() => undefined)}
+          />
         </View>
       ) : null}
     </View>
@@ -58,34 +73,55 @@ export function MedicationCard({
 const styles = StyleSheet.create({
   card: {
     borderRadius: theme.radius[16],
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.semantic.cardBackground,
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
+    borderColor: theme.colors.semantic.borderSoft,
     padding: theme.spacing[8],
     gap: theme.spacing[8],
+    position: 'relative',
+    ...theme.elevation.card,
   },
   cardDisabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing[8],
   },
+  badge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    borderRadius: theme.radius[8],
+    paddingHorizontal: theme.spacing[8],
+    paddingVertical: 3,
+    zIndex: 2,
+  },
+  badgeOnTime: {
+    backgroundColor: theme.colors.primaryBlue[500],
+  },
+  badgeMissed: {
+    backgroundColor: theme.colors.error[500],
+  },
+  badgeText: {
+    ...theme.typography.captionScale.mRegular,
+    color: '#FFFFFF',
+  },
   avatar: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderRadius: theme.radius[16],
-    backgroundColor: theme.colors.neutral[100],
+    backgroundColor: theme.colors.neutral[50],
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarIcon: {
-    fontSize: 26,
+    fontSize: 24,
   },
   content: {
     flex: 1,
-    gap: theme.spacing[4],
+    gap: 2,
   },
   title: {
     ...theme.typography.bodyScale.mBold,
@@ -97,7 +133,7 @@ const styles = StyleSheet.create({
   },
   metaMuted: {
     ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.textSecondary,
+    color: theme.colors.semantic.textMuted,
   },
   actionWrap: {
     alignItems: 'flex-end',
