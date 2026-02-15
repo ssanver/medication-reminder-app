@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
 import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
 import { getTranslations, type Locale } from '../features/localization/localization';
@@ -10,164 +11,346 @@ import { theme } from '../theme';
 type AddMedsScreenProps = {
   locale: Locale;
   fontScale: number;
+  onMedicationSaved: () => void;
 };
 
-type WizardStep = 'name' | 'form' | 'frequency' | 'dosage' | 'note';
+type PickerSheet = 'none' | 'form' | 'frequency' | 'dosage' | 'date' | 'time';
 
-const stepOrder: WizardStep[] = ['name', 'form', 'frequency', 'dosage', 'note'];
+type FormOption = {
+  key: string;
+  emoji: string;
+};
 
-export function AddMedsScreen({ locale }: AddMedsScreenProps) {
+const formOptions: FormOption[] = [
+  { key: 'Capsule', emoji: '💊' },
+  { key: 'Pill', emoji: '💊' },
+  { key: 'Drop', emoji: '🫙' },
+  { key: 'Syrup', emoji: '🧴' },
+  { key: 'Injection', emoji: '💉' },
+  { key: 'Other', emoji: '• • •' },
+];
+
+const frequencyOptions = ['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'];
+const dosageOptions = ['0.5', '1', '2', '3'];
+
+const timeOptions = Array.from({ length: 96 }, (_, index) => {
+  const minutes = index * 15;
+  const hour = `${Math.floor(minutes / 60)}`.padStart(2, '0');
+  const minute = `${minutes % 60}`.padStart(2, '0');
+  return `${hour}:${minute}`;
+});
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getUpcomingDates(start: Date, count: number): Date[] {
+  return Array.from({ length: count }, (_, offset) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + offset);
+    return d;
+  });
+}
+
+function getSelectedFormEmoji(form: string): string {
+  return formOptions.find((option) => option.key === form)?.emoji ?? '💊';
+}
+
+export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);
-  const formOptions = ['Capsule', 'Pill', 'Drop', 'Syrup', 'Injection', 'Other'];
-  const frequencyOptions = ['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'];
-  const stepLabels: Record<WizardStep, string> = {
-    name: t.medicationName,
-    form: t.selectForm,
-    frequency: t.frequency,
-    dosage: t.selectDosage,
-    note: t.note,
-  };
-  const [step, setStep] = useState<WizardStep>('name');
+  const [sheet, setSheet] = useState<PickerSheet>('none');
   const [name, setName] = useState('');
   const [form, setForm] = useState('Capsule');
   const [frequency, setFrequency] = useState('Every 1 Day');
-  const [dosage, setDosage] = useState('1 - 1');
+  const [dosage, setDosage] = useState('1');
   const [note, setNote] = useState('');
+  const [startDate, setStartDate] = useState(() => formatDate(new Date()));
+  const [time, setTime] = useState('09:00');
+  const [isActive, setIsActive] = useState(true);
   const [savedMessage, setSavedMessage] = useState('');
 
-  const stepIndex = stepOrder.indexOf(step);
-  const isLastStep = step === 'note';
+  const canSave = useMemo(() => name.trim().length > 1, [name]);
 
-  const canGoNext = useMemo(() => {
-    if (step === 'name') {
-      return name.trim().length > 1;
+  const localizedStartDate = useMemo(() => {
+    const parsed = new Date(`${startDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) {
+      return startDate;
     }
 
-    return true;
-  }, [step, name]);
+    return parsed.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }, [locale, startDate]);
 
-  async function goNext() {
-    if (!canGoNext) {
+  const upcomingDates = useMemo(() => getUpcomingDates(new Date(), 30), []);
+
+  async function saveMedication() {
+    if (!canSave) {
       return;
     }
 
-    if (isLastStep) {
-      await addMedication({
-        name,
-        form,
-        frequencyLabel: frequency,
-        dosage,
-        note,
-      });
-      setSavedMessage(t.medicationCreated);
-      return;
-    }
+    await addMedication({
+      name,
+      form,
+      frequencyLabel: frequency,
+      dosage,
+      note,
+      startDate,
+      time,
+      active: isActive,
+    });
 
-    setStep(stepOrder[stepIndex + 1]);
+    setSavedMessage(t.medicationCreated);
+    setName('');
+    setForm('Capsule');
+    setFrequency('Every 1 Day');
+    setDosage('1');
+    setNote('');
+    setStartDate(formatDate(new Date()));
+    setTime('09:00');
+    setIsActive(true);
+    setSheet('none');
+    setTimeout(() => onMedicationSaved(), 400);
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>{stepLabels[step]}</Text>
-      <View style={styles.progressRow}>
-        {stepOrder.map((key, index) => (
-          <View key={key} style={[styles.progressDot, index <= stepIndex && styles.progressDotActive]} />
-        ))}
-      </View>
+    <>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>{locale === 'tr' ? 'Ilac detaylari' : 'Medication details'}</Text>
 
-      <View style={styles.card}>
-        {step === 'name' ? (
-          <View style={styles.block}>
-            <TextField label={t.medicationName} value={name} placeholder="Metformin" helperText={t.required} onChangeText={setName} />
-            <View style={styles.suggestList}>
-              {['Acetaminophen', 'Ibuprofen', 'Aspirin', 'Amoxicillin'].map((suggestion) => (
-                <Pressable key={suggestion} style={styles.suggestItem} onPress={() => setName(suggestion)}>
-                  <Text style={styles.suggestText}>{suggestion}</Text>
-                </Pressable>
-              ))}
-            </View>
+        <View style={styles.medicationCard}>
+          <View style={styles.medicationIconWrap}>
+            <Text style={styles.medicationIcon}>{getSelectedFormEmoji(form)}</Text>
           </View>
-        ) : null}
-
-        {step === 'form' ? (
-          <View style={styles.choiceGrid}>
-            {formOptions.map((option) => {
-              const selected = form === option;
-
-              return (
-                <Pressable key={option} style={[styles.choiceItem, selected && styles.choiceItemActive]} onPress={() => setForm(option)}>
-                  <Text style={[styles.choiceIcon, selected && styles.choiceIconActive]}>💊</Text>
-                  <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{localizeFormLabel(option, locale)}</Text>
-                </Pressable>
-              );
-            })}
+          <View style={styles.medicationTextWrap}>
+            <Text style={styles.medicationTitle}>{name.trim() || (locale === 'tr' ? 'Ilac adi' : 'Medication name')}</Text>
+            <Text style={styles.medicationSubtitle}>{`${dosage} ${localizeFormLabel(form, locale)} | ${localizeFrequencyLabel(frequency, locale)}`}</Text>
           </View>
-        ) : null}
+          <Pressable style={[styles.toggleTrack, isActive && styles.toggleTrackActive]} onPress={() => setIsActive((prev) => !prev)}>
+            <View style={[styles.toggleThumb, isActive && styles.toggleThumbActive]} />
+          </Pressable>
+        </View>
 
-        {step === 'frequency' ? (
-          <View style={styles.block}>
-            {frequencyOptions.map((option) => {
-              const selected = frequency === option;
+        <TextField
+          label={t.medicationName}
+          value={name}
+          placeholder={locale === 'tr' ? 'Ilac adi girin' : 'Enter medication name'}
+          helperText={t.required}
+          onChangeText={setName}
+        />
 
-              return (
-                <Pressable key={option} style={[styles.rowButton, selected && styles.rowButtonActive]} onPress={() => setFrequency(option)}>
-                  <Text style={[styles.rowButtonText, selected && styles.rowButtonTextActive]}>{localizeFrequencyLabel(option, locale)}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {step === 'dosage' ? (
-          <View style={styles.block}>
-            {['0.5 - 0.5', '1 - 1', '2 - 2'].map((option) => {
-              const selected = dosage === option;
-
-              return (
-                <Pressable key={option} style={[styles.rowButton, selected && styles.rowButtonActive]} onPress={() => setDosage(option)}>
-                  <Text style={[styles.rowButtonText, selected && styles.rowButtonTextActive]}>{option}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {step === 'note' ? (
-          <View style={styles.block}>
-            <TextField
-              label="Note"
-              value={note}
-              placeholder={locale === 'tr' ? 'Ilac hakkinda istege bagli not' : 'Optional note about the medication'}
-              helperText={t.optional}
-              onChangeText={setNote}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{locale === 'tr' ? 'Takvim' : 'Schedule'}</Text>
+          <View style={styles.rowTwoCol}>
+            <SelectorField
+              label={locale === 'tr' ? 'Baslangic tarihi' : 'Start date'}
+              value={localizedStartDate}
+              icon="📅"
+              onPress={() => setSheet('date')}
             />
-            <View style={styles.summary}>
-              <Text style={styles.summaryLine}>{`${t.name}: ${name || '-'}`}</Text>
-              <Text style={styles.summaryLine}>{`${t.form}: ${localizeFormLabel(form, locale)}`}</Text>
-              <Text style={styles.summaryLine}>{`${t.frequency}: ${localizeFrequencyLabel(frequency, locale)}`}</Text>
-              <Text style={styles.summaryLine}>{`${t.dosage}: ${dosage}`}</Text>
-            </View>
+            <SelectorField
+              label={locale === 'tr' ? 'Saat' : 'Time'}
+              value={time}
+              icon="⏰"
+              onPress={() => setSheet('time')}
+            />
           </View>
-        ) : null}
-      </View>
-
-      {savedMessage ? <Text style={styles.success}>{savedMessage}</Text> : null}
-
-      <View style={styles.actions}>
-        {stepIndex > 0 ? (
-          <Button
-            label={t.back}
-            variant="outlined"
-            onPress={() => {
-              setSavedMessage('');
-              setStep(stepOrder[stepIndex - 1]);
-            }}
+          <SelectorField
+            label={t.frequency}
+            value={localizeFrequencyLabel(frequency, locale)}
+            icon="↻"
+            onPress={() => setSheet('frequency')}
           />
-        ) : null}
-        <Button label={isLastStep ? t.done : t.next} onPress={goNext} disabled={!canGoNext} />
-      </View>
-    </ScrollView>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{locale === 'tr' ? 'Doz' : 'Dose'}</Text>
+          <View style={styles.rowTwoCol}>
+            <SelectorField label={t.dosage} value={dosage} icon="💧" onPress={() => setSheet('dosage')} />
+            <SelectorField
+              label={t.form}
+              value={localizeFormLabel(form, locale)}
+              icon={getSelectedFormEmoji(form)}
+              onPress={() => setSheet('form')}
+            />
+          </View>
+          <TextField
+            label={t.note}
+            value={note}
+            placeholder={locale === 'tr' ? 'Ilac hakkinda istege bagli not' : 'Optional note about the medication'}
+            helperText={t.optional}
+            onChangeText={setNote}
+          />
+        </View>
+
+        {savedMessage ? <Text style={styles.success}>{savedMessage}</Text> : null}
+
+        <Button label={locale === 'tr' ? 'Kaydet' : 'Save'} onPress={saveMedication} disabled={!canSave} />
+      </ScrollView>
+
+      <Modal transparent visible={sheet !== 'none'} animationType="slide" onRequestClose={() => setSheet('none')}>
+        <Pressable style={styles.overlay} onPress={() => setSheet('none')}>
+          <Pressable style={styles.sheetContainer} onPress={() => undefined}>
+            <BottomSheetHandle />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{getSheetTitle(sheet, locale)}</Text>
+              <Pressable onPress={() => setSheet('none')} hitSlop={8}>
+                <Text style={styles.sheetClose}>✕</Text>
+              </Pressable>
+            </View>
+
+            {sheet === 'form'
+              ? formOptions.map((option) => {
+                  const selected = option.key === form;
+                  return (
+                    <Pressable
+                      key={option.key}
+                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
+                      onPress={() => {
+                        setForm(option.key);
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={styles.sheetOptionIcon}>{option.emoji}</Text>
+                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{localizeFormLabel(option.key, locale)}</Text>
+                    </Pressable>
+                  );
+                })
+              : null}
+
+            {sheet === 'frequency'
+              ? frequencyOptions.map((option) => {
+                  const selected = option === frequency;
+                  return (
+                    <Pressable
+                      key={option}
+                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
+                      onPress={() => {
+                        setFrequency(option);
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{localizeFrequencyLabel(option, locale)}</Text>
+                    </Pressable>
+                  );
+                })
+              : null}
+
+            {sheet === 'dosage'
+              ? dosageOptions.map((option) => {
+                  const selected = option === dosage;
+                  return (
+                    <Pressable
+                      key={option}
+                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
+                      onPress={() => {
+                        setDosage(option);
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{option}</Text>
+                    </Pressable>
+                  );
+                })
+              : null}
+
+            {sheet === 'date'
+              ? upcomingDates.map((date) => {
+                  const key = formatDate(date);
+                  const selected = key === startDate;
+                  const label = date.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  });
+                  return (
+                    <Pressable
+                      key={key}
+                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
+                      onPress={() => {
+                        setStartDate(key);
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{label}</Text>
+                    </Pressable>
+                  );
+                })
+              : null}
+
+            {sheet === 'time'
+              ? timeOptions.map((option) => {
+                  const selected = option === time;
+                  return (
+                    <Pressable
+                      key={option}
+                      style={[styles.sheetOption, selected && styles.sheetOptionActive]}
+                      onPress={() => {
+                        setTime(option);
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={[styles.sheetOptionText, selected && styles.sheetOptionTextActive]}>{option}</Text>
+                    </Pressable>
+                  );
+                })
+              : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
+}
+
+type SelectorFieldProps = {
+  label: string;
+  value: string;
+  icon: string;
+  onPress: () => void;
+};
+
+function SelectorField({ label, value, icon, onPress }: SelectorFieldProps) {
+  return (
+    <View style={styles.selectorWrap}>
+      <Text style={styles.selectorLabel}>{label}</Text>
+      <Pressable style={styles.selectorBox} onPress={onPress}>
+        <Text style={styles.selectorValue} numberOfLines={1}>
+          {`${icon} ${value}`}
+        </Text>
+        <Text style={styles.selectorChevron}>›</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function getSheetTitle(sheet: PickerSheet, locale: Locale): string {
+  if (sheet === 'date') {
+    return locale === 'tr' ? 'Tarih secin' : 'Select date';
+  }
+
+  if (sheet === 'time') {
+    return locale === 'tr' ? 'Saat secin' : 'Set time';
+  }
+
+  if (sheet === 'frequency') {
+    return locale === 'tr' ? 'Siklik secin' : 'Set frequency';
+  }
+
+  if (sheet === 'dosage') {
+    return locale === 'tr' ? 'Doz secin' : 'Select dosage';
+  }
+
+  if (sheet === 'form') {
+    return locale === 'tr' ? 'Form secin' : 'Select form';
+  }
+
+  return '';
 }
 
 const styles = StyleSheet.create({
@@ -177,126 +360,171 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: theme.spacing[16],
-    paddingBottom: theme.spacing[16],
+    paddingBottom: theme.spacing[24],
   },
   title: {
     ...theme.typography.heading.h5Semibold,
     color: theme.colors.semantic.textPrimary,
     textAlign: 'center',
   },
-  progressRow: {
-    flexDirection: 'row',
-    gap: theme.spacing[8],
-    alignSelf: 'center',
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.neutral[300],
-  },
-  progressDotActive: {
-    width: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primaryBlue[500],
-  },
-  card: {
+  medicationCard: {
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
     backgroundColor: theme.colors.semantic.cardBackground,
-    padding: theme.spacing[16],
+    padding: theme.spacing[8],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
     ...theme.elevation.card,
   },
-  block: {
-    gap: theme.spacing[8],
-  },
-  suggestList: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.semantic.divider,
-    paddingTop: theme.spacing[8],
-    gap: theme.spacing[4],
-  },
-  suggestItem: {
-    minHeight: 30,
+  medicationIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: theme.radius[8],
+    backgroundColor: theme.colors.neutral[50],
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  suggestText: {
-    ...theme.typography.bodyScale.xmMedium,
+  medicationIcon: {
+    fontSize: 24,
+  },
+  medicationTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  medicationTitle: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.semantic.textPrimary,
+  },
+  medicationSubtitle: {
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  choiceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing[8],
+  toggleTrack: {
+    width: 48,
+    height: 28,
+    borderRadius: 16,
+    padding: 2,
+    backgroundColor: theme.colors.neutral[200],
+    justifyContent: 'center',
   },
-  choiceItem: {
-    width: '31%',
-    minHeight: 72,
+  toggleTrackActive: {
+    backgroundColor: theme.colors.primaryBlue[500],
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  toggleThumbActive: {
+    alignSelf: 'flex-end',
+  },
+  section: {
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing[4],
-    backgroundColor: theme.colors.neutral[50],
+    backgroundColor: theme.colors.semantic.cardBackground,
+    padding: theme.spacing[8],
+    gap: theme.spacing[8],
+    ...theme.elevation.card,
   },
-  choiceItemActive: {
-    borderColor: theme.colors.primaryBlue[500],
-    backgroundColor: theme.colors.primaryBlue[50],
-  },
-  choiceIcon: {
-    fontSize: 18,
-  },
-  choiceIconActive: {
-    color: theme.colors.primaryBlue[500],
-  },
-  choiceText: {
+  sectionTitle: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  choiceTextActive: {
-    color: theme.colors.primaryBlue[500],
-    fontWeight: '700',
+  rowTwoCol: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
   },
-  rowButton: {
-    minHeight: 40,
-    borderRadius: theme.radius[8],
-    borderWidth: 1,
-    borderColor: theme.colors.semantic.borderSoft,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing[16],
-    backgroundColor: theme.colors.neutral[50],
-  },
-  rowButtonActive: {
-    borderColor: theme.colors.primaryBlue[500],
-    backgroundColor: theme.colors.primaryBlue[50],
-  },
-  rowButtonText: {
-    ...theme.typography.bodyScale.xmMedium,
-    color: theme.colors.semantic.textSecondary,
-  },
-  rowButtonTextActive: {
-    color: theme.colors.primaryBlue[500],
-  },
-  summary: {
-    borderRadius: theme.radius[8],
-    borderWidth: 1,
-    borderColor: theme.colors.semantic.borderSoft,
-    padding: theme.spacing[8],
+  selectorWrap: {
+    flex: 1,
     gap: theme.spacing[4],
-    backgroundColor: theme.colors.neutral[50],
   },
-  summaryLine: {
+  selectorLabel: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textPrimary,
+  },
+  selectorBox: {
+    minHeight: 44,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[8],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing[8],
+  },
+  selectorValue: {
+    flex: 1,
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textPrimary,
+  },
+  selectorChevron: {
+    ...theme.typography.bodyScale.mRegular,
+    color: theme.colors.semantic.textMuted,
   },
   success: {
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.success[500],
     textAlign: 'center',
   },
-  actions: {
+  overlay: {
+    flex: 1,
+    backgroundColor: theme.colors.semantic.overlay,
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    maxHeight: '70%',
+    borderTopLeftRadius: theme.radius[24],
+    borderTopRightRadius: theme.radius[24],
+    paddingTop: theme.spacing[8],
+    paddingHorizontal: theme.spacing[16],
+    paddingBottom: theme.spacing[16],
+    backgroundColor: theme.colors.semantic.backgroundDefault,
     gap: theme.spacing[8],
+  },
+  sheetHeader: {
+    minHeight: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: theme.spacing[4],
+  },
+  sheetTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
+  },
+  sheetClose: {
+    ...theme.typography.bodyScale.mRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  sheetOption: {
+    minHeight: 44,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.neutral[50],
+    paddingHorizontal: theme.spacing[8],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+  },
+  sheetOptionActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  sheetOptionText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textSecondary,
+  },
+  sheetOptionTextActive: {
+    color: theme.colors.primaryBlue[500],
+  },
+  sheetOptionIcon: {
+    fontSize: 16,
   },
 });

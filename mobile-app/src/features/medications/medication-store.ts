@@ -169,6 +169,9 @@ export async function addMedication(payload: {
   frequencyLabel: string;
   dosage: string;
   note: string;
+  startDate?: string;
+  time?: string;
+  active?: boolean;
 }): Promise<void> {
   const id = `med-${Date.now()}`;
   const today = toDateKey(new Date());
@@ -181,9 +184,9 @@ export async function addMedication(payload: {
     frequencyLabel: payload.frequencyLabel,
     recurrence: recurrenceFromLabel(payload.frequencyLabel),
     note: payload.note.trim(),
-    startDate: today,
-    time: '09:00',
-    active: true,
+    startDate: payload.startDate ?? today,
+    time: payload.time ?? '09:00',
+    active: payload.active ?? true,
   };
 
   state = {
