@@ -413,3 +413,45 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215121038_AddEmergencyShare'
+)
+BEGIN
+    CREATE TABLE [emergency-share-tokens] (
+        [Id] uniqueidentifier NOT NULL,
+        [Token] nvarchar(120) NOT NULL,
+        [AllowedFieldsCsv] nvarchar(240) NOT NULL,
+        [MedicationIdsCsv] nvarchar(1000) NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        [ExpiresAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_emergency-share-tokens] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215121038_AddEmergencyShare'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_emergency-share-tokens_Token] ON [emergency-share-tokens] ([Token]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215121038_AddEmergencyShare'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260215121038_AddEmergencyShare', N'8.0.12');
+END;
+GO
+
+COMMIT;
+GO
+

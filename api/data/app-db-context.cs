@@ -16,6 +16,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CaregiverInvite> CaregiverInvites => Set<CaregiverInvite>();
     public DbSet<CaregiverPermission> CaregiverPermissions => Set<CaregiverPermission>();
+    public DbSet<EmergencyShareToken> EmergencyShareTokens => Set<EmergencyShareToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -153,6 +154,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.AllowedModulesCsv).HasMaxLength(240).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
             entity.HasIndex(x => x.CaregiverInviteId).IsUnique();
+        });
+
+        modelBuilder.Entity<EmergencyShareToken>(entity =>
+        {
+            entity.ToTable("emergency-share-tokens");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Token).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.AllowedFieldsCsv).HasMaxLength(240).IsRequired();
+            entity.Property(x => x.MedicationIdsCsv).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.Property(x => x.ExpiresAt).IsRequired();
+            entity.HasIndex(x => x.Token).IsUnique();
         });
     }
 }

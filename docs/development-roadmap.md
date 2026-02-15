@@ -42,7 +42,7 @@
 | PBI-011 | Done | `api/Controllers/security-controller.cs`, `api/services/security/log-masker.cs`, `dotnet test` (27/27) |
 | PBI-012 | Done | `mobile-app/src/features/accessibility/*`, `mobile-app/src/features/performance/*`, `npm test` (9/9) |
 | PBI-013 | Done | `api/Controllers/caregivers-controller.cs`, `api.tests/caregivers-controller-tests.cs`, `dotnet test` (29/29) |
-| PBI-014 | Todo | - |
+| PBI-014 | Done | `api/Controllers/emergency-share-controller.cs`, `mobile-app/src/features/emergency-share/share-summary.ts`, `dotnet test` (31/31) |
 
 ## 4. Faz Bazli Kabul Kriterleri
 
@@ -76,6 +76,6 @@
 - iOS/Android bildirim farkliliklari icin cihaz matris testi gerekir.
 
 ## 7. Sonraki Adimlar (Hemen)
-1. `PBI-003` icin medication CRUD endpoint ve mobil form tamamlanacak.
-2. `PBI-004` tekrarlayan planlama motoru ile 30 gunluk plan uretimi eklenecek.
-3. `PBI-005` bildirim aksiyon servisleri ve event log modeli tamamlanacak.
+1. Tüm PBI kapsamı tamamlandı; release-hardening ve manuel UAT turu planlanmalı.
+2. PR incelemesi sonrası main branch birleştirme ve etiketli sürüm çıkışı yapılmalı.
+3. Canlıya çıkış öncesi migration scriptleri hedef ortamda dry-run edilmelidir.
