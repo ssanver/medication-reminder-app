@@ -46,9 +46,9 @@ export function AddMedsScreen({ locale, fontScale }: AddMedsScreenProps) {
       {feedback ? (
         <Text
           style={{
-            ...theme.typography.body,
-            fontSize: theme.typography.body.fontSize * fontScale,
-            lineHeight: theme.typography.body.lineHeight * fontScale,
+            ...theme.typography.bodyScale.mRegular,
+            fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale,
+            lineHeight: theme.typography.bodyScale.mRegular.lineHeight * fontScale,
             color: theme.colors.semantic.stateSuccess,
           }}
         >

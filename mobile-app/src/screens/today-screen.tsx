@@ -48,11 +48,10 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
             <View key={item.id} style={styles.card}>
               <Text
                 style={{
-                  ...theme.typography.body,
-                  fontSize: theme.typography.body.fontSize * fontScale,
-                  lineHeight: theme.typography.body.lineHeight * fontScale,
+                  ...theme.typography.bodyScale.mMedium,
+                  fontSize: theme.typography.bodyScale.mMedium.fontSize * fontScale,
+                  lineHeight: theme.typography.bodyScale.mMedium.lineHeight * fontScale,
                   color: theme.colors.semantic.textPrimary,
-                  fontWeight: '600',
                 }}
               >
                 {item.name}
@@ -84,7 +83,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   badge: {
-    ...theme.typography.caption,
+    ...theme.typography.captionScale.lRegular,
     paddingHorizontal: theme.spacing[8],
     paddingVertical: theme.spacing[4],
     borderRadius: theme.radius[8],
@@ -92,10 +91,10 @@ const styles = StyleSheet.create({
   },
   taken: {
     color: theme.colors.semantic.stateSuccess,
-    backgroundColor: '#E6F5E6',
+    backgroundColor: theme.colors.semantic.stateSuccessSoft,
   },
   missed: {
     color: theme.colors.semantic.stateError,
-    backgroundColor: '#FCE6E6',
+    backgroundColor: theme.colors.semantic.stateErrorSoft,
   },
 });

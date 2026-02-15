@@ -18,7 +18,7 @@ export function PrimaryButton({ label, disabled, onPress }: PrimaryButtonProps) 
 const styles = StyleSheet.create({
   button: {
     minHeight: 44,
-    borderRadius: theme.radius[8],
+    borderRadius: theme.radius[16],
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.semantic.brandPrimary,
@@ -27,8 +27,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   label: {
-    ...theme.typography.body,
+    ...theme.typography.button.sMedium,
     color: '#FFFFFF',
-    fontWeight: '600',
   },
 });

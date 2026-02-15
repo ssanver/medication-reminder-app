@@ -29,11 +29,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   title: {
-    ...theme.typography.heading5,
+    ...theme.typography.heading.h5Semibold,
     color: theme.colors.semantic.textPrimary,
   },
   description: {
-    ...theme.typography.body,
+    ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
 });

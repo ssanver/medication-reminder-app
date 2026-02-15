@@ -47,9 +47,9 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
             <View key={item.id} style={[styles.card, !item.active && styles.cardInactive]}>
               <Text
                 style={{
-                  ...theme.typography.body,
-                  fontSize: theme.typography.body.fontSize * fontScale,
-                  lineHeight: theme.typography.body.lineHeight * fontScale,
+                  ...theme.typography.bodyScale.mRegular,
+                  fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale,
+                  lineHeight: theme.typography.bodyScale.mRegular.lineHeight * fontScale,
                   color: theme.colors.semantic.textPrimary,
                 }}
               >

@@ -60,9 +60,8 @@ const styles = StyleSheet.create({
     gap: theme.spacing[8],
   },
   label: {
-    ...theme.typography.body,
+    ...theme.typography.bodyScale.mMedium,
     color: theme.colors.semantic.textPrimary,
-    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
@@ -80,7 +79,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryBlue[50],
   },
   chipText: {
-    ...theme.typography.caption,
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textPrimary,
   },
 });

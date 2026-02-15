@@ -21,11 +21,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[16],
   },
   title: {
-    ...theme.typography.heading5,
+    ...theme.typography.heading.h5Semibold,
     color: theme.colors.semantic.textPrimary,
   },
   subtitle: {
-    ...theme.typography.body,
+    ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
 });

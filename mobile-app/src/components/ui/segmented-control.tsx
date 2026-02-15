@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryBlue[50],
   },
   text: {
-    ...theme.typography.caption,
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
   selectedText: {

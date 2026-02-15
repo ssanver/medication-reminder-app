@@ -133,14 +133,14 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: theme.spacing[16],
+    padding: theme.grid.marginWidth,
   },
   tabBar: {
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: theme.colors.neutral[200],
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: theme.spacing[8],
+    paddingHorizontal: theme.grid.marginWidth,
     paddingVertical: theme.spacing[8],
     gap: theme.spacing[8],
   },
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryBlue[50],
   },
   glyph: {
-    ...theme.typography.caption,
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
     fontWeight: '700',
   },
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     color: theme.colors.semantic.brandPrimary,
   },
   tabLabel: {
-    ...theme.typography.caption,
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
   activeTabLabel: {

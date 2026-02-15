@@ -114,11 +114,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing[16],
   },
   title: {
-    ...theme.typography.heading5,
+    ...theme.typography.heading.h5Semibold,
     color: theme.colors.semantic.textPrimary,
   },
   secondaryText: {
-    ...theme.typography.body,
+    ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
   dotsRow: {
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   hint: {
-    ...theme.typography.caption,
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
 });
