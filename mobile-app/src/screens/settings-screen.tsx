@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-nat
 import Constants from 'expo-constants';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
-import { getTranslations, type Locale } from '../features/localization/localization';
+import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
 import { toShortDisplayName } from '../features/profile/display-name';
 import { currentUser } from '../features/profile/current-user';
 import { theme } from '../theme';
@@ -43,6 +43,7 @@ export function SettingsScreen({
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [medRemindersEnabled, setMedRemindersEnabled] = useState(true);
   const shortDisplayName = toShortDisplayName(currentUser.fullName);
+  const localeOptions = getLocaleOptions(locale);
   const version = useState(() => {
     const expoVersion = Constants.expoConfig?.version ?? '1.0.0';
     const iosBuild = Constants.expoConfig?.ios?.buildNumber;
@@ -91,12 +92,14 @@ export function SettingsScreen({
         <View style={styles.languageBlock}>
           <Text style={styles.rowTitle}>{t.language}</Text>
           <View style={styles.languageRow}>
-            <Pressable onPress={() => onLocaleChange('tr')} style={[styles.languageChip, locale === 'tr' && styles.languageChipActive]}>
-              <Text style={[styles.languageChipText, locale === 'tr' && styles.languageChipTextActive]}>{t.turkishTR}</Text>
-            </Pressable>
-            <Pressable onPress={() => onLocaleChange('en')} style={[styles.languageChip, locale === 'en' && styles.languageChipActive]}>
-              <Text style={[styles.languageChipText, locale === 'en' && styles.languageChipTextActive]}>{t.englishEN}</Text>
-            </Pressable>
+            {localeOptions.map((item) => {
+              const selected = locale === item.code;
+              return (
+                <Pressable key={item.code} onPress={() => onLocaleChange(item.code)} style={[styles.languageChip, selected && styles.languageChipActive]}>
+                  <Text style={[styles.languageChipText, selected && styles.languageChipTextActive]}>{item.label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
         <MenuRow label={t.displayZoom} value={`${Math.round(fontScale * 100)}%`} onPress={onOpenAppearance} />
@@ -115,8 +118,8 @@ export function SettingsScreen({
       <Section title={t.reporting}>
         <MenuRow label={t.reports} value={t.weeklyMonthly} onPress={onOpenReports} />
         <MenuRow label={t.reminderAlarm} value={t.medicationReminders} onPress={onOpenReminderPreferences} />
-        <MenuRow label={locale === 'tr' ? 'Gizlilik ve Guvenlik' : 'Privacy & Security'} onPress={onOpenPrivacySecurity} />
-        <MenuRow label={locale === 'tr' ? 'Sifre Degistir' : 'Change Password'} onPress={onOpenChangePassword} />
+        <MenuRow label={t.privacySecurity} onPress={onOpenPrivacySecurity} />
+        <MenuRow label={t.changePassword} onPress={onOpenChangePassword} />
       </Section>
 
       <Section title={t.aboutUs}>
@@ -245,10 +248,11 @@ const styles = StyleSheet.create({
   },
   languageRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing[8],
   },
   languageChip: {
-    flex: 1,
+    width: '48%',
     minHeight: 34,
     borderRadius: theme.radius[16],
     borderWidth: 1,

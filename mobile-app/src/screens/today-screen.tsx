@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getDateTitle, getWeekStrip } from '../features/date/week-strip';
-import { getTranslations, type Locale } from '../features/localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { getScheduledDosesForDate, setDoseStatus } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { toShortDisplayName } from '../features/profile/display-name';
@@ -52,9 +52,9 @@ export function TodayScreen({ locale, fontScale, onOpenAddMedication }: TodayScr
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
   const sectionTitle = useMemo(() => {
-    const localeTag = locale === 'tr' ? 'tr-TR' : 'en-US';
+    const localeTag = getLocaleTag(locale);
     const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
-    return locale === 'tr' ? `${dateText} Ilaclari` : `Medication on ${dateText}`;
+    return `${dateText} ${t.todaysMedication}`;
   }, [selectedDate, locale]);
 
   return (
@@ -115,7 +115,7 @@ export function TodayScreen({ locale, fontScale, onOpenAddMedication }: TodayScr
               name={item.name}
               details={item.details}
               schedule={item.schedule}
-              actionLabel={item.status === 'taken' ? t.taken : locale === 'tr' ? 'Al' : 'Take'}
+              actionLabel={item.status === 'taken' ? t.taken : t.take}
               actionVariant={item.status === 'taken' ? 'success' : item.status === 'missed' ? 'danger' : 'filled'}
               statusBadge={item.status === 'missed' ? 'missed' : item.status === 'pending' ? 'ontime' : undefined}
               showAction

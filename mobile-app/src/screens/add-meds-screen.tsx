@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
 import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
-import { getTranslations, type Locale } from '../features/localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { addMedication } from '../features/medications/medication-store';
 import { theme } from '../theme';
@@ -80,7 +80,7 @@ export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps)
       return startDate;
     }
 
-    return parsed.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
+    return parsed.toLocaleDateString(getLocaleTag(locale), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -121,14 +121,14 @@ export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps)
   return (
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{locale === 'tr' ? 'Ilac detaylari' : 'Medication details'}</Text>
+        <Text style={styles.title}>{t.medicationDetails}</Text>
 
         <View style={styles.medicationCard}>
           <View style={styles.medicationIconWrap}>
             <Text style={styles.medicationIcon}>{getSelectedFormEmoji(form)}</Text>
           </View>
           <View style={styles.medicationTextWrap}>
-            <Text style={styles.medicationTitle}>{name.trim() || (locale === 'tr' ? 'Ilac adi' : 'Medication name')}</Text>
+            <Text style={styles.medicationTitle}>{name.trim() || t.medicationName}</Text>
             <Text style={styles.medicationSubtitle}>{`${dosage} ${localizeFormLabel(form, locale)} | ${localizeFrequencyLabel(frequency, locale)}`}</Text>
           </View>
           <Pressable style={[styles.toggleTrack, isActive && styles.toggleTrackActive]} onPress={() => setIsActive((prev) => !prev)}>
@@ -139,22 +139,22 @@ export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps)
         <TextField
           label={t.medicationName}
           value={name}
-          placeholder={locale === 'tr' ? 'Ilac adi girin' : 'Enter medication name'}
+          placeholder={t.medicationNamePlaceholder}
           helperText={t.required}
           onChangeText={setName}
         />
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{locale === 'tr' ? 'Takvim' : 'Schedule'}</Text>
+          <Text style={styles.sectionTitle}>{t.schedule}</Text>
           <View style={styles.rowTwoCol}>
             <SelectorField
-              label={locale === 'tr' ? 'Baslangic tarihi' : 'Start date'}
+              label={t.startDate}
               value={localizedStartDate}
               icon="📅"
               onPress={() => setSheet('date')}
             />
             <SelectorField
-              label={locale === 'tr' ? 'Saat' : 'Time'}
+              label={t.time}
               value={time}
               icon="⏰"
               onPress={() => setSheet('time')}
@@ -169,7 +169,7 @@ export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps)
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{locale === 'tr' ? 'Doz' : 'Dose'}</Text>
+          <Text style={styles.sectionTitle}>{t.dose}</Text>
           <View style={styles.rowTwoCol}>
             <SelectorField label={t.dosage} value={dosage} icon="💧" onPress={() => setSheet('dosage')} />
             <SelectorField
@@ -182,7 +182,7 @@ export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps)
           <TextField
             label={t.note}
             value={note}
-            placeholder={locale === 'tr' ? 'Ilac hakkinda istege bagli not' : 'Optional note about the medication'}
+            placeholder={t.notePlaceholder}
             helperText={t.optional}
             onChangeText={setNote}
           />
@@ -190,7 +190,7 @@ export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps)
 
         {savedMessage ? <Text style={styles.success}>{savedMessage}</Text> : null}
 
-        <Button label={locale === 'tr' ? 'Kaydet' : 'Save'} onPress={saveMedication} disabled={!canSave} />
+        <Button label={t.save} onPress={saveMedication} disabled={!canSave} />
       </ScrollView>
 
       <Modal transparent visible={sheet !== 'none'} animationType="slide" onRequestClose={() => setSheet('none')}>
@@ -263,7 +263,7 @@ export function AddMedsScreen({ locale, onMedicationSaved }: AddMedsScreenProps)
               ? upcomingDates.map((date) => {
                   const key = formatDate(date);
                   const selected = key === startDate;
-                  const label = date.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
+                  const label = date.toLocaleDateString(getLocaleTag(locale), {
                     weekday: 'short',
                     day: 'numeric',
                     month: 'short',
@@ -331,15 +331,15 @@ function SelectorField({ label, value, icon, onPress }: SelectorFieldProps) {
 
 function getSheetTitle(sheet: PickerSheet, locale: Locale): string {
   if (sheet === 'date') {
-    return locale === 'tr' ? 'Tarih secin' : 'Select date';
+    return getTranslations(locale).selectDate;
   }
 
   if (sheet === 'time') {
-    return locale === 'tr' ? 'Saat secin' : 'Set time';
+    return getTranslations(locale).setTime;
   }
 
   if (sheet === 'frequency') {
-    return locale === 'tr' ? 'Siklik secin' : 'Set frequency';
+    return getTranslations(locale).setFrequency;
   }
 
   if (sheet === 'dosage') {

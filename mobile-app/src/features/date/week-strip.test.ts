@@ -17,7 +17,7 @@ describe('week-strip', () => {
 
   it('baslikta locale tabanli metin doner', () => {
     const selected = new Date('2026-02-15T10:00:00.000Z');
-    expect(getDateTitle(selected, 'tr')).toContain('Bugun');
+    expect(getDateTitle(selected, 'tr')).toContain('Bugün');
     expect(getDateTitle(selected, 'en')).toContain('Today');
   });
 });

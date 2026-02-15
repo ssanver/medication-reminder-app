@@ -33,11 +33,11 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
       setIsSocialLoading(true);
       setErrorText('');
       const response = await loginWithSocial(provider);
-      setSocialMessage(locale === 'tr' ? `${response.provider} ile giris basarili.` : `Signed in with ${response.provider}.`);
+      setSocialMessage(`${t.socialSignInSuccessPrefix} ${response.provider}.`);
       setTimeout(() => onSuccess(), 400);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Social login failed.';
-      setErrorText(locale === 'tr' ? `Sosyal giris basarisiz: ${message}` : `Social login failed: ${message}`);
+      setErrorText(`${t.socialSignInFailedPrefix} ${message}`);
     } finally {
       setIsSocialLoading(false);
     }
@@ -78,11 +78,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         label={t.createAccount}
         onPress={() => {
           if (!canSubmit) {
-            setErrorText(
-              locale === 'tr'
-                ? 'Lutfen tum alanlari doldurun. E-posta gecerli olmali ve sifre en az 4 karakter olmali.'
-                : 'Please fill all fields. Email must be valid and password must be at least 4 characters.',
-            );
+            setErrorText(t.pleaseFillAllFields);
             return;
           }
           setErrorText('');

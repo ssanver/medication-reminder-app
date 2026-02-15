@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
-import { type Locale } from '../localization/localization';
+import { getLocaleTag, type Locale } from '../localization/localization';
 
 export type MedicationRecurrence = 'daily' | 'every-3-days' | 'hourly';
 export type DoseStatus = 'taken' | 'missed';
@@ -357,7 +357,7 @@ export function getAdherenceSummary(referenceDate: Date): {
 }
 
 export function getWeeklyTrend(referenceDate: Date, locale: Locale = 'en'): Array<{ label: string; value: number }> {
-  const labels = locale === 'tr' ? ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const localeTag = getLocaleTag(locale);
   const out: Array<{ label: string; value: number }> = [];
 
   for (let i = 6; i >= 0; i -= 1) {
@@ -367,8 +367,9 @@ export function getWeeklyTrend(referenceDate: Date, locale: Locale = 'en'): Arra
     const total = doses.length;
     const taken = doses.filter((item) => item.status === 'taken').length;
     const adherence = total === 0 ? 0 : Math.round((taken / total) * 100);
+    const weekday = new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(date).replace('.', '');
     out.push({
-      label: labels[(date.getDay() + 6) % 7],
+      label: weekday,
       value: adherence,
     });
   }

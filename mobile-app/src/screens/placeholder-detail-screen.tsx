@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { type Locale } from '../features/localization/localization';
+import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
 type PlaceholderDetailScreenProps = {
@@ -12,6 +12,7 @@ type PlaceholderDetailScreenProps = {
 };
 
 export function PlaceholderDetailScreen({ locale, title, description, items = [], onBack }: PlaceholderDetailScreenProps) {
+  const t = getTranslations(locale);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <ScreenHeader title={title} leftAction={{ icon: '<', onPress: onBack }} />
@@ -25,7 +26,7 @@ export function PlaceholderDetailScreen({ locale, title, description, items = []
             <Text style={styles.chevron}>{'>'}</Text>
           </View>
         ))}
-        {items.length === 0 ? <Text style={styles.empty}>{locale === 'tr' ? 'Detay bulunmuyor.' : 'No details available.'}</Text> : null}
+        {items.length === 0 ? <Text style={styles.empty}>{t.noDetailsAvailable}</Text> : null}
       </View>
     </ScrollView>
   );

@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
-import { type Locale } from '../features/localization/localization';
+import { getTranslations, type Locale } from '../features/localization/localization';
 import { getMedicationById, updateMedication } from '../features/medications/medication-store';
 import { theme } from '../theme';
 
@@ -14,6 +14,7 @@ type MedicationDetailsScreenProps = {
 };
 
 export function MedicationDetailsScreen({ locale, medicationId, onBack }: MedicationDetailsScreenProps) {
+  const t = getTranslations(locale);
   const medication = useMemo(() => getMedicationById(medicationId), [medicationId]);
   const [name, setName] = useState(medication?.name ?? '');
   const [dosage, setDosage] = useState(medication?.dosage ?? '1');
@@ -25,28 +26,28 @@ export function MedicationDetailsScreen({ locale, medicationId, onBack }: Medica
   if (!medication) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title={locale === 'tr' ? 'Ilac detaylari' : 'Medication details'} leftAction={{ icon: '<', onPress: onBack }} />
-        <Text style={styles.notFound}>{locale === 'tr' ? 'Ilac kaydi bulunamadi.' : 'Medication not found.'}</Text>
+        <ScreenHeader title={t.medicationDetails} leftAction={{ icon: '<', onPress: onBack }} />
+        <Text style={styles.notFound}>{t.medicationNotFound}</Text>
       </View>
     );
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={locale === 'tr' ? 'Ilac detaylari' : 'Medication details'} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={t.medicationDetails} leftAction={{ icon: '<', onPress: onBack }} />
 
       <View style={styles.card}>
-        <TextField label={locale === 'tr' ? 'Ilac adi' : 'Medication name'} value={name} onChangeText={setName} />
-        <TextField label={locale === 'tr' ? 'Doz' : 'Dosage'} value={dosage} onChangeText={setDosage} />
-        <TextField label={locale === 'tr' ? 'Siklik' : 'Frequency'} value={frequencyLabel} onChangeText={setFrequencyLabel} />
-        <TextField label={locale === 'tr' ? 'Saat' : 'Time'} value={time} onChangeText={setTime} />
-        <TextField label={locale === 'tr' ? 'Not' : 'Note'} value={note} onChangeText={setNote} />
+        <TextField label={t.medicationName} value={name} onChangeText={setName} />
+        <TextField label={t.dosage} value={dosage} onChangeText={setDosage} />
+        <TextField label={t.frequency} value={frequencyLabel} onChangeText={setFrequencyLabel} />
+        <TextField label={t.time} value={time} onChangeText={setTime} />
+        <TextField label={t.note} value={note} onChangeText={setNote} />
       </View>
 
       {message ? <Text style={styles.success}>{message}</Text> : null}
 
       <Button
-        label={locale === 'tr' ? 'Kaydet' : 'Save'}
+        label={t.save}
         onPress={() => {
           void updateMedication(medicationId, {
             name: name.trim() || medication.name,
@@ -55,7 +56,7 @@ export function MedicationDetailsScreen({ locale, medicationId, onBack }: Medica
             time: time.trim() || medication.time,
             note: note.trim(),
           });
-          setMessage(locale === 'tr' ? 'Kaydedildi.' : 'Saved.');
+          setMessage(t.saved);
           setTimeout(() => onBack(), 300);
         }}
       />

@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { type Locale } from '../features/localization/localization';
+import { getTranslations, type Locale } from '../features/localization/localization';
 import { getAdherenceSummary, getMedicationReport, getWeeklyTrend } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { theme } from '../theme';
@@ -11,37 +11,37 @@ type ReportsScreenProps = {
 };
 
 export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
+  const t = getTranslations(locale);
   const store = useMedicationStore();
   const summary = getAdherenceSummary(new Date());
   const weekly = getWeeklyTrend(new Date(), locale);
   const medicationRows = getMedicationReport(new Date());
-  const isTr = locale === 'tr';
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <ScreenHeader
-        title={isTr ? 'Raporlar' : 'Reports'}
-        subtitle={isTr ? 'Haftalik ve aylik uyum ozeti' : 'Weekly and monthly adherence'}
+        title={t.reportsTitle}
+        subtitle={t.reportsSubtitle}
         leftAction={{ icon: '<', onPress: onBack }}
       />
 
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{isTr ? 'Uyum' : 'Adherence'}</Text>
+          <Text style={styles.summaryLabel}>{t.adherence}</Text>
           <Text style={styles.summaryValue}>{`${summary.adherence}%`}</Text>
           <Text style={styles.summaryHint}>
-            {isTr ? `${summary.taken} / ${summary.totalScheduled} doz alindi` : `${summary.taken} of ${summary.totalScheduled} doses taken`}
+            {`${summary.taken} / ${summary.totalScheduled} ${t.taken.toLowerCase()}`}
           </Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{isTr ? 'Kacirilan' : 'Missed'}</Text>
+          <Text style={styles.summaryLabel}>{t.missedColumn}</Text>
           <Text style={[styles.summaryValue, styles.errorText]}>{summary.missed}</Text>
-          <Text style={styles.summaryHint}>{isTr ? 'Son 7 gun' : 'Last 7 days'}</Text>
+          <Text style={styles.summaryHint}>{t.last7Days}</Text>
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{isTr ? 'Haftalik trend' : 'Weekly trend'}</Text>
+        <Text style={styles.cardTitle}>{t.weeklyTrend}</Text>
         {weekly.map((item) => (
           <View key={item.label} style={styles.barRow}>
             <Text style={styles.barLabel}>{item.label}</Text>
@@ -54,11 +54,11 @@ export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{isTr ? 'Ilac raporu' : 'Medication report'}</Text>
+        <Text style={styles.cardTitle}>{t.medicationReport}</Text>
         <View style={styles.tableRow}>
-          <Text style={styles.tableHead}>{isTr ? 'Ilac' : 'Medication'}</Text>
-          <Text style={styles.tableHead}>{isTr ? 'Alinan' : 'Taken'}</Text>
-          <Text style={styles.tableHead}>{isTr ? 'Kacirilan' : 'Missed'}</Text>
+          <Text style={styles.tableHead}>{t.medicationColumn}</Text>
+          <Text style={styles.tableHead}>{t.takenColumn}</Text>
+          <Text style={styles.tableHead}>{t.missedColumn}</Text>
         </View>
         {medicationRows.map((row) => (
           <View key={row.medication} style={styles.tableRow}>
@@ -67,7 +67,7 @@ export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
             <Text style={[styles.tableCell, styles.errorText]}>{row.missed}</Text>
           </View>
         ))}
-        {medicationRows.length === 0 ? <Text style={styles.summaryHint}>{isTr ? 'Rapor verisi yok' : 'No report data yet'}</Text> : null}
+        {medicationRows.length === 0 ? <Text style={styles.summaryHint}>{t.noReportData}</Text> : null}
       </View>
       <Text style={styles.hidden}>{store.events.length}</Text>
     </ScrollView>

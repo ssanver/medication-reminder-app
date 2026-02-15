@@ -1,4 +1,4 @@
-import { type Locale } from '../localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../localization/localization';
 
 export type WeekDayItem = {
   key: string;
@@ -8,10 +8,6 @@ export type WeekDayItem = {
   isSelected: boolean;
   isToday: boolean;
 };
-
-function getLocaleTag(locale: Locale): string {
-  return locale === 'tr' ? 'tr-TR' : 'en-US';
-}
 
 export function getStartOfWeek(date: Date): Date {
   const start = new Date(date);
@@ -27,8 +23,9 @@ export function getStartOfWeek(date: Date): Date {
 export function getDateTitle(selectedDate: Date, locale: Locale): string {
   const localeTag = getLocaleTag(locale);
   const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
+  const t = getTranslations(locale);
 
-  return locale === 'tr' ? `Bugun, ${dateText}` : `Today, ${dateText}`;
+  return `${t.today}, ${dateText}`;
 }
 
 function getWeekDayLabel(date: Date, locale: Locale): string {

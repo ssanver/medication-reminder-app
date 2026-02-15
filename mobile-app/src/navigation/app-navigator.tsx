@@ -163,9 +163,9 @@ export function AppNavigator() {
         <View style={styles.content}>
           <PlaceholderDetailScreen
             locale={locale}
-            title={locale === 'tr' ? 'Bildirim Ayarlari' : 'Notification Settings'}
-            description={locale === 'tr' ? 'Bildirim seslerini ve tercihlerini bu ekrandan yonetebilirsiniz.' : 'Manage notification sounds and preferences from this screen.'}
-            items={[locale === 'tr' ? 'Varsayilan ses' : 'Default sound', locale === 'tr' ? 'Uygulama bildirimleri' : 'App notifications']}
+            title={t.notificationSettings}
+            description={t.notificationSettingsDescription}
+            items={[t.defaultAppSound, t.appNotifications]}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -179,9 +179,9 @@ export function AppNavigator() {
         <View style={styles.content}>
           <PlaceholderDetailScreen
             locale={locale}
-            title={locale === 'tr' ? 'Hatirlatma Tercihleri' : 'Reminder Preferences'}
-            description={locale === 'tr' ? 'Hatirlatma periyodu ve erteleme ayarlarini duzenleyin.' : 'Set reminder period and snooze settings.'}
-            items={[locale === 'tr' ? 'Siklik' : 'Frequency', locale === 'tr' ? 'Erteleme suresi' : 'Snooze duration']}
+            title={t.reminderPreferences}
+            description={t.reminderPreferencesDescription}
+            items={[t.frequency, t.snoozeDuration]}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -195,9 +195,9 @@ export function AppNavigator() {
         <View style={styles.content}>
           <PlaceholderDetailScreen
             locale={locale}
-            title={locale === 'tr' ? 'Gorunum' : 'Appearance'}
-            description={locale === 'tr' ? 'Dil ve gorunum yakinlastirma ayarlari burada yer alir.' : 'Language and display zoom settings are available here.'}
-            items={[locale === 'tr' ? 'Dil' : 'Language', locale === 'tr' ? 'Gorunum yakinlastirma' : 'Display zoom']}
+            title={t.appearance}
+            description={t.appearanceDescription}
+            items={[t.language, t.displayZoom]}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -211,9 +211,9 @@ export function AppNavigator() {
         <View style={styles.content}>
           <PlaceholderDetailScreen
             locale={locale}
-            title={locale === 'tr' ? 'Gizlilik ve Guvenlik' : 'Privacy & Security'}
-            description={locale === 'tr' ? 'Hesap guvenligi ayarlarinizi yonetin.' : 'Manage account security options.'}
-            items={[locale === 'tr' ? 'Sifre degistir' : 'Change password']}
+            title={t.privacySecurity}
+            description={t.privacySecurityDescription}
+            items={[t.changePassword]}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -227,8 +227,8 @@ export function AppNavigator() {
         <View style={styles.content}>
           <PlaceholderDetailScreen
             locale={locale}
-            title={locale === 'tr' ? 'Sifre Degistir' : 'Change Password'}
-            description={locale === 'tr' ? 'Yeni sifrenizi bu ekrandan guncelleyebilirsiniz.' : 'You can update your password from this screen.'}
+            title={t.changePassword}
+            description={t.changePasswordDescription}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -242,9 +242,9 @@ export function AppNavigator() {
         <View style={styles.content}>
           <PlaceholderDetailScreen
             locale={locale}
-            title={locale === 'tr' ? 'Hesap Merkezi' : 'Accounts Center'}
-            description={locale === 'tr' ? 'Bagli hesaplari yonetin ve yeni hesap ekleyin.' : 'Manage linked accounts and add a new account.'}
-            items={['Mom', locale === 'tr' ? 'Yeni hesap ekle' : 'Add another account']}
+            title={t.accountsCenter}
+            description={t.accountsCenterDescription}
+            items={['Mom', t.addAnotherAccount]}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -258,9 +258,9 @@ export function AppNavigator() {
         <View style={styles.content}>
           <PlaceholderDetailScreen
             locale={locale}
-            title={locale === 'tr' ? 'Hakkimizda' : 'About Us'}
-            description={locale === 'tr' ? 'Pill Mind uygulamasi hakkindaki bilgiler burada listelenir.' : 'Information about Pill Mind is listed here.'}
-            items={['Pill Mind', locale === 'tr' ? 'Surum bilgisi' : 'Version information']}
+            title={t.aboutUs}
+            description={t.aboutUsDescription}
+            items={['Pill Mind', t.versionInformation]}
             onBack={() => setOverlayScreen('none')}
           />
         </View>

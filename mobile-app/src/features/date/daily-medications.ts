@@ -1,4 +1,4 @@
-import { type Locale } from '../localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../localization/localization';
 
 export type DoseStatusFilter = 'All' | 'Taken' | 'Missed';
 export type DoseRuntimeStatus = 'taken' | 'missed' | 'pending';
@@ -167,10 +167,11 @@ function resolveStatus(plan: MedicationPlan, selectedDate: Date): DoseRuntimeSta
 }
 
 export function getMedicationSectionTitle(selectedDate: Date, locale: Locale): string {
-  const localeTag = locale === 'tr' ? 'tr-TR' : 'en-US';
+  const localeTag = getLocaleTag(locale);
   const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
+  const t = getTranslations(locale);
 
-  return locale === 'tr' ? `${dateText} Ilaclari` : `Medication on ${dateText}`;
+  return `${dateText} ${t.todaysMedication}`;
 }
 
 export function getDosesForDate(selectedDate: Date): DoseItem[] {
@@ -195,4 +196,3 @@ export function getDoseCounts(doses: DoseItem[]): { all: number; taken: number; 
     missed: doses.filter((dose) => dose.status === 'missed').length,
   };
 }
-

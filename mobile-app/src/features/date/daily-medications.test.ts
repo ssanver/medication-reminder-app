@@ -25,8 +25,7 @@ describe('daily-medications', () => {
   it('baslikta secili tarih vurgulanir', () => {
     const tr = getMedicationSectionTitle(new Date('2026-02-15T10:00:00.000Z'), 'tr');
     const en = getMedicationSectionTitle(new Date('2026-02-15T10:00:00.000Z'), 'en');
-    expect(tr).toContain('Ilac');
+    expect(tr).toContain('İlaç');
     expect(en).toContain('Medication');
   });
 });
-

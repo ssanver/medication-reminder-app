@@ -31,9 +31,9 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
       <View style={styles.card}>
         <TextField label={t.name} value={name} onChangeText={setName} />
         <TextField label={t.email} value={email} onChangeText={setEmail} />
-        <TextField label={locale === 'tr' ? 'Dogum Tarihi' : 'Date of Birth'} value={birthDate} onChangeText={setBirthDate} />
-        <TextField label={locale === 'tr' ? 'Cinsiyet' : 'Gender'} value={gender} onChangeText={setGender} />
-        <Button label={locale === 'tr' ? 'Kaydet' : 'Save'} onPress={() => undefined} />
+        <TextField label={t.dateOfBirth} value={birthDate} onChangeText={setBirthDate} />
+        <TextField label={t.gender} value={gender} onChangeText={setGender} />
+        <Button label={t.save} onPress={() => undefined} />
       </View>
 
       <View style={styles.card}>
@@ -45,7 +45,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
           <Text style={styles.accountText}>👵 Mom</Text>
         </Pressable>
         <Pressable style={styles.accountRow}>
-          <Text style={styles.addAccount}>{locale === 'tr' ? '+ Baska hesap ekle' : '+ Add another account'}</Text>
+          <Text style={styles.addAccount}>{t.addAnotherAccount}</Text>
         </Pressable>
       </View>
     </ScrollView>

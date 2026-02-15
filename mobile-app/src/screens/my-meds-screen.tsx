@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
 import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { SegmentedControl } from '../components/ui/segmented-control';
-import { type Locale } from '../features/localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { setMedicationActive } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { theme } from '../theme';
@@ -18,20 +18,7 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyMedsScreenProps) {
   const store = useMedicationStore();
-  const t =
-    locale === 'tr'
-      ? {
-          title: 'Ilaclarim',
-          all: 'Tum',
-          active: 'Aktif',
-          inactive: 'Pasif',
-        }
-      : {
-          title: 'My medication',
-          all: 'All',
-          active: 'Active',
-          inactive: 'Inactive',
-        };
+  const t = getTranslations(locale);
   const [filter, setFilter] = useState<MedStatus>('All');
 
   const items = useMemo(
@@ -49,7 +36,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyM
         const startedAt = new Date(`${item.startDate}T00:00:00`);
         const startedLabel = Number.isNaN(startedAt.getTime())
           ? item.startDate
-          : startedAt.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
+          : startedAt.toLocaleDateString(getLocaleTag(locale), {
               day: 'numeric',
               month: 'long',
             });
@@ -64,7 +51,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyM
             locale === 'tr'
               ? `${frequencyLabel} | ${item.dosage} ${formLabel}`
               : `${frequencyLabel} | ${item.dosage} ${formLabel}`,
-          schedule: locale === 'tr' ? `${startedLabel} baslangic | 10 ${formLabel.toLowerCase()} kaldi` : `Started ${startedLabel} | 10 ${formLabel}s remain`,
+          schedule: locale === 'tr' ? `${startedLabel} başlangıç | 10 ${formLabel.toLowerCase()} kaldı` : `Started ${startedLabel} | 10 ${formLabel}s remain`,
           active: item.active,
           emoji: icon,
         };
@@ -91,7 +78,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyM
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>{t.title}</Text>
+      <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>{t.myMedicationTitle}</Text>
 
       <SegmentedControl
         options={[

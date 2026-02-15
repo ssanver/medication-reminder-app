@@ -29,11 +29,11 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       setIsSocialLoading(true);
       setErrorText('');
       const response = await loginWithSocial(provider);
-      setSocialMessage(locale === 'tr' ? `${response.provider} ile giris basarili.` : `Signed in with ${response.provider}.`);
+      setSocialMessage(`${t.socialSignInSuccessPrefix} ${response.provider}.`);
       setTimeout(() => onSuccess(), 400);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Social login failed.';
-      setErrorText(locale === 'tr' ? `Sosyal giris basarisiz: ${message}` : `Social login failed: ${message}`);
+      setErrorText(`${t.socialSignInFailedPrefix} ${message}`);
     } finally {
       setIsSocialLoading(false);
     }
@@ -64,7 +64,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
         label={t.signIn}
         onPress={() => {
           if (!canSubmit) {
-            setErrorText(locale === 'tr' ? 'Lutfen tum alanlari doldurun.' : 'Please fill in all required fields.');
+            setErrorText(t.pleaseFillAllFields);
             return;
           }
           setErrorText('');
