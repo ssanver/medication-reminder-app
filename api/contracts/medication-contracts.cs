@@ -30,3 +30,8 @@ public sealed class MedicationResponse
     public bool IsActive { get; set; }
     public required IReadOnlyCollection<MedicationScheduleInput> Schedules { get; set; }
 }
+
+public sealed class SchedulePreviewResponse
+{
+    public required IReadOnlyCollection<DateTimeOffset> PlannedDoseTimes { get; set; }
+}

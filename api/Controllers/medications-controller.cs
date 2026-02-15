@@ -1,6 +1,7 @@
 using api.contracts;
 using api.data;
 using api.models;
+using api.services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -103,6 +104,23 @@ public sealed class MedicationsController(AppDbContext dbContext) : ControllerBa
         return Ok(ToResponse(medication));
     }
 
+    [HttpGet("{id:guid}/schedule-preview")]
+    public async Task<ActionResult<SchedulePreviewResponse>> GetSchedulePreview([FromRoute] Guid id, [FromQuery] int days = 30)
+    {
+        var medication = await dbContext.Medications.Include(x => x.Schedules).FirstOrDefaultAsync(x => x.Id == id);
+        if (medication is null)
+        {
+            return NotFound();
+        }
+
+        var planned = SchedulePlanner.BuildOccurrences(
+            medication.Schedules.ToArray(),
+            DateOnly.FromDateTime(DateTime.UtcNow.Date),
+            days);
+
+        return Ok(new SchedulePreviewResponse { PlannedDoseTimes = planned });
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
@@ -148,6 +166,15 @@ public sealed class MedicationsController(AppDbContext dbContext) : ControllerBa
         if (duplicatedReminderTimes)
         {
             return "Duplicate reminder times are not allowed for the same medication.";
+        }
+
+        var hasInvalidWeeklyRule = request
+            .Schedules
+            .Any(x => x.RepeatType.Equals("weekly", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(x.DaysOfWeek));
+
+        if (hasInvalidWeeklyRule)
+        {
+            return "At least one weekday is required for weekly repeat type.";
         }
 
         return null;

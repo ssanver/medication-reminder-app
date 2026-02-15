@@ -85,6 +85,32 @@ public sealed class MedicationsControllerTests
     }
 
     [Fact]
+    public async Task Create_ShouldReturnBadRequest_WhenWeeklyRuleDoesNotContainDay()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = new MedicationsController(dbContext);
+
+        var result = await controller.Create(new SaveMedicationRequest
+        {
+            Name = "Parol",
+            Dosage = "500mg",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+            Schedules =
+            [
+                new MedicationScheduleInput
+                {
+                    RepeatType = "weekly",
+                    ReminderTime = new TimeOnly(8, 30),
+                },
+            ],
+        });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("At least one weekday is required for weekly repeat type.", badRequest.Value);
+    }
+
+    [Fact]
     public async Task Delete_ShouldReturnNoContent_WhenEntityExists()
     {
         await using var dbContext = CreateInMemoryContext();
