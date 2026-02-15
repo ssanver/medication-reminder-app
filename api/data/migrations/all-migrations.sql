@@ -199,3 +199,45 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115823_AddSyncEvents'
+)
+BEGIN
+    CREATE TABLE [sync-events] (
+        [Id] uniqueidentifier NOT NULL,
+        [EventId] nvarchar(80) NOT NULL,
+        [EventType] nvarchar(60) NOT NULL,
+        [PayloadJson] nvarchar(4000) NOT NULL,
+        [ClientUpdatedAt] datetimeoffset NOT NULL,
+        [ReceivedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_sync-events] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115823_AddSyncEvents'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_sync-events_EventId] ON [sync-events] ([EventId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115823_AddSyncEvents'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260215115823_AddSyncEvents', N'8.0.12');
+END;
+GO
+
+COMMIT;
+GO
+

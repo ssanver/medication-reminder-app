@@ -10,6 +10,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<DoseEvent> DoseEvents => Set<DoseEvent>();
     public DbSet<InventoryRecord> InventoryRecords => Set<InventoryRecord>();
     public DbSet<PrescriptionReminder> PrescriptionReminders => Set<PrescriptionReminder>();
+    public DbSet<SyncEvent> SyncEvents => Set<SyncEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -83,6 +84,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany(x => x.PrescriptionReminders)
                 .HasForeignKey(x => x.MedicationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SyncEvent>(entity =>
+        {
+            entity.ToTable("sync-events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventId).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.EventType).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.PayloadJson).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.ClientUpdatedAt).IsRequired();
+            entity.Property(x => x.ReceivedAt).IsRequired();
+            entity.HasIndex(x => x.EventId).IsUnique();
         });
     }
 }
