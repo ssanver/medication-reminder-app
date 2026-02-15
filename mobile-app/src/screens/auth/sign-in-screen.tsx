@@ -15,8 +15,8 @@ type SignInScreenProps = {
 
 export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenProps) {
   const t = getTranslations(locale);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('suleymansanver@gmail.com');
+  const [password, setPassword] = useState('1234');
   const [errorText, setErrorText] = useState('');
   const [socialMessage, setSocialMessage] = useState('');
   const [isSocialLoading, setIsSocialLoading] = useState(false);
