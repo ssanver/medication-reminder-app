@@ -9,9 +9,10 @@ type SignUpScreenProps = {
   locale: Locale;
   onSuccess: () => void;
   onOpenSignIn: () => void;
+  onBack: () => void;
 };
 
-export function SignUpScreen({ locale, onSuccess, onOpenSignIn }: SignUpScreenProps) {
+export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUpScreenProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +30,9 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn }: SignUpScreenPr
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Pressable style={styles.backButton} onPress={onBack}>
+        <Text style={styles.backIcon}>{'<'}</Text>
+      </Pressable>
       <Text style={styles.title}>Sign Up</Text>
       <Text style={styles.subtitle}>Fill in the details to create your account</Text>
 
@@ -90,6 +94,17 @@ const styles = StyleSheet.create({
   content: {
     gap: theme.spacing[16],
     paddingBottom: theme.spacing[24],
+  },
+  backButton: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radius[16],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
   },
   title: {
     ...theme.typography.heading.h4Medium,

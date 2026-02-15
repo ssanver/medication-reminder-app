@@ -88,7 +88,15 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <SignUpScreen locale={locale} onSuccess={() => setPhase('app')} onOpenSignIn={() => setPhase('signin')} />
+          <SignUpScreen
+            locale={locale}
+            onSuccess={() => setPhase('app')}
+            onOpenSignIn={() => setPhase('signin')}
+            onBack={() => {
+              setOnboardingStep(Math.max(steps.length - 1, 0));
+              setPhase('onboarding');
+            }}
+          />
         </View>
       </View>
     );
