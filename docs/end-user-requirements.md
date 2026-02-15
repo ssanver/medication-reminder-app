@@ -1,4 +1,7 @@
-# Medication Reminder App - End User Requirements
+# End User Document
+
+## Purpose
+This document defines end-user needs, expectations, and requests for the Medication Reminder App. The business unit can use this as input when preparing the BRD (Business Requirements Document).
 
 ## User Needs, Expectations, and Requests
 
