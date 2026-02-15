@@ -62,11 +62,87 @@ public sealed class DoseEventsControllerTests
         await dbContext.SaveChangesAsync();
 
         var controller = new DoseEventsController(dbContext);
-        var result = await controller.GetHistory(medication.Id);
+        var result = await controller.GetHistory(new DoseHistoryQuery { MedicationId = medication.Id });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var payload = Assert.IsType<DoseEventResponse[]>(okResult.Value);
         Assert.Single(payload);
+    }
+
+    [Fact]
+    public async Task GetHistory_ShouldFilterByActionType()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var medication = await AddMedication(dbContext);
+        dbContext.DoseEvents.AddRange(
+            new DoseEvent
+            {
+                Id = Guid.NewGuid(),
+                MedicationId = medication.Id,
+                ActionType = "taken",
+                ActionAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
+            },
+            new DoseEvent
+            {
+                Id = Guid.NewGuid(),
+                MedicationId = medication.Id,
+                ActionType = "missed",
+                ActionAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext);
+        var result = await controller.GetHistory(new DoseHistoryQuery { ActionType = "missed" });
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<DoseEventResponse[]>(okResult.Value);
+        Assert.Single(payload);
+        Assert.Equal("missed", payload[0].ActionType);
+    }
+
+    [Fact]
+    public async Task GetSummary_ShouldReturnPlannedAndTakenCounts()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var medication = new Medication
+        {
+            Id = Guid.NewGuid(),
+            Name = "Parol",
+            Dosage = "500mg",
+            StartDate = new DateOnly(2026, 2, 20),
+            IsBeforeMeal = false,
+            Schedules =
+            [
+                new MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    RepeatType = "daily",
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        };
+
+        dbContext.Medications.Add(medication);
+        dbContext.DoseEvents.Add(new DoseEvent
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medication.Id,
+            ActionType = "taken",
+            ActionAt = new DateTimeOffset(new DateTime(2026, 2, 20, 8, 0, 0), TimeSpan.Zero),
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext);
+        var result = await controller.GetSummary(new DateOnly(2026, 2, 20), new DateOnly(2026, 2, 22));
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<DoseSummaryResponse>(okResult.Value);
+        Assert.Equal(3, payload.PlannedCount);
+        Assert.Equal(1, payload.TakenCount);
+        Assert.Equal(0.3333m, payload.AdherenceRate);
     }
 
     private static async Task<Medication> AddMedication(AppDbContext dbContext)
@@ -88,7 +164,7 @@ public sealed class DoseEventsControllerTests
     private static AppDbContext CreateInMemoryContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase($"pbi005-tests-{Guid.NewGuid()}")
+            .UseInMemoryDatabase($"pbi006-tests-{Guid.NewGuid()}")
             .Options;
 
         return new AppDbContext(options);

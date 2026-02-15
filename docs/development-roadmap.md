@@ -34,7 +34,7 @@
 | PBI-003 | Done | `api/Controllers/medications-controller.cs`, `api.tests/medications-controller-tests.cs`, `dotnet test` (6/6) |
 | PBI-004 | Done | `api/services/schedule-planner.cs`, `api.tests/schedule-planner-tests.cs`, `dotnet test` (9/9) |
 | PBI-005 | Done | `api/Controllers/dose-events-controller.cs`, `api.tests/dose-events-controller-tests.cs`, `dotnet test` (12/12) |
-| PBI-006 | Todo | - |
+| PBI-006 | Done | `api/Controllers/dose-events-controller.cs` (history/summary), `dotnet test` (14/14) |
 | PBI-007 | Todo | - |
 | PBI-008 | Todo | - |
 | PBI-009 | Todo | - |

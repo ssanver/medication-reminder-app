@@ -1,6 +1,7 @@
 using api.contracts;
 using api.data;
 using api.models;
+using api.services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,18 +55,86 @@ public sealed class DoseEventsController(AppDbContext dbContext) : ControllerBas
     }
 
     [HttpGet("history")]
-    public async Task<ActionResult<IReadOnlyCollection<DoseEventResponse>>> GetHistory([FromQuery] Guid? medicationId = null)
+    public async Task<ActionResult<IReadOnlyCollection<DoseEventResponse>>> GetHistory([FromQuery] DoseHistoryQuery query)
     {
-        var query = dbContext.DoseEvents.AsNoTracking();
+        var eventsQuery = dbContext.DoseEvents.AsNoTracking();
 
-        if (medicationId.HasValue)
+        if (query.MedicationId.HasValue)
         {
-            query = query.Where(x => x.MedicationId == medicationId.Value);
+            eventsQuery = eventsQuery.Where(x => x.MedicationId == query.MedicationId.Value);
         }
 
-        var result = await query.OrderByDescending(x => x.ActionAt).Take(200).ToListAsync();
+        if (!string.IsNullOrWhiteSpace(query.ActionType))
+        {
+            var normalized = query.ActionType.Trim().ToLowerInvariant();
+            if (!AllowedActions.Contains(normalized))
+            {
+                return BadRequest("ActionType filter must be one of: taken, missed, snooze.");
+            }
+
+            eventsQuery = eventsQuery.Where(x => x.ActionType == normalized);
+        }
+
+        if (query.FromDate.HasValue)
+        {
+            var fromDateTime = query.FromDate.Value.ToDateTime(TimeOnly.MinValue);
+            eventsQuery = eventsQuery.Where(x => x.ActionAt >= fromDateTime);
+        }
+
+        if (query.ToDate.HasValue)
+        {
+            var toDateTime = query.ToDate.Value.ToDateTime(TimeOnly.MaxValue);
+            eventsQuery = eventsQuery.Where(x => x.ActionAt <= toDateTime);
+        }
+
+        var result = await eventsQuery.OrderByDescending(x => x.ActionAt).Take(400).ToListAsync();
 
         return Ok(result.Select(ToResponse).ToArray());
+    }
+
+    [HttpGet("summary")]
+    public async Task<ActionResult<DoseSummaryResponse>> GetSummary([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate)
+    {
+        if (toDate < fromDate)
+        {
+            return BadRequest("toDate cannot be earlier than fromDate.");
+        }
+
+        var events = await dbContext
+            .DoseEvents
+            .AsNoTracking()
+            .Where(x => x.ActionAt >= fromDate.ToDateTime(TimeOnly.MinValue) && x.ActionAt <= toDate.ToDateTime(TimeOnly.MaxValue))
+            .ToListAsync();
+
+        var medications = await dbContext
+            .Medications
+            .AsNoTracking()
+            .Include(x => x.Schedules)
+            .Where(x => x.IsActive)
+            .ToListAsync();
+
+        var dayCount = (toDate.DayNumber - fromDate.DayNumber) + 1;
+        var plannedCount = medications
+            .Sum(medication => SchedulePlanner.BuildOccurrences(medication.Schedules.ToArray(), fromDate, dayCount).Count);
+
+        var takenCount = events.Count(x => x.ActionType == "taken");
+        var missedCount = events.Count(x => x.ActionType == "missed");
+        var snoozedCount = events.Count(x => x.ActionType == "snooze");
+
+        var adherenceRate = plannedCount == 0
+            ? 0
+            : Math.Round((decimal)takenCount / plannedCount, 4, MidpointRounding.AwayFromZero);
+
+        return Ok(new DoseSummaryResponse
+        {
+            FromDate = fromDate,
+            ToDate = toDate,
+            PlannedCount = plannedCount,
+            TakenCount = takenCount,
+            MissedCount = missedCount,
+            SnoozedCount = snoozedCount,
+            AdherenceRate = adherenceRate,
+        });
     }
 
     private static DoseEventResponse ToResponse(DoseEvent doseEvent)
