@@ -5,6 +5,8 @@ import type { AppIconName } from '../components/ui/app-icon';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
+import { ensureNotificationPermissions } from '../features/notifications/local-notifications';
+import { loadAppPreferences, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
@@ -12,8 +14,10 @@ import { SignUpScreen } from '../screens/auth/sign-up-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
 import { MedicationDetailsScreen } from '../screens/medication-details-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
+import { NotificationSettingsScreen } from '../screens/notification-settings-screen';
 import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
+import { ReminderPreferencesScreen } from '../screens/reminder-preferences-screen';
 import { ReportsScreen } from '../screens/reports-screen';
 import { SettingsScreen } from '../screens/settings-screen';
 import { TodayScreen } from '../screens/today-screen';
@@ -30,7 +34,6 @@ type OverlayScreen =
   | 'appearance'
   | 'privacy-security'
   | 'change-password'
-  | 'accounts-center'
   | 'about-us';
 type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
 
@@ -45,6 +48,9 @@ export function AppNavigator() {
   const [phase, setPhase] = useState<AppPhase>('splash');
   const [locale, setLocale] = useState<Locale>('tr');
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [medicationRemindersEnabled, setMedicationRemindersEnabled] = useState(true);
+  const [snoozeMinutes, setSnoozeMinutes] = useState(15);
   const [activeTab, setActiveTab] = useState<TabKey>('today');
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [overlayScreen, setOverlayScreen] = useState<OverlayScreen>('none');
@@ -62,6 +68,25 @@ export function AppNavigator() {
 
     return () => clearTimeout(timer);
   }, [phase]);
+
+  useEffect(() => {
+    void (async () => {
+      const preferences = await loadAppPreferences();
+      setLocale(preferences.locale);
+      setNotificationsEnabled(preferences.notificationsEnabled);
+      setMedicationRemindersEnabled(preferences.medicationRemindersEnabled);
+      setSnoozeMinutes(preferences.snoozeMinutes);
+    })();
+  }, []);
+
+  useEffect(() => {
+    void saveAppPreferences({
+      locale,
+      notificationsEnabled,
+      medicationRemindersEnabled,
+      snoozeMinutes,
+    });
+  }, [locale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
 
   if (!isOnboardingStepCountValid(steps)) {
     return (
@@ -141,7 +166,14 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <ProfileScreen locale={locale} onBack={() => setOverlayScreen('none')} />
+          <ProfileScreen
+            locale={locale}
+            onLocaleChange={async (nextLocale) => {
+              setLocale(nextLocale);
+              await updateLocalePreference(nextLocale);
+            }}
+            onBack={() => setOverlayScreen('none')}
+          />
         </View>
       </View>
     );
@@ -161,11 +193,39 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <PlaceholderDetailScreen
+          <NotificationSettingsScreen
             locale={locale}
-            title={t.notificationSettings}
-            description={t.notificationSettingsDescription}
-            items={[t.defaultAppSound, t.appNotifications]}
+            notificationsEnabled={notificationsEnabled}
+            remindersEnabled={medicationRemindersEnabled}
+            onNotificationsChange={async (value) => {
+              if (!value) {
+                setNotificationsEnabled(false);
+                setMedicationRemindersEnabled(false);
+                return;
+              }
+
+              const granted = await ensureNotificationPermissions();
+              setNotificationsEnabled(granted);
+              if (granted) {
+                setMedicationRemindersEnabled(true);
+              }
+            }}
+            onRemindersChange={async (value) => {
+              if (!value) {
+                setMedicationRemindersEnabled(false);
+                return;
+              }
+
+              if (!notificationsEnabled) {
+                const granted = await ensureNotificationPermissions();
+                setNotificationsEnabled(granted);
+                if (!granted) {
+                  return;
+                }
+              }
+
+              setMedicationRemindersEnabled(true);
+            }}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -177,11 +237,10 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <PlaceholderDetailScreen
+          <ReminderPreferencesScreen
             locale={locale}
-            title={t.reminderPreferences}
-            description={t.reminderPreferencesDescription}
-            items={[t.frequency, t.snoozeDuration]}
+            snoozeMinutes={snoozeMinutes}
+            onSnoozeMinutesChange={setSnoozeMinutes}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -236,22 +295,6 @@ export function AppNavigator() {
     );
   }
 
-  if (overlayScreen === 'accounts-center') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <PlaceholderDetailScreen
-            locale={locale}
-            title={t.accountsCenter}
-            description={t.accountsCenterDescription}
-            items={['Mom', t.addAnotherAccount]}
-            onBack={() => setOverlayScreen('none')}
-          />
-        </View>
-      </View>
-    );
-  }
-
   if (overlayScreen === 'about-us') {
     return (
       <View style={styles.container}>
@@ -274,9 +317,22 @@ export function AppNavigator() {
         {renderTab(
           activeTab,
           locale,
-          setLocale,
+          async (nextLocale) => {
+            setLocale(nextLocale);
+            await updateLocalePreference(nextLocale);
+          },
           fontScale,
           setFontScale,
+          notificationsEnabled,
+          medicationRemindersEnabled,
+          snoozeMinutes,
+          setNotificationsEnabled,
+          setMedicationRemindersEnabled,
+          async () => {
+            const granted = await ensureNotificationPermissions();
+            setNotificationsEnabled(granted);
+            setMedicationRemindersEnabled(granted);
+          },
           () => setActiveTab('add-meds'),
           () => setActiveTab('my-meds'),
           (medicationId) => {
@@ -290,7 +346,6 @@ export function AppNavigator() {
           () => setOverlayScreen('appearance'),
           () => setOverlayScreen('privacy-security'),
           () => setOverlayScreen('change-password'),
-          () => setOverlayScreen('accounts-center'),
           () => setOverlayScreen('about-us'),
         )}
       </View>
@@ -314,6 +369,12 @@ function renderTab(
   onLocaleChange: (locale: Locale) => void,
   fontScale: number,
   onFontScaleChange: (value: number) => void,
+  notificationsEnabled: boolean,
+  medicationRemindersEnabled: boolean,
+  snoozeMinutes: number,
+  onNotificationsToggle: (value: boolean) => void,
+  onMedicationRemindersToggle: (value: boolean) => void,
+  onEnableNotifications: () => void,
   onOpenAddMeds: () => void,
   onMedicationSaved: () => void,
   onOpenMedicationDetails: (medicationId: string) => void,
@@ -324,12 +385,19 @@ function renderTab(
   onOpenAppearance: () => void,
   onOpenPrivacySecurity: () => void,
   onOpenChangePassword: () => void,
-  onOpenAccountsCenter: () => void,
   onOpenAboutUs: () => void,
 ) {
   switch (tab) {
     case 'today':
-      return <TodayScreen locale={locale} fontScale={fontScale} onOpenAddMedication={onOpenAddMeds} />;
+      return (
+        <TodayScreen
+          locale={locale}
+          fontScale={fontScale}
+          onOpenAddMedication={onOpenAddMeds}
+          remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
+          snoozeMinutes={snoozeMinutes}
+        />
+      );
     case 'my-meds':
       return <MyMedsScreen locale={locale} fontScale={fontScale} onOpenMedicationDetails={onOpenMedicationDetails} />;
     case 'add-meds':
@@ -347,8 +415,13 @@ function renderTab(
           onOpenAppearance={onOpenAppearance}
           onOpenPrivacySecurity={onOpenPrivacySecurity}
           onOpenChangePassword={onOpenChangePassword}
-          onOpenAccountsCenter={onOpenAccountsCenter}
           onOpenAboutUs={onOpenAboutUs}
+          notificationsEnabled={notificationsEnabled}
+          medicationRemindersEnabled={medicationRemindersEnabled}
+          snoozeMinutes={snoozeMinutes}
+          onNotificationsToggle={onNotificationsToggle}
+          onMedicationRemindersToggle={onMedicationRemindersToggle}
+          onEnableNotifications={onEnableNotifications}
           onFontScaleChange={(value) => {
             if (isFontScaleLevelValid(value)) {
               onFontScaleChange(value);
@@ -357,7 +430,15 @@ function renderTab(
         />
       );
     default:
-      return <TodayScreen locale={locale} fontScale={fontScale} onOpenAddMedication={onOpenAddMeds} />;
+      return (
+        <TodayScreen
+          locale={locale}
+          fontScale={fontScale}
+          onOpenAddMedication={onOpenAddMeds}
+          remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
+          snoozeMinutes={snoozeMinutes}
+        />
+      );
   }
 }
 

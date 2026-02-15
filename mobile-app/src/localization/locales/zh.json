@@ -159,5 +159,14 @@
   "changePasswordDescription": "You can update your password from this screen.",
   "accountsCenterDescription": "Manage linked accounts and add a new account.",
   "aboutUsDescription": "Information about Pill Mind is listed here.",
-  "versionInformation": "Version information"
+  "versionInformation": "Version information",
+  "snooze": "Snooze",
+  "snoozeInMinutes": "Snooze 15 min",
+  "snoozeScheduled": "Reminder scheduled in 15 minutes.",
+  "notificationPermissionRequired": "Enable notification permission to receive reminders.",
+  "profileUpdated": "Profile saved successfully.",
+  "selectLanguage": "Select language",
+  "notificationTitle": "Medication Reminder",
+  "notificationBodyTemplate": "Take {{name}} in {{minutes}} minutes.",
+  "saveChanges": "Save changes"
 }

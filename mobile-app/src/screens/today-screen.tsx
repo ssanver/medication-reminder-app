@@ -7,6 +7,7 @@ import { getDateTitle, getWeekStrip } from '../features/date/week-strip';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { getScheduledDosesForDate, setDoseStatus } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
+import { scheduleSnoozeReminder } from '../features/notifications/local-notifications';
 import { toShortDisplayName } from '../features/profile/display-name';
 import { currentUser } from '../features/profile/current-user';
 import { theme } from '../theme';
@@ -14,12 +15,14 @@ import { theme } from '../theme';
 type TodayScreenProps = {
   locale: Locale;
   fontScale: number;
+  remindersEnabled: boolean;
+  snoozeMinutes: number;
   onOpenAddMedication: () => void;
 };
 
 type DoseStatus = 'All' | 'Taken' | 'Missed';
 
-export function TodayScreen({ locale, fontScale, onOpenAddMedication }: TodayScreenProps) {
+export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes, onOpenAddMedication }: TodayScreenProps) {
   const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<DoseStatus>('All');
@@ -121,11 +124,28 @@ export function TodayScreen({ locale, fontScale, onOpenAddMedication }: TodayScr
               showAction
               medEmoji={item.emoji}
               onActionPress={() => void setDoseStatus(item.medicationId, selectedDate, 'taken')}
+              secondaryActionLabel={
+                remindersEnabled && item.status === 'pending' ? t.snoozeInMinutes.replace('15', `${snoozeMinutes}`) : undefined
+              }
+              onSecondaryActionPress={() => {
+                if (!remindersEnabled) {
+                  return;
+                }
+
+                void scheduleSnoozeReminder({
+                  minutes: snoozeMinutes,
+                  medicationName: item.name,
+                  localeTitle: t.notificationTitle,
+                  localeBodyTemplate: (name, minutes) =>
+                    t.notificationBodyTemplate.replace('{{name}}', name).replace('{{minutes}}', `${minutes}`),
+                });
+              }}
             />
           ))}
         </View>
       )}
 
+      {!remindersEnabled ? <Text style={styles.warning}>{t.notificationPermissionRequired}</Text> : null}
       <View style={styles.bottomSpacer} />
       <Text style={styles.hidden}>{`${t.today}-${selectedDate.getTime()}`}</Text>
     </ScrollView>
@@ -242,6 +262,10 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: theme.spacing[8],
+  },
+  warning: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.error[500],
   },
   hidden: {
     height: 0,

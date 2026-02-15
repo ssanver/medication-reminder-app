@@ -159,5 +159,14 @@
   "changePasswordDescription": "Yeni şifrenizi bu ekrandan güncelleyebilirsiniz.",
   "accountsCenterDescription": "Bağlı hesapları yönetin ve yeni hesap ekleyin.",
   "aboutUsDescription": "Pill Mind uygulaması hakkındaki bilgiler burada listelenir.",
-  "versionInformation": "Sürüm bilgisi"
+  "versionInformation": "Sürüm bilgisi",
+  "snooze": "Ertele",
+  "snoozeInMinutes": "15 dk ertele",
+  "snoozeScheduled": "Hatırlatma 15 dakika sonrası için planlandı.",
+  "notificationPermissionRequired": "Hatırlatma almak için bildirim iznini açın.",
+  "profileUpdated": "Profil başarıyla kaydedildi.",
+  "selectLanguage": "Dil seçin",
+  "notificationTitle": "İlaç Hatırlatması",
+  "notificationBodyTemplate": "{{name}} ilacını {{minutes}} dakika sonra almanız gerekiyor.",
+  "saveChanges": "Değişiklikleri kaydet"
 }

@@ -12,6 +12,8 @@ type MedicationCardProps = {
   showAction?: boolean;
   actionLabel?: string;
   actionVariant?: 'filled' | 'success' | 'danger';
+  secondaryActionLabel?: string;
+  onSecondaryActionPress?: () => void;
   statusBadge?: 'ontime' | 'missed';
   medEmoji?: string;
   compact?: boolean;
@@ -30,6 +32,8 @@ export function MedicationCard({
   showAction,
   actionLabel = 'Take',
   actionVariant = 'filled',
+  secondaryActionLabel,
+  onSecondaryActionPress,
   statusBadge,
   medEmoji = '💊',
   compact = false,
@@ -70,6 +74,11 @@ export function MedicationCard({
 
       {showAction ? (
         <View style={styles.actionWrap}>
+          {secondaryActionLabel ? (
+            <Pressable onPress={onSecondaryActionPress} style={styles.secondaryAction}>
+              <Text style={styles.secondaryActionText}>{secondaryActionLabel}</Text>
+            </Pressable>
+          ) : null}
           <Button
             label={actionLabel}
             size="xs"
@@ -187,6 +196,22 @@ const styles = StyleSheet.create({
     color: theme.colors.semantic.textMuted,
   },
   actionWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: theme.spacing[8],
+  },
+  secondaryAction: {
+    minHeight: 26,
+    paddingHorizontal: theme.spacing[8],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryActionText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.primaryBlue[500],
+  },
+  actionWrapLegacy: {
     alignItems: 'flex-end',
   },
 });

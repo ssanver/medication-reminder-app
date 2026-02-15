@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
 import { toShortDisplayName } from '../features/profile/display-name';
-import { currentUser } from '../features/profile/current-user';
 import { theme } from '../theme';
 
 type SettingsScreenProps = {
@@ -20,8 +19,13 @@ type SettingsScreenProps = {
   onOpenAppearance: () => void;
   onOpenPrivacySecurity: () => void;
   onOpenChangePassword: () => void;
-  onOpenAccountsCenter: () => void;
   onOpenAboutUs: () => void;
+  notificationsEnabled: boolean;
+  medicationRemindersEnabled: boolean;
+  snoozeMinutes: number;
+  onNotificationsToggle: (value: boolean) => void;
+  onMedicationRemindersToggle: (value: boolean) => void;
+  onEnableNotifications: () => void;
 };
 
 export function SettingsScreen({
@@ -36,21 +40,24 @@ export function SettingsScreen({
   onOpenAppearance,
   onOpenPrivacySecurity,
   onOpenChangePassword,
-  onOpenAccountsCenter,
   onOpenAboutUs,
+  notificationsEnabled,
+  medicationRemindersEnabled,
+  snoozeMinutes,
+  onNotificationsToggle,
+  onMedicationRemindersToggle,
+  onEnableNotifications,
 }: SettingsScreenProps) {
   const t = getTranslations(locale);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [medRemindersEnabled, setMedRemindersEnabled] = useState(true);
-  const shortDisplayName = toShortDisplayName(currentUser.fullName);
+  const shortDisplayName = toShortDisplayName('Suleyman Şanver');
   const localeOptions = getLocaleOptions(locale);
-  const version = useState(() => {
+  const version = useMemo(() => {
     const expoVersion = Constants.expoConfig?.version ?? '1.0.0';
     const iosBuild = Constants.expoConfig?.ios?.buildNumber;
     const androidBuild = Constants.expoConfig?.android?.versionCode;
     const buildMeta = iosBuild ?? (typeof androidBuild === 'number' ? `${androidBuild}` : 'dev');
     return `Version ${expoVersion} (${buildMeta})`;
-  })[0];
+  }, []);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -66,10 +73,6 @@ export function SettingsScreen({
         </View>
       </View>
 
-      <Section title={t.profileSection}>
-        <MenuRow label={t.accountsCenter} value={t.accountsValue} onPress={onOpenAccountsCenter} />
-      </Section>
-
       <Section title={t.reminderAlarm}>
         <MenuRow label={t.notificationSettings} value={t.defaultAppSound} onPress={onOpenNotificationSettings} />
         <View style={styles.switchRow}>
@@ -77,15 +80,37 @@ export function SettingsScreen({
             <Text style={styles.rowTitle}>{t.appNotifications}</Text>
             <Text style={styles.rowSubtitle}>{t.openMedicationReminders}</Text>
           </View>
-          <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={async (value) => {
+              if (value) {
+                await onEnableNotifications();
+                return;
+              }
+
+              onNotificationsToggle(false);
+              onMedicationRemindersToggle(false);
+            }}
+          />
         </View>
         <View style={styles.switchRow}>
           <View>
             <Text style={styles.rowTitle}>{t.medicationReminders}</Text>
             <Text style={styles.rowSubtitle}>{t.dailyMedicationAlerts}</Text>
           </View>
-          <Switch value={medRemindersEnabled} onValueChange={setMedRemindersEnabled} />
+          <Switch
+            value={medicationRemindersEnabled}
+            onValueChange={async (value) => {
+              if (value && !notificationsEnabled) {
+                await onEnableNotifications();
+                return;
+              }
+
+              onMedicationRemindersToggle(value);
+            }}
+          />
         </View>
+        <MenuRow label={t.snoozeDuration} value={`${snoozeMinutes} min`} onPress={onOpenReminderPreferences} />
       </Section>
 
       <Section title={t.general}>
@@ -117,7 +142,6 @@ export function SettingsScreen({
 
       <Section title={t.reporting}>
         <MenuRow label={t.reports} value={t.weeklyMonthly} onPress={onOpenReports} />
-        <MenuRow label={t.reminderAlarm} value={t.medicationReminders} onPress={onOpenReminderPreferences} />
         <MenuRow label={t.privacySecurity} onPress={onOpenPrivacySecurity} />
         <MenuRow label={t.changePassword} onPress={onOpenChangePassword} />
       </Section>
