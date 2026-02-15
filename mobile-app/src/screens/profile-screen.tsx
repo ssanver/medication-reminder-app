@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { TextField } from '../components/ui/text-field';
+import { currentUser } from '../features/profile/current-user';
 import { theme } from '../theme';
 
 type ProfileScreenProps = {
@@ -10,8 +11,8 @@ type ProfileScreenProps = {
 };
 
 export function ProfileScreen({ onBack }: ProfileScreenProps) {
-  const [name, setName] = useState('Hanie');
-  const [email, setEmail] = useState('hanie@gmail.com');
+  const [name, setName] = useState(currentUser.fullName);
+  const [email, setEmail] = useState(currentUser.email);
   const [birthDate, setBirthDate] = useState('1 - October - 1998');
   const [gender, setGender] = useState('Female');
 

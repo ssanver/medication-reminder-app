@@ -38,7 +38,18 @@ const initialItems: MedItem[] = [
   { id: '7', name: 'I-DROP MGD', details: 'Daily | 2 Drops', remaining: 'Started 25 July | 10 Capsules remain', active: true, emoji: '🧯' },
 ];
 
-export function MyMedsScreen({ fontScale }: MyMedsScreenProps) {
+export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
+  const t = locale === 'tr' ? {
+    title: 'Ilaclarim',
+    all: 'Tum',
+    active: 'Aktif',
+    inactive: 'Pasif',
+  } : {
+    title: 'My medication',
+    all: 'All',
+    active: 'Active',
+    inactive: 'Inactive',
+  };
   const [filter, setFilter] = useState<MedStatus>('All');
   const [items, setItems] = useState(initialItems);
 
@@ -61,13 +72,13 @@ export function MyMedsScreen({ fontScale }: MyMedsScreenProps) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>My medication</Text>
+      <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>{t.title}</Text>
 
       <SegmentedControl
         options={[
-          { label: 'All', value: 'All', count: counts.all },
-          { label: 'Active', value: 'Active', count: counts.active },
-          { label: 'Inactive', value: 'Inactive', count: counts.inactive },
+          { label: t.all, value: 'All', count: counts.all },
+          { label: t.active, value: 'Active', count: counts.active },
+          { label: t.inactive, value: 'Inactive', count: counts.inactive },
         ]}
         value={filter}
         onChange={(next) => setFilter(next as MedStatus)}

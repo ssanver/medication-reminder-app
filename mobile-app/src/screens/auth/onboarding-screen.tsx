@@ -43,7 +43,7 @@ export function OnboardingScreen({ locale, stepIndex, onNextStep, onSkip }: Onbo
         <Text style={styles.description}>{step.description}</Text>
       </View>
 
-      <Button label={isLastStep ? (locale === 'tr' ? 'Create an account' : 'Create an account') : t.next} onPress={onNextStep} />
+      <Button label={isLastStep ? t.createAccount : t.next} onPress={onNextStep} />
     </View>
   );
 }

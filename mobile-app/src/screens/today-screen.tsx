@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
+import { getDateTitle, getWeekStrip } from '../features/date/week-strip';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { toShortDisplayName } from '../features/profile/display-name';
+import { currentUser } from '../features/profile/current-user';
 import { theme } from '../theme';
 
 type TodayScreenProps = {
@@ -22,9 +25,6 @@ type DoseItem = {
   emoji: string;
 };
 
-const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const weekDates = ['21', '22', '23', '24', '25', '26', '27'];
-
 const doses: DoseItem[] = [
   { id: '1', name: 'Metformin', details: '1 Capsules', schedule: '09:00 | Daily', status: 'pending', emoji: '💊' },
   { id: '2', name: 'Captopril', details: '2 Capsules', schedule: '20:00 | Daily', status: 'pending', emoji: '🧴' },
@@ -36,6 +36,8 @@ const doses: DoseItem[] = [
 export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
   const t = getTranslations(locale);
   const [filter, setFilter] = useState<DoseStatus>('All');
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const shortDisplayName = toShortDisplayName(currentUser.fullName);
 
   const filtered = useMemo(() => {
     if (filter === 'All') {
@@ -59,37 +61,47 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
     [],
   );
 
+  const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
+  const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.profileRow}>
         <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩</Text></View>
         <View>
-          <Text style={styles.hello}>Hello, Hanie</Text>
-          <Text style={styles.welcome}>Welcome !</Text>
+          <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
+          <Text style={styles.welcome}>{t.welcome}</Text>
         </View>
       </View>
 
-      <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>Today , July 25</Text>
+      <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{dateTitle}</Text>
       <View style={styles.calendarStrip}>
-        <Text style={styles.arrow}>{'<'}</Text>
-        {weekDays.map((day, index) => {
-          const active = weekDates[index] === '25';
+        <Pressable onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 7))}>
+          <Text style={styles.arrow}>{'<'}</Text>
+        </Pressable>
+        {weekStrip.map((day) => {
           return (
-            <View key={`${day}-${index}`} style={[styles.dayCell, active && styles.dayCellActive]}>
-              <Text style={[styles.dayText, active && styles.dayTextActive]}>{day}</Text>
-              <Text style={[styles.dayDate, active && styles.dayTextActive]}>{weekDates[index]}</Text>
-            </View>
+            <Pressable
+              key={day.key}
+              style={[styles.dayCell, day.isSelected && styles.dayCellActive]}
+              onPress={() => setSelectedDate(day.date)}
+            >
+              <Text style={[styles.dayText, day.isSelected && styles.dayTextActive]}>{day.label}</Text>
+              <Text style={[styles.dayDate, day.isSelected && styles.dayTextActive, day.isToday && styles.dayDateToday]}>{day.dateLabel}</Text>
+            </Pressable>
           );
         })}
-        <Text style={styles.arrow}>{'>'}</Text>
+        <Pressable onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 7))}>
+          <Text style={styles.arrow}>{'>'}</Text>
+        </Pressable>
       </View>
 
-      <Text style={styles.sectionTitle}>Today's Medication</Text>
+      <Text style={styles.sectionTitle}>{t.todaysMedication}</Text>
       <SegmentedControl
         options={[
-          { label: 'All', value: 'All', count: counts.all },
-          { label: 'Taken', value: 'Taken', count: counts.taken },
-          { label: 'Missed', value: 'Missed', count: counts.missed },
+          { label: t.all, value: 'All', count: counts.all },
+          { label: t.taken, value: 'Taken', count: counts.taken },
+          { label: t.missed, value: 'Missed', count: counts.missed },
         ]}
         value={filter}
         onChange={(next) => setFilter(next as DoseStatus)}
@@ -98,9 +110,9 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
       {filtered.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>💊</Text>
-          <Text style={styles.emptyTitle}>No Medications are Scheduled for this day</Text>
-          <Text style={styles.emptyDescription}>If you haven't added a medication, please do so now.</Text>
-          <Button label="+ Add Medication" onPress={() => setFilter('All')} />
+          <Text style={styles.emptyTitle}>{t.noMedicationTitle}</Text>
+          <Text style={styles.emptyDescription}>{t.noMedicationDescription}</Text>
+          <Button label={t.addMedication} onPress={() => setFilter('All')} />
         </View>
       ) : (
         <View style={styles.list}>
@@ -110,7 +122,7 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
               name={item.name}
               details={item.details}
               schedule={item.schedule}
-              actionLabel={item.status === 'taken' ? 'Taken' : 'Take'}
+              actionLabel={item.status === 'taken' ? t.taken : locale === 'tr' ? 'Al' : 'Take'}
               actionVariant={item.status === 'taken' ? 'success' : item.status === 'missed' ? 'danger' : 'filled'}
               statusBadge={item.status === 'missed' ? 'missed' : item.status === 'pending' ? 'ontime' : undefined}
               showAction
@@ -121,7 +133,7 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
       )}
 
       <View style={styles.bottomSpacer} />
-      <Text style={styles.hidden}>{t.today}</Text>
+      <Text style={styles.hidden}>{`${t.today}-${selectedDate.getTime()}`}</Text>
     </ScrollView>
   );
 }
@@ -201,6 +213,9 @@ const styles = StyleSheet.create({
   dayTextActive: {
     color: theme.colors.primaryBlue[500],
     fontWeight: '700',
+  },
+  dayDateToday: {
+    textDecorationLine: 'underline',
   },
   sectionTitle: {
     ...theme.typography.bodyScale.mMedium,

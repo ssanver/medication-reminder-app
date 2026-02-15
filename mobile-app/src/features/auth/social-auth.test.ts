@@ -1,24 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { loginWithSocial } from './social-auth';
 
-const promptAsyncMock = vi.fn();
-const makeRedirectUriMock = vi.fn(() => 'medication-reminder://oauth2redirect');
-const isAppleAvailableMock = vi.fn();
-const appleSignInMock = vi.fn();
+const { promptAsyncMock, makeRedirectUriMock, isAppleAvailableMock, appleSignInMock } = vi.hoisted(() => ({
+  promptAsyncMock: vi.fn(),
+  makeRedirectUriMock: vi.fn(() => 'medication-reminder://oauth2redirect'),
+  isAppleAvailableMock: vi.fn(),
+  appleSignInMock: vi.fn(),
+}));
 
 vi.mock('expo-web-browser', () => ({
   maybeCompleteAuthSession: vi.fn(),
 }));
 
 vi.mock('expo-auth-session', () => ({
-  makeRedirectUri: (...args: unknown[]) => makeRedirectUriMock(...args),
+  makeRedirectUri: makeRedirectUriMock,
   AuthRequest: class {
     promptAsync = promptAsyncMock;
   },
 }));
 
 vi.mock('expo-apple-authentication', () => ({
-  isAvailableAsync: (...args: unknown[]) => isAppleAvailableMock(...args),
-  signInAsync: (...args: unknown[]) => appleSignInMock(...args),
+  isAvailableAsync: isAppleAvailableMock,
+  signInAsync: appleSignInMock,
   AppleAuthenticationScope: {
     FULL_NAME: 0,
     EMAIL: 1,
@@ -61,7 +64,6 @@ describe('loginWithSocial', () => {
       })),
     );
 
-    const { loginWithSocial } = await import('./social-auth');
     const result = await loginWithSocial('Google');
 
     expect(result.provider).toBe('Google');
@@ -94,7 +96,6 @@ describe('loginWithSocial', () => {
       })),
     );
 
-    const { loginWithSocial } = await import('./social-auth');
     const result = await loginWithSocial('Apple');
 
     expect(result.provider).toBe('Apple');
@@ -108,7 +109,6 @@ describe('loginWithSocial', () => {
       params: { id_token: 'token' },
     });
 
-    const { loginWithSocial } = await import('./social-auth');
     await expect(loginWithSocial('Google')).rejects.toThrow('Google OAuth client id bulunamadi');
   });
 });

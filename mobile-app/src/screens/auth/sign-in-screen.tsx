@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
-import { type Locale } from '../../features/localization/localization';
+import { getTranslations, type Locale } from '../../features/localization/localization';
 import { loginWithSocial } from '../../features/auth/social-auth';
 import { theme } from '../../theme';
 
@@ -14,6 +14,7 @@ type SignInScreenProps = {
 };
 
 export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenProps) {
+  const t = getTranslations(locale);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorText, setErrorText] = useState('');
@@ -39,19 +40,19 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Sign In</Text>
-      <Text style={styles.subtitle}>Enter your credentials to continue</Text>
+      <Text style={styles.title}>{t.signInTitle}</Text>
+      <Text style={styles.subtitle}>{t.signInSubtitle}</Text>
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
       {socialMessage ? <Text style={styles.successText}>{socialMessage}</Text> : null}
 
       <View style={styles.form}>
-        <TextField label="Email" value={email} placeholder="Enter your email address" onChangeText={setEmail} />
-        <TextField label="Password" value={password} secureTextEntry placeholder="Enter your password" onChangeText={setPassword} />
+        <TextField label={t.email} value={email} placeholder={t.enterYourEmail} onChangeText={setEmail} />
+        <TextField label={t.password} value={password} secureTextEntry placeholder={t.enterYourPassword} onChangeText={setPassword} />
       </View>
 
       <Button
-        label="Sign in"
+        label={t.signIn}
         onPress={() => {
           if (!canSubmit) {
             setErrorText(locale === 'tr' ? 'Gecerli email ve sifre giriniz.' : 'Please enter a valid email and password.');
@@ -62,16 +63,16 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
         }}
       />
 
-      <Text style={styles.legal}>By signing in, you agree to our Terms of Service and Privacy Policy.</Text>
+      <Text style={styles.legal}>{t.termsText}</Text>
       <Button
-        label="Continue with Apple"
+        label={t.continueWithApple}
         leadingNode={<BrandIcon name="apple" />}
         variant="outlined"
         onPress={() => void handleSocialAuth('Apple')}
         disabled={isSocialLoading}
       />
       <Button
-        label="Continue with Google"
+        label={t.continueWithGoogle}
         leadingNode={<BrandIcon name="google" />}
         variant="outlined"
         onPress={() => void handleSocialAuth('Google')}
@@ -79,7 +80,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       />
 
       <Pressable onPress={onOpenSignUp}>
-        <Text style={styles.signUpText}>{locale === 'tr' ? 'Hesabin yok mu? Sign up' : "Don't have an account? Sign up"}</Text>
+        <Text style={styles.signUpText}>{t.noAccount}</Text>
       </Pressable>
     </ScrollView>
   );

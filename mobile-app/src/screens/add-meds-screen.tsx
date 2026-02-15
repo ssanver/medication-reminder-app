@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
-import { type Locale } from '../features/localization/localization';
+import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
 type AddMedsScreenProps = {
@@ -12,17 +12,17 @@ type AddMedsScreenProps = {
 
 type WizardStep = 'name' | 'form' | 'frequency' | 'dosage' | 'note';
 
-const stepLabels: Record<WizardStep, string> = {
-  name: 'Medication Name',
-  form: 'Select Form',
-  frequency: 'Frequency',
-  dosage: 'Select Dosage',
-  note: 'Note',
-};
-
 const stepOrder: WizardStep[] = ['name', 'form', 'frequency', 'dosage', 'note'];
 
 export function AddMedsScreen({ locale }: AddMedsScreenProps) {
+  const t = getTranslations(locale);
+  const stepLabels: Record<WizardStep, string> = {
+    name: t.medicationName,
+    form: t.selectForm,
+    frequency: t.frequency,
+    dosage: t.selectDosage,
+    note: t.note,
+  };
   const [step, setStep] = useState<WizardStep>('name');
   const [name, setName] = useState('');
   const [form, setForm] = useState('Capsule');
@@ -48,7 +48,7 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
     }
 
     if (isLastStep) {
-      setSavedMessage(locale === 'tr' ? 'Ilac kaydi olusturuldu.' : 'Medication has been created.');
+      setSavedMessage(t.medicationCreated);
       return;
     }
 
@@ -67,7 +67,7 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
       <View style={styles.card}>
         {step === 'name' ? (
           <View style={styles.block}>
-            <TextField label="Medication Name" value={name} placeholder="Metformin" helperText="Required" onChangeText={setName} />
+            <TextField label={t.medicationName} value={name} placeholder="Metformin" helperText={t.required} onChangeText={setName} />
             <View style={styles.suggestList}>
               {['Acetaminophen', 'Ibuprofen', 'Aspirin', 'Amoxicillin'].map((suggestion) => (
                 <Pressable key={suggestion} style={styles.suggestItem} onPress={() => setName(suggestion)}>
@@ -126,15 +126,15 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
             <TextField
               label="Note"
               value={note}
-              placeholder="Optional note about the medication"
-              helperText="Optional"
+              placeholder={locale === 'tr' ? 'Ilac hakkinda istege bagli not' : 'Optional note about the medication'}
+              helperText={t.optional}
               onChangeText={setNote}
             />
             <View style={styles.summary}>
-              <Text style={styles.summaryLine}>Name: {name || '-'}</Text>
-              <Text style={styles.summaryLine}>Form: {form}</Text>
-              <Text style={styles.summaryLine}>Frequency: {frequency}</Text>
-              <Text style={styles.summaryLine}>Dosage: {dosage}</Text>
+              <Text style={styles.summaryLine}>{`${t.name}: ${name || '-'}`}</Text>
+              <Text style={styles.summaryLine}>{`${t.form}: ${form}`}</Text>
+              <Text style={styles.summaryLine}>{`${t.frequency}: ${frequency}`}</Text>
+              <Text style={styles.summaryLine}>{`${t.dosage}: ${dosage}`}</Text>
             </View>
           </View>
         ) : null}
@@ -145,7 +145,7 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
       <View style={styles.actions}>
         {stepIndex > 0 ? (
           <Button
-            label="Back"
+            label={t.back}
             variant="outlined"
             onPress={() => {
               setSavedMessage('');
@@ -153,7 +153,7 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
             }}
           />
         ) : null}
-        <Button label={isLastStep ? 'Done' : 'Next'} onPress={goNext} disabled={!canGoNext} />
+        <Button label={isLastStep ? t.done : t.next} onPress={goNext} disabled={!canGoNext} />
       </View>
     </ScrollView>
   );

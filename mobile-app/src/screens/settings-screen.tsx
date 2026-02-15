@@ -3,6 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-nat
 import { ScreenHeader } from '../components/ui/screen-header';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { toShortDisplayName } from '../features/profile/display-name';
+import { currentUser } from '../features/profile/current-user';
 import { theme } from '../theme';
 
 type SettingsScreenProps = {
@@ -18,6 +20,7 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
   const t = getTranslations(locale);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [medRemindersEnabled, setMedRemindersEnabled] = useState(true);
+  const shortDisplayName = toShortDisplayName(currentUser.fullName);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -26,48 +29,48 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
       <View style={styles.profileCard}>
         <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩</Text></View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>Hello, Hanie</Text>
+          <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
           <Pressable onPress={onOpenProfile}>
-            <Text style={styles.editLink}>Edit profile</Text>
+            <Text style={styles.editLink}>{t.editProfile}</Text>
           </Pressable>
         </View>
       </View>
 
-      <Section title="Profile">
-        <MenuRow label="Accounts Center" value="2 accounts" onPress={onOpenProfile} />
+      <Section title={t.profileSection}>
+        <MenuRow label={t.accountsCenter} value={t.accountsValue} onPress={onOpenProfile} />
       </Section>
 
-      <Section title="Reminder & Alarm">
-        <MenuRow label="Notification settings" value="Default app sound" />
+      <Section title={t.reminderAlarm}>
+        <MenuRow label={t.notificationSettings} value={t.defaultAppSound} />
         <View style={styles.switchRow}>
           <View>
-            <Text style={styles.rowTitle}>App Notifications</Text>
-            <Text style={styles.rowSubtitle}>Open medication reminders</Text>
+            <Text style={styles.rowTitle}>{t.appNotifications}</Text>
+            <Text style={styles.rowSubtitle}>{t.openMedicationReminders}</Text>
           </View>
           <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
         </View>
         <View style={styles.switchRow}>
           <View>
-            <Text style={styles.rowTitle}>Medication reminders</Text>
-            <Text style={styles.rowSubtitle}>Daily medication schedule alerts</Text>
+            <Text style={styles.rowTitle}>{t.medicationReminders}</Text>
+            <Text style={styles.rowSubtitle}>{t.dailyMedicationAlerts}</Text>
           </View>
           <Switch value={medRemindersEnabled} onValueChange={setMedRemindersEnabled} />
         </View>
       </Section>
 
-      <Section title="General">
+      <Section title={t.general}>
         <View style={styles.languageBlock}>
-          <Text style={styles.rowTitle}>Language</Text>
+          <Text style={styles.rowTitle}>{t.language}</Text>
           <View style={styles.languageRow}>
             <Pressable onPress={() => onLocaleChange('tr')} style={[styles.languageChip, locale === 'tr' && styles.languageChipActive]}>
-              <Text style={[styles.languageChipText, locale === 'tr' && styles.languageChipTextActive]}>Turkish (TR)</Text>
+              <Text style={[styles.languageChipText, locale === 'tr' && styles.languageChipTextActive]}>{t.turkishTR}</Text>
             </Pressable>
             <Pressable onPress={() => onLocaleChange('en')} style={[styles.languageChip, locale === 'en' && styles.languageChipActive]}>
-              <Text style={[styles.languageChipText, locale === 'en' && styles.languageChipTextActive]}>English (EN)</Text>
+              <Text style={[styles.languageChipText, locale === 'en' && styles.languageChipTextActive]}>{t.englishEN}</Text>
             </Pressable>
           </View>
         </View>
-        <MenuRow label="Display zoom" value={`${Math.round(fontScale * 100)}%`} />
+        <MenuRow label={t.displayZoom} value={`${Math.round(fontScale * 100)}%`} />
         <View style={styles.zoomRow}>
           {fontScaleLevels.map((level) => {
             const selected = level === fontScale;
@@ -80,12 +83,12 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
         </View>
       </Section>
 
-      <Section title="Reporting">
-        <MenuRow label="Reports" value="Weekly, monthly" onPress={onOpenReports} />
+      <Section title={t.reporting}>
+        <MenuRow label={t.reports} value={t.weeklyMonthly} onPress={onOpenReports} />
       </Section>
 
-      <Section title="About Us">
-        <MenuRow label="App info" value="Version 1.0.2" />
+      <Section title={t.aboutUs}>
+        <MenuRow label={t.appInfo} value="Version 1.0.2" />
       </Section>
 
       <View style={styles.bottomSpacer} />

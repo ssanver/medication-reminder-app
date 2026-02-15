@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
-import { type Locale } from '../../features/localization/localization';
+import { getTranslations, type Locale } from '../../features/localization/localization';
 import { loginWithSocial } from '../../features/auth/social-auth';
 import { isSignUpFormValid } from '../../features/auth/signup-validation';
 import { theme } from '../../theme';
@@ -16,6 +16,7 @@ type SignUpScreenProps = {
 };
 
 export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUpScreenProps) {
+  const t = getTranslations(locale);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,33 +47,33 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
       <Pressable style={styles.backButton} onPress={onBack}>
         <Text style={styles.backIcon}>{'<'}</Text>
       </Pressable>
-      <Text style={styles.title}>Sign Up</Text>
-      <Text style={styles.subtitle}>Fill in the details to create your account</Text>
+      <Text style={styles.title}>{t.signUpTitle}</Text>
+      <Text style={styles.subtitle}>{t.signUpSubtitle}</Text>
 
       {showSuccess ? (
         <View style={styles.successBanner}>
-          <Text style={styles.successTitle}>Sign Up Completed!</Text>
-          <Text style={styles.successText}>Account has been created successfully.</Text>
+          <Text style={styles.successTitle}>{t.successSignUp}</Text>
+          <Text style={styles.successText}>{t.successSignUpDescription}</Text>
         </View>
       ) : null}
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
       {socialMessage ? <Text style={styles.successInline}>{socialMessage}</Text> : null}
 
       <View style={styles.form}>
-        <TextField label="Name" value={name} placeholder="Enter your name" onChangeText={setName} />
-        <TextField label="Email" value={email} placeholder="Enter your email address" onChangeText={setEmail} />
+        <TextField label={t.name} value={name} placeholder={t.enterYourName} onChangeText={setName} />
+        <TextField label={t.email} value={email} placeholder={t.enterYourEmail} onChangeText={setEmail} />
         <TextField
-          label="Password"
+          label={t.password}
           value={password}
           secureTextEntry
-          placeholder="Enter your desired password"
+          placeholder={t.enterYourDesiredPassword}
           trailingIcon="o"
           onChangeText={setPassword}
         />
       </View>
 
       <Button
-        label="Create an account"
+        label={t.createAccount}
         onPress={() => {
           if (!canSubmit) {
             setErrorText(
@@ -88,28 +89,28 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         }}
       />
 
-      <Text style={styles.legal}>By signing in, you agree to our Terms of Service and Privacy Policy.</Text>
+      <Text style={styles.legal}>{t.termsText}</Text>
       <View style={styles.dividerRow}>
         <View style={styles.divider} />
-        <Text style={styles.orText}>Or</Text>
+        <Text style={styles.orText}>{t.or}</Text>
         <View style={styles.divider} />
       </View>
       <Button
-        label="Continue with Apple"
+        label={t.continueWithApple}
         leadingNode={<BrandIcon name="apple" />}
         variant="outlined"
         onPress={() => void handleSocialAuth('Apple')}
         disabled={isSocialLoading}
       />
       <Button
-        label="Continue with Google"
+        label={t.continueWithGoogle}
         leadingNode={<BrandIcon name="google" />}
         variant="outlined"
         onPress={() => void handleSocialAuth('Google')}
         disabled={isSocialLoading}
       />
       <Pressable onPress={onOpenSignIn}>
-        <Text style={styles.signInText}>{locale === 'tr' ? 'Zaten hesabin var mi? Sign in' : 'Already have an account? Sign in'}</Text>
+        <Text style={styles.signInText}>{t.alreadyHaveAccount}</Text>
       </Pressable>
     </ScrollView>
   );
