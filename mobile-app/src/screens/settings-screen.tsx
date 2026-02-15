@@ -9,9 +9,18 @@ type SettingsScreenProps = {
   onLocaleChange: (locale: Locale) => void;
   fontScale: number;
   onFontScaleChange: (fontScale: number) => void;
+  onOpenReports: () => void;
+  onOpenProfile: () => void;
 };
 
-export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleChange }: SettingsScreenProps) {
+export function SettingsScreen({
+  locale,
+  onLocaleChange,
+  fontScale,
+  onFontScaleChange,
+  onOpenReports,
+  onOpenProfile,
+}: SettingsScreenProps) {
   const t = getTranslations(locale);
 
   return (
@@ -42,6 +51,18 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
             );
           })}
         </View>
+      </View>
+
+      <View style={styles.group}>
+        <Text style={styles.label}>Kisa yollar</Text>
+        <Pressable style={styles.linkRow} onPress={onOpenReports}>
+          <Text style={styles.linkText}>Raporlar</Text>
+          <Text style={styles.linkArrow}>{'>'}</Text>
+        </Pressable>
+        <Pressable style={styles.linkRow} onPress={onOpenProfile}>
+          <Text style={styles.linkText}>Profil</Text>
+          <Text style={styles.linkArrow}>{'>'}</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -81,5 +102,24 @@ const styles = StyleSheet.create({
   chipText: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textPrimary,
+  },
+  linkRow: {
+    minHeight: 44,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+    paddingHorizontal: theme.spacing[16],
+    backgroundColor: theme.colors.neutral[50],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  linkText: {
+    ...theme.typography.bodyScale.mRegular,
+    color: theme.colors.semantic.textPrimary,
+  },
+  linkArrow: {
+    ...theme.typography.bodyScale.mRegular,
+    color: theme.colors.semantic.textSecondary,
   },
 });

@@ -8,11 +8,14 @@ import type { AppIconName } from '../components/ui/app-icon';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
+import { ProfileScreen } from '../screens/profile-screen';
+import { ReportsScreen } from '../screens/reports-screen';
 import { SettingsScreen } from '../screens/settings-screen';
 import { TodayScreen } from '../screens/today-screen';
 import { theme } from '../theme';
 
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
+type OverlayScreen = 'none' | 'reports' | 'profile';
 
 const tabGlyph: Record<TabKey, AppIconName> = {
   today: 'home',
@@ -29,6 +32,7 @@ export function AppNavigator() {
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [notificationGranted, setNotificationGranted] = useState(false);
+  const [overlayScreen, setOverlayScreen] = useState<OverlayScreen>('none');
 
   const t = getTranslations(locale);
   const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
@@ -67,9 +71,33 @@ export function AppNavigator() {
     );
   }
 
+  if (overlayScreen === 'reports') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <ReportsScreen onBack={() => setOverlayScreen('none')} />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'profile') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <ProfileScreen onBack={() => setOverlayScreen('none')} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <View style={styles.content}>{renderTab(activeTab, locale, setLocale, fontScale, setFontScale)}</View>
+      <View style={styles.content}>
+        {renderTab(activeTab, locale, setLocale, fontScale, setFontScale, () => setOverlayScreen('reports'), () =>
+          setOverlayScreen('profile'),
+        )}
+      </View>
       <BottomNav
         items={[
           { key: 'today', label: t.today, icon: tabGlyph.today },
@@ -90,6 +118,8 @@ function renderTab(
   onLocaleChange: (locale: Locale) => void,
   fontScale: number,
   onFontScaleChange: (value: number) => void,
+  onOpenReports: () => void,
+  onOpenProfile: () => void,
 ) {
   switch (tab) {
     case 'today':
@@ -104,6 +134,8 @@ function renderTab(
           locale={locale}
           onLocaleChange={onLocaleChange}
           fontScale={fontScale}
+          onOpenReports={onOpenReports}
+          onOpenProfile={onOpenProfile}
           onFontScaleChange={(value) => {
             if (isFontScaleLevelValid(value)) {
               onFontScaleChange(value);

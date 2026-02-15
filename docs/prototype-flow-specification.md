@@ -89,7 +89,18 @@ Bu doküman, prototype üzerindeki ekran sıralarını React Native navigasyon a
 4. Geri navigasyonda form state kaybı yalnızca kullanıcı onayıyla olmalıdır.
 5. Tab geçişleri arasında `today` ve `my-meds` filtre state’i korunmalıdır.
 
-## 8. İzlenebilirlik
+## 8. Uygulama Durumu (2026-02-15)
+- `reports-screen` eklendi ve `settings-screen` icinden erisilebilir.
+- `profile-screen` eklendi ve `settings-screen` icinden erisilebilir.
+- Alt tab componenti icon altyapisina baglandi (`app-icon` + `bottom-nav`).
+- Eksik kalanlar:
+- `splash-screen`
+- `sign-up-screen`
+- `medication-details-screen`
+- `accounts-center-screen`
+- detayli bottom-sheet varyantlari
+
+## 9. İzlenebilirlik
 - PF-01 (ilk açılış akışı) -> US-13
 - PF-02 (ilaç ekleme wizard) -> US-01, US-02
 - PF-03 (today ve doz aksiyonları) -> US-03, US-04
