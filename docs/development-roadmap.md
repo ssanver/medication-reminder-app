@@ -31,7 +31,7 @@
 |---|---|---|
 | PBI-001 | Done | `dotnet build medication-reminder-app.slnx`, `dotnet test medication-reminder-app.slnx` (2/2), `api/data/migrations/*InitialCreate*` |
 | PBI-002 | Done | `mobile-app/src/screens/auth/onboarding-screen.tsx`, `npm test` (3/3), `npx tsc --noEmit` |
-| PBI-003 | Todo | - |
+| PBI-003 | Done | `api/Controllers/medications-controller.cs`, `api.tests/medications-controller-tests.cs`, `dotnet test` (6/6) |
 | PBI-004 | Todo | - |
 | PBI-005 | Todo | - |
 | PBI-006 | Todo | - |
