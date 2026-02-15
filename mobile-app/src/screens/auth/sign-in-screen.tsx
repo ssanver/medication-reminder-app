@@ -4,6 +4,7 @@ import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { type Locale } from '../../features/localization/localization';
+import { loginWithSocial } from '../../features/auth/social-auth';
 import { theme } from '../../theme';
 
 type SignInScreenProps = {
@@ -17,13 +18,23 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
   const [password, setPassword] = useState('');
   const [errorText, setErrorText] = useState('');
   const [socialMessage, setSocialMessage] = useState('');
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
 
   const canSubmit = useMemo(() => email.includes('@') && password.trim().length >= 6, [email, password]);
 
-  function handleSocialAuth(provider: 'Apple' | 'Google') {
-    setErrorText('');
-    setSocialMessage(locale === 'tr' ? `${provider} ile giris basarili.` : `Signed in with ${provider}.`);
-    setTimeout(() => onSuccess(), 500);
+  async function handleSocialAuth(provider: 'Apple' | 'Google') {
+    try {
+      setIsSocialLoading(true);
+      setErrorText('');
+      const response = await loginWithSocial(provider);
+      setSocialMessage(locale === 'tr' ? `${response.provider} ile giris basarili.` : `Signed in with ${response.provider}.`);
+      setTimeout(() => onSuccess(), 400);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Social login failed.';
+      setErrorText(locale === 'tr' ? `Sosyal giris basarisiz: ${message}` : `Social login failed: ${message}`);
+    } finally {
+      setIsSocialLoading(false);
+    }
   }
 
   return (
@@ -56,13 +67,15 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
         label="Continue with Apple"
         leadingNode={<BrandIcon name="apple" />}
         variant="outlined"
-        onPress={() => handleSocialAuth('Apple')}
+        onPress={() => void handleSocialAuth('Apple')}
+        disabled={isSocialLoading}
       />
       <Button
         label="Continue with Google"
         leadingNode={<BrandIcon name="google" />}
         variant="outlined"
-        onPress={() => handleSocialAuth('Google')}
+        onPress={() => void handleSocialAuth('Google')}
+        disabled={isSocialLoading}
       />
 
       <Pressable onPress={onOpenSignUp}>
