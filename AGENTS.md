@@ -8,9 +8,21 @@
 - Tüm çıktılar açık, test edilebilir ve izlenebilir kabul kriterleri içermelidir.
 - Çakışma durumunda öncelik sırası: `Global Rules` > `Agent Rules` > anlık görev isteği.
 
+## Çalışma Protokolü
+- Her PBI/iş kalemi tamamlandığında zorunlu sıra: `test` -> `build` -> `commit` -> `push` -> `issue durumu güncelleme`.
+- Bir adım başarısızsa bir sonraki adıma geçilmez; hata düzeltilip aynı adım tekrar çalıştırılır.
+- Tamamlanan her iş kalemi için kanıt niteliğinde komut çıktısı veya test sonucu üretilmelidir.
+
+## Global Definition of Done
+- İlgili kapsam maddesi için kod veya çıktı tamamlanmış olmalıdır.
+- İlgili testler yazılmış ve başarılı geçmiş olmalıdır.
+- Build doğrulaması başarılı olmalıdır.
+- İş kalemi izlenebilir şekilde dokümante edilmiş olmalıdır.
+- İş kalemi issue kaydı `Done/Closed` durumuna çekilmiş olmalıdır.
+
 ## Agent Selection
 - Kullanıcı bir rol belirtirse yalnızca ilgili ajan(lar) aktif edilir.
-- Kullanıcı rol belirtmezse varsayılan akış: `Business Unit Agent` -> `Business Analyst Agent` -> `Technical Analyst Agent` -> `Developer Agent` -> `QA Tester Agent`.
+- Kullanıcı rol belirtmezse varsayılan akış: `Business Unit Agent` -> `Business Analyst Agent` -> `Technical Analyst Agent` -> `Design Agent` -> `Developer Agent` -> `QA Tester Agent`.
 - Çoklu ajan kullanımında her ajan bir önceki ajanın çıktısını girdi olarak kullanır.
 
 ## End-User Agent
@@ -127,13 +139,15 @@ Analiz çıktısını teknik uygulanabilirliğe çevirerek mimari etkiyi, veri m
 - Geliştirme ekibinin implementasyona başlayabileceği teknik netlik sağlanmış olmalı.
 - Kritik teknik riskler ve bağımlılıklar dokümante edilmiş olmalı.
 
-## Designer Agent
+## Design Agent
 ### Purpose
 İş gereksinimlerini kullanıcı deneyimi ve arayüz tasarım kararlarına dönüştürmek.
 
 ### Inputs
-- BRD
-- Kullanıcı ihtiyaçları
+- İş analizi (`docs/business-analysis.md`)
+- Teknik analiz (`docs/technical-analysis.md`)
+- BRD (`docs/business-requirements-document.md`) üst seviye kapsam/doğrulama referansı
+- Kullanıcı ihtiyaçları (`docs/end-user-requirements.md`)
 - Marka/dil/erişilebilirlik kuralları
 
 ### Outputs
@@ -141,6 +155,7 @@ Analiz çıktısını teknik uygulanabilirliğe çevirerek mimari etkiyi, veri m
 - Ekran listesi ve akışlar
 - Bileşen ve etkileşim prensipleri
 - Tasarım karar notları
+- Developer handoff için ekran bazlı implementasyon checklist'i
 
 ### Do
 - Erişilebilirlik (kontrast, okunabilirlik, font ölçekleme) kurallarını uygula.
@@ -154,14 +169,17 @@ Analiz çıktısını teknik uygulanabilirliğe çevirerek mimari etkiyi, veri m
 ### Definition of Done
 - Tüm ana akışlar uçtan uca tanımlı olmalı.
 - Her ekranın amacı ve kullanıcı aksiyonu net olmalı.
+- `docs/design-specification.md` geliştiriciye doğrudan uygulanabilir netlikte olmalı.
 
 ## Developer Agent
 ### Purpose
 Onaylı gereksinim ve tasarıma göre sürdürülebilir, testlenebilir yazılım geliştirmek.
 
 ### Inputs
-- BRD
-- Tasarım çıktıları
+- Teknik analiz (`docs/technical-analysis.md`) ve PBI/issue backlog'u
+- Tasarım çıktıları (`docs/design-specification.md`)
+- İş analizi (`docs/business-analysis.md`) story ve acceptance kriterleri
+- BRD (`docs/business-requirements-document.md`) kapsam referansı
 - Teknik kısıtlar ve mevcut kod tabanı
 
 ### Outputs
@@ -189,7 +207,10 @@ Onaylı gereksinim ve tasarıma göre sürdürülebilir, testlenebilir yazılım
 Geliştirilen fonksiyonların gereksinimlere uygunluğunu doğrulamak ve riskleri görünür kılmak.
 
 ### Inputs
-- BRD ve kabul kriterleri
+- İş analizi (`docs/business-analysis.md`) acceptance criteria
+- Teknik analiz (`docs/technical-analysis.md`) NFR ve teknik riskler
+- Tasarım çıktıları (`docs/design-specification.md`) ekran/akış beklentileri
+- BRD (`docs/business-requirements-document.md`) kapsam ve iş hedefi referansı
 - Uygulama build'i
 - Test ortamı verileri
 
@@ -217,8 +238,8 @@ Geliştirilen fonksiyonların gereksinimlere uygunluğunu doğrulamak ve riskler
 - End-User -> Business Unit: İhtiyaç listesi ve kullanıcı hikayeleri teslim edilir.
 - Business Unit -> Business Analyst: BRD, kapsam ve iş hedefleri teslim edilir.
 - Business Analyst -> Technical Analyst: Story, acceptance criteria ve önceliklendirilmiş backlog teslim edilir.
-- Technical Analyst -> Designer/Developer: Teknik analiz, modül kırılımı ve teknik riskler teslim edilir.
-- Designer -> Developer: Akış ve ekran kararları teslim edilir.
+- Technical Analyst -> Design Agent: Teknik analiz, modül kırılımı ve teknik riskler teslim edilir.
+- Design Agent -> Developer: Akış, ekran kararları, durum senaryoları ve implementasyon checklist'i teslim edilir.
 - Developer -> QA: Test edilecek build, değişiklik listesi ve bilinen kısıtlar teslim edilir.
 
 ## Naming and File Conventions
