@@ -3,12 +3,17 @@
 ## Kaynak
 - Dosya: `mobile-app/src/assets/icons/01-general.svg`
 - Orijinal konum: `/Users/k.ss200061/Downloads/Icon Pack/01-General.svg`
+- Brand dosyalari: `mobile-app/src/assets/icons/brand/*.svg`
+- Orijinal konum: `/Users/k.ss200061/Downloads/Icon Pack/Brand/*.svg`
 
 ## Durum
 - Icon pack projeye kopyalandi ve versiyonlandi.
 - Uygulamada merkezi icon katmani eklendi:
 - `mobile-app/src/components/ui/app-icon.tsx`
+- Brand icon katmani eklendi:
+- `mobile-app/src/components/ui/brand-icon.tsx`
 - `mobile-app/src/components/ui/bottom-nav.tsx` iconlari bu katmani kullanir.
+- `sign-up` ve `sign-in` sosyal butonlari Apple/Google brand iconlari ile guncellendi.
 
 ## Teknik Not
 - Mevcut `01-general.svg` tek bir sprite/artboard dosyasi oldugu icin iconlar tek tek isimlendirilebilir durumda degil.

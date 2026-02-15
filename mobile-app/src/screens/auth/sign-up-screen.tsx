@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { type Locale } from '../../features/localization/localization';
@@ -77,8 +78,18 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         <Text style={styles.orText}>Or</Text>
         <View style={styles.divider} />
       </View>
-      <Button label="Continue with Apple" leadingIcon="" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
-      <Button label="Continue with Google" leadingIcon="G" variant="outlined" onPress={() => handleSocialAuth('Google')} />
+      <Button
+        label="Continue with Apple"
+        leadingNode={<BrandIcon name="apple" />}
+        variant="outlined"
+        onPress={() => handleSocialAuth('Apple')}
+      />
+      <Button
+        label="Continue with Google"
+        leadingNode={<BrandIcon name="google" />}
+        variant="outlined"
+        onPress={() => handleSocialAuth('Google')}
+      />
       <Pressable onPress={onOpenSignIn}>
         <Text style={styles.signInText}>{locale === 'tr' ? 'Zaten hesabin var mi? Sign in' : 'Already have an account? Sign in'}</Text>
       </Pressable>

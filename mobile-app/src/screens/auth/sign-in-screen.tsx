@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { type Locale } from '../../features/localization/localization';
@@ -51,8 +52,18 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       />
 
       <Text style={styles.legal}>By signing in, you agree to our Terms of Service and Privacy Policy.</Text>
-      <Button label="Continue with Apple" leadingIcon="" variant="outlined" onPress={() => handleSocialAuth('Apple')} />
-      <Button label="Continue with Google" leadingIcon="G" variant="outlined" onPress={() => handleSocialAuth('Google')} />
+      <Button
+        label="Continue with Apple"
+        leadingNode={<BrandIcon name="apple" />}
+        variant="outlined"
+        onPress={() => handleSocialAuth('Apple')}
+      />
+      <Button
+        label="Continue with Google"
+        leadingNode={<BrandIcon name="google" />}
+        variant="outlined"
+        onPress={() => handleSocialAuth('Google')}
+      />
 
       <Pressable onPress={onOpenSignUp}>
         <Text style={styles.signUpText}>{locale === 'tr' ? 'Hesabin yok mu? Sign up' : "Don't have an account? Sign up"}</Text>

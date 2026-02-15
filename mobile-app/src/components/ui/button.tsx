@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
+import type { ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { theme } from '../../theme';
 
 type ButtonVariant = 'filled' | 'filled-dark' | 'outlined' | 'ghost' | 'success' | 'danger';
@@ -7,6 +8,7 @@ type ButtonSize = 'xs' | 's' | 'm' | 'l';
 type ButtonProps = {
   label: string;
   leadingIcon?: string;
+  leadingNode?: ReactNode;
   disabled?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -17,6 +19,7 @@ type ButtonProps = {
 export function Button({
   label,
   leadingIcon,
+  leadingNode,
   disabled = false,
   variant = 'filled',
   size = 'm',
@@ -35,10 +38,13 @@ export function Button({
         disabled && styles.disabled,
       ]}
     >
-      <Text style={[textSizeStyles[size], textVariantStyles[variant], disabled && styles.disabledText]}>
-        {leadingIcon ? `${leadingIcon}  ` : ''}
-        {label}
-      </Text>
+      <View style={styles.contentRow}>
+        {leadingNode ? <View style={styles.leadingNode}>{leadingNode}</View> : null}
+        <Text style={[textSizeStyles[size], textVariantStyles[variant], disabled && styles.disabledText]}>
+          {leadingIcon ? `${leadingIcon}  ` : ''}
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -58,6 +64,18 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     color: theme.colors.neutral[500],
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing[8],
+  },
+  leadingNode: {
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
