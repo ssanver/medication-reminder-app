@@ -1,25 +1,25 @@
-# End User Document
+# Son Kullanıcı Dokümanı
 
-## Purpose
-This document defines end-user needs, expectations, and requests for the Medication Reminder App. The business unit can use this as input when preparing the BRD (Business Requirements Document).
+## Amaç
+Bu doküman, İlaç Hatırlatma Uygulaması için son kullanıcı ihtiyaçlarını, beklentilerini ve isteklerini tanımlar. İş birimi bu içeriği BRD (Business Requirements Document) hazırlığında girdi olarak kullanır.
 
-## User Needs, Expectations, and Requests
+## Kullanıcı İhtiyaçları, Beklentileri ve İstekleri
 
-- I want to add my medications easily (name, dosage, schedule, before/after meal info).
-- I want to quickly set up daily/weekly recurring reminders.
-- I want clear notifications at reminder time that are hard to miss.
-- I want to snooze reminders and mark doses as "taken" or "missed".
-- I want to set multiple times for the same medication.
-- I want medication stock tracking and low-stock alerts.
-- I want refill reminders before prescription renewal dates.
-- I want to add reminders for doctor appointments and lab tests.
-- I want to see my adherence history (taken/missed by date and time).
-- I want a simple interface that is easy for elderly users to understand.
-- I want accessibility settings like dark mode and adjustable font size.
-- I want core reminders to work offline.
-- I want my data to be secure and my privacy protected.
-- I want caregiver/family support when someone needs to track on my behalf.
-- I want cross-device sync (phone/tablet).
-- I want to share my medication list quickly in emergencies.
-- I want Turkish language support and a simple onboarding flow.
-- I want an ad-free or non-intrusive user experience.
+- İlaçlarımı kolayca eklemek istiyorum (isim, doz, kullanım zamanı, aç/tok bilgisi).
+- Günlük/haftalık tekrar eden hatırlatmaları hızlıca ayarlamak istiyorum.
+- Hatırlatma saatinde net ve kaçırılmayacak bildirim almak istiyorum.
+- Bildirimi erteleyebilmek ve "aldım/almadım" olarak işaretleyebilmek istiyorum.
+- Aynı ilaç için birden fazla saat tanımlayabilmek istiyorum.
+- İlaç stok takibi yapıp azaldığında uyarı almak istiyorum.
+- Reçete yenileme tarihi yaklaşınca hatırlatma almak istiyorum.
+- Doktor randevusu ve tahlil tarihleri için de hatırlatma eklemek istiyorum.
+- Kullanım geçmişimi görmek istiyorum (hangi gün/saatte aldım, kaçırdım).
+- Basit ve yaşlı kullanıcılar için de anlaşılır bir arayüz istiyorum.
+- Karanlık mod ve yazı boyutu seçenekleri gibi erişilebilirlik ayarları istiyorum.
+- İnternet olmadan da temel hatırlatmaların çalışmasını istiyorum.
+- Verilerimin güvenli olmasını ve gizliliğimin korunmasını istiyorum.
+- Yakınımın (aile bireyi/bakıcı) gerektiğinde benim yerime takip edebilmesini istiyorum.
+- Farklı cihazlarda senkronizasyon (telefon/tablet) olmasını istiyorum.
+- Acil durumda ilaç listemi tek ekranda paylaşabilmek istiyorum.
+- Türkçe dil desteği ve sade bir onboarding süreci istiyorum.
+- Reklamsız veya rahatsız etmeyen bir kullanım deneyimi istiyorum.
