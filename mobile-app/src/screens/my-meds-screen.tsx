@@ -11,11 +11,12 @@ import { theme } from '../theme';
 type MyMedsScreenProps = {
   locale: Locale;
   fontScale: number;
+  onOpenMedicationDetails: (medicationId: string) => void;
 };
 
 type MedStatus = 'All' | 'Active' | 'Inactive';
 
-export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
+export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyMedsScreenProps) {
   const store = useMedicationStore();
   const t =
     locale === 'tr'
@@ -108,6 +109,7 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
             compact
             medEmoji={item.emoji}
             onToggle={(value) => void setMedicationActive(item.id, value)}
+            onPress={() => onOpenMedicationDetails(item.id)}
           />
         ))}
       </View>

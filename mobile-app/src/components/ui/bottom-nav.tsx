@@ -24,7 +24,7 @@ export function BottomNav({ items, activeKey, onChange }: BottomNavProps) {
           <Pressable key={item.key} style={styles.item} onPress={() => onChange(item.key)}>
             <AppIcon
               name={item.icon}
-              size={13}
+              size={18}
               color={active ? theme.colors.primaryBlue[500] : theme.colors.semantic.textSecondary}
             />
             <Text style={[styles.label, active && styles.labelActive]}>{item.label}</Text>

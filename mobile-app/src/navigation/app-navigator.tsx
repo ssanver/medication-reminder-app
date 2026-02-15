@@ -10,7 +10,9 @@ import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
+import { MedicationDetailsScreen } from '../screens/medication-details-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
+import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
 import { ReportsScreen } from '../screens/reports-screen';
 import { SettingsScreen } from '../screens/settings-screen';
@@ -18,7 +20,18 @@ import { TodayScreen } from '../screens/today-screen';
 import { theme } from '../theme';
 
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
-type OverlayScreen = 'none' | 'reports' | 'profile';
+type OverlayScreen =
+  | 'none'
+  | 'reports'
+  | 'profile'
+  | 'medication-details'
+  | 'notification-settings'
+  | 'reminder-preferences'
+  | 'appearance'
+  | 'privacy-security'
+  | 'change-password'
+  | 'accounts-center'
+  | 'about-us';
 type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
 
 const tabGlyph: Record<TabKey, AppIconName> = {
@@ -35,6 +48,7 @@ export function AppNavigator() {
   const [activeTab, setActiveTab] = useState<TabKey>('today');
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [overlayScreen, setOverlayScreen] = useState<OverlayScreen>('none');
+  const [selectedMedicationId, setSelectedMedicationId] = useState('');
 
   const t = getTranslations(locale);
   const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
@@ -133,6 +147,127 @@ export function AppNavigator() {
     );
   }
 
+  if (overlayScreen === 'medication-details') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <MedicationDetailsScreen locale={locale} medicationId={selectedMedicationId} onBack={() => setOverlayScreen('none')} />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'notification-settings') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PlaceholderDetailScreen
+            locale={locale}
+            title={locale === 'tr' ? 'Bildirim Ayarlari' : 'Notification Settings'}
+            description={locale === 'tr' ? 'Bildirim seslerini ve tercihlerini bu ekrandan yonetebilirsiniz.' : 'Manage notification sounds and preferences from this screen.'}
+            items={[locale === 'tr' ? 'Varsayilan ses' : 'Default sound', locale === 'tr' ? 'Uygulama bildirimleri' : 'App notifications']}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'reminder-preferences') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PlaceholderDetailScreen
+            locale={locale}
+            title={locale === 'tr' ? 'Hatirlatma Tercihleri' : 'Reminder Preferences'}
+            description={locale === 'tr' ? 'Hatirlatma periyodu ve erteleme ayarlarini duzenleyin.' : 'Set reminder period and snooze settings.'}
+            items={[locale === 'tr' ? 'Siklik' : 'Frequency', locale === 'tr' ? 'Erteleme suresi' : 'Snooze duration']}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'appearance') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PlaceholderDetailScreen
+            locale={locale}
+            title={locale === 'tr' ? 'Gorunum' : 'Appearance'}
+            description={locale === 'tr' ? 'Dil ve gorunum yakinlastirma ayarlari burada yer alir.' : 'Language and display zoom settings are available here.'}
+            items={[locale === 'tr' ? 'Dil' : 'Language', locale === 'tr' ? 'Gorunum yakinlastirma' : 'Display zoom']}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'privacy-security') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PlaceholderDetailScreen
+            locale={locale}
+            title={locale === 'tr' ? 'Gizlilik ve Guvenlik' : 'Privacy & Security'}
+            description={locale === 'tr' ? 'Hesap guvenligi ayarlarinizi yonetin.' : 'Manage account security options.'}
+            items={[locale === 'tr' ? 'Sifre degistir' : 'Change password']}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'change-password') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PlaceholderDetailScreen
+            locale={locale}
+            title={locale === 'tr' ? 'Sifre Degistir' : 'Change Password'}
+            description={locale === 'tr' ? 'Yeni sifrenizi bu ekrandan guncelleyebilirsiniz.' : 'You can update your password from this screen.'}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'accounts-center') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PlaceholderDetailScreen
+            locale={locale}
+            title={locale === 'tr' ? 'Hesap Merkezi' : 'Accounts Center'}
+            description={locale === 'tr' ? 'Bagli hesaplari yonetin ve yeni hesap ekleyin.' : 'Manage linked accounts and add a new account.'}
+            items={['Mom', locale === 'tr' ? 'Yeni hesap ekle' : 'Add another account']}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'about-us') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PlaceholderDetailScreen
+            locale={locale}
+            title={locale === 'tr' ? 'Hakkimizda' : 'About Us'}
+            description={locale === 'tr' ? 'Pill Mind uygulamasi hakkindaki bilgiler burada listelenir.' : 'Information about Pill Mind is listed here.'}
+            items={['Pill Mind', locale === 'tr' ? 'Surum bilgisi' : 'Version information']}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -144,8 +279,19 @@ export function AppNavigator() {
           setFontScale,
           () => setActiveTab('add-meds'),
           () => setActiveTab('my-meds'),
+          (medicationId) => {
+            setSelectedMedicationId(medicationId);
+            setOverlayScreen('medication-details');
+          },
           () => setOverlayScreen('reports'),
           () => setOverlayScreen('profile'),
+          () => setOverlayScreen('notification-settings'),
+          () => setOverlayScreen('reminder-preferences'),
+          () => setOverlayScreen('appearance'),
+          () => setOverlayScreen('privacy-security'),
+          () => setOverlayScreen('change-password'),
+          () => setOverlayScreen('accounts-center'),
+          () => setOverlayScreen('about-us'),
         )}
       </View>
       <BottomNav
@@ -170,14 +316,22 @@ function renderTab(
   onFontScaleChange: (value: number) => void,
   onOpenAddMeds: () => void,
   onMedicationSaved: () => void,
+  onOpenMedicationDetails: (medicationId: string) => void,
   onOpenReports: () => void,
   onOpenProfile: () => void,
+  onOpenNotificationSettings: () => void,
+  onOpenReminderPreferences: () => void,
+  onOpenAppearance: () => void,
+  onOpenPrivacySecurity: () => void,
+  onOpenChangePassword: () => void,
+  onOpenAccountsCenter: () => void,
+  onOpenAboutUs: () => void,
 ) {
   switch (tab) {
     case 'today':
       return <TodayScreen locale={locale} fontScale={fontScale} onOpenAddMedication={onOpenAddMeds} />;
     case 'my-meds':
-      return <MyMedsScreen locale={locale} fontScale={fontScale} />;
+      return <MyMedsScreen locale={locale} fontScale={fontScale} onOpenMedicationDetails={onOpenMedicationDetails} />;
     case 'add-meds':
       return <AddMedsScreen locale={locale} fontScale={fontScale} onMedicationSaved={onMedicationSaved} />;
     case 'settings':
@@ -188,6 +342,13 @@ function renderTab(
           fontScale={fontScale}
           onOpenReports={onOpenReports}
           onOpenProfile={onOpenProfile}
+          onOpenNotificationSettings={onOpenNotificationSettings}
+          onOpenReminderPreferences={onOpenReminderPreferences}
+          onOpenAppearance={onOpenAppearance}
+          onOpenPrivacySecurity={onOpenPrivacySecurity}
+          onOpenChangePassword={onOpenChangePassword}
+          onOpenAccountsCenter={onOpenAccountsCenter}
+          onOpenAboutUs={onOpenAboutUs}
           onFontScaleChange={(value) => {
             if (isFontScaleLevelValid(value)) {
               onFontScaleChange(value);

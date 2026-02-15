@@ -1,4 +1,4 @@
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Button } from './button';
 
@@ -17,6 +17,7 @@ type MedicationCardProps = {
   compact?: boolean;
   onToggle?: (value: boolean) => void;
   onActionPress?: () => void;
+  onPress?: () => void;
 };
 
 export function MedicationCard({
@@ -34,9 +35,10 @@ export function MedicationCard({
   compact = false,
   onToggle,
   onActionPress,
+  onPress,
 }: MedicationCardProps) {
   return (
-    <View style={[styles.card, compact && styles.cardCompact, !active && styles.cardDisabled]}>
+    <Pressable style={[styles.card, compact && styles.cardCompact, !active && styles.cardDisabled]} onPress={onPress}>
       {statusBadge ? (
         <View style={[styles.badge, statusBadge === 'missed' ? styles.badgeMissed : styles.badgeOnTime]}>
           <Text style={styles.badgeText}>{statusBadge === 'missed' ? 'Missed' : '2h 23m'}</Text>
@@ -68,7 +70,7 @@ export function MedicationCard({
           />
         </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getTranslations, type Locale } from '../features/localization/localization';
@@ -14,13 +15,41 @@ type SettingsScreenProps = {
   onFontScaleChange: (fontScale: number) => void;
   onOpenReports: () => void;
   onOpenProfile: () => void;
+  onOpenNotificationSettings: () => void;
+  onOpenReminderPreferences: () => void;
+  onOpenAppearance: () => void;
+  onOpenPrivacySecurity: () => void;
+  onOpenChangePassword: () => void;
+  onOpenAccountsCenter: () => void;
+  onOpenAboutUs: () => void;
 };
 
-export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleChange, onOpenReports, onOpenProfile }: SettingsScreenProps) {
+export function SettingsScreen({
+  locale,
+  onLocaleChange,
+  fontScale,
+  onFontScaleChange,
+  onOpenReports,
+  onOpenProfile,
+  onOpenNotificationSettings,
+  onOpenReminderPreferences,
+  onOpenAppearance,
+  onOpenPrivacySecurity,
+  onOpenChangePassword,
+  onOpenAccountsCenter,
+  onOpenAboutUs,
+}: SettingsScreenProps) {
   const t = getTranslations(locale);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [medRemindersEnabled, setMedRemindersEnabled] = useState(true);
   const shortDisplayName = toShortDisplayName(currentUser.fullName);
+  const version = useState(() => {
+    const expoVersion = Constants.expoConfig?.version ?? '1.0.0';
+    const iosBuild = Constants.expoConfig?.ios?.buildNumber;
+    const androidBuild = Constants.expoConfig?.android?.versionCode;
+    const buildMeta = iosBuild ?? (typeof androidBuild === 'number' ? `${androidBuild}` : 'dev');
+    return `Version ${expoVersion} (${buildMeta})`;
+  })[0];
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -37,11 +66,11 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
       </View>
 
       <Section title={t.profileSection}>
-        <MenuRow label={t.accountsCenter} value={t.accountsValue} onPress={onOpenProfile} />
+        <MenuRow label={t.accountsCenter} value={t.accountsValue} onPress={onOpenAccountsCenter} />
       </Section>
 
       <Section title={t.reminderAlarm}>
-        <MenuRow label={t.notificationSettings} value={t.defaultAppSound} />
+        <MenuRow label={t.notificationSettings} value={t.defaultAppSound} onPress={onOpenNotificationSettings} />
         <View style={styles.switchRow}>
           <View>
             <Text style={styles.rowTitle}>{t.appNotifications}</Text>
@@ -70,7 +99,7 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
             </Pressable>
           </View>
         </View>
-        <MenuRow label={t.displayZoom} value={`${Math.round(fontScale * 100)}%`} />
+        <MenuRow label={t.displayZoom} value={`${Math.round(fontScale * 100)}%`} onPress={onOpenAppearance} />
         <View style={styles.zoomRow}>
           {fontScaleLevels.map((level) => {
             const selected = level === fontScale;
@@ -85,10 +114,14 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
 
       <Section title={t.reporting}>
         <MenuRow label={t.reports} value={t.weeklyMonthly} onPress={onOpenReports} />
+        <MenuRow label={t.reminderAlarm} value={t.medicationReminders} onPress={onOpenReminderPreferences} />
+        <MenuRow label={locale === 'tr' ? 'Gizlilik ve Guvenlik' : 'Privacy & Security'} onPress={onOpenPrivacySecurity} />
+        <MenuRow label={locale === 'tr' ? 'Sifre Degistir' : 'Change Password'} onPress={onOpenChangePassword} />
       </Section>
 
       <Section title={t.aboutUs}>
-        <MenuRow label={t.appInfo} value="Version 1.0.2" />
+        <MenuRow label={t.appInfo} value={version} onPress={onOpenAboutUs} />
+        <MenuRow label={t.editProfile} onPress={onOpenProfile} />
       </Section>
 
       <View style={styles.bottomSpacer} />

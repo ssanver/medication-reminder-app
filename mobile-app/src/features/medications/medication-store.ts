@@ -197,6 +197,30 @@ export async function addMedication(payload: {
   await persist();
 }
 
+export function getMedicationById(medicationId: string): Medication | undefined {
+  return state.medications.find((item) => item.id === medicationId);
+}
+
+export async function updateMedication(
+  medicationId: string,
+  patch: Partial<Pick<Medication, 'name' | 'form' | 'dosage' | 'frequencyLabel' | 'note' | 'startDate' | 'time' | 'active'>>,
+): Promise<void> {
+  state = {
+    ...state,
+    medications: state.medications.map((item) =>
+      item.id === medicationId
+        ? {
+            ...item,
+            ...patch,
+            recurrence: patch.frequencyLabel ? recurrenceFromLabel(patch.frequencyLabel) : item.recurrence,
+          }
+        : item,
+    ),
+  };
+  emit();
+  await persist();
+}
+
 export async function setMedicationActive(medicationId: string, active: boolean): Promise<void> {
   state = {
     ...state,

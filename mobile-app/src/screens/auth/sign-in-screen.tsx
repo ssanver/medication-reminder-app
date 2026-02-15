@@ -15,14 +15,14 @@ type SignInScreenProps = {
 
 export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenProps) {
   const t = getTranslations(locale);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('123456');
+  const [password, setPassword] = useState('123456');
   const [isPasswordHidden, setIsPasswordHidden] = useState(true);
   const [errorText, setErrorText] = useState('');
   const [socialMessage, setSocialMessage] = useState('');
   const [isSocialLoading, setIsSocialLoading] = useState(false);
 
-  const canSubmit = useMemo(() => email.includes('@') && password.trim().length >= 6, [email, password]);
+  const canSubmit = useMemo(() => email.trim().length > 0 && password.trim().length >= 6, [email, password]);
 
   async function handleSocialAuth(provider: 'Apple' | 'Google') {
     try {
@@ -64,7 +64,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
         label={t.signIn}
         onPress={() => {
           if (!canSubmit) {
-            setErrorText(locale === 'tr' ? 'Gecerli email ve sifre giriniz.' : 'Please enter a valid email and password.');
+            setErrorText(locale === 'tr' ? 'Lutfen tum alanlari doldurun.' : 'Please fill in all required fields.');
             return;
           }
           setErrorText('');
