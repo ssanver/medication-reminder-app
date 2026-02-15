@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { addMedication } from '../features/medications/medication-store';
 import { theme } from '../theme';
 
@@ -17,6 +18,8 @@ const stepOrder: WizardStep[] = ['name', 'form', 'frequency', 'dosage', 'note'];
 
 export function AddMedsScreen({ locale }: AddMedsScreenProps) {
   const t = getTranslations(locale);
+  const formOptions = ['Capsule', 'Pill', 'Drop', 'Syrup', 'Injection', 'Other'];
+  const frequencyOptions = ['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'];
   const stepLabels: Record<WizardStep, string> = {
     name: t.medicationName,
     form: t.selectForm,
@@ -88,13 +91,13 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
 
         {step === 'form' ? (
           <View style={styles.choiceGrid}>
-            {['Capsule', 'Pill', 'Drop', 'Syrup', 'Injection', 'Other'].map((option) => {
+            {formOptions.map((option) => {
               const selected = form === option;
 
               return (
                 <Pressable key={option} style={[styles.choiceItem, selected && styles.choiceItemActive]} onPress={() => setForm(option)}>
                   <Text style={[styles.choiceIcon, selected && styles.choiceIconActive]}>💊</Text>
-                  <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{option}</Text>
+                  <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{localizeFormLabel(option, locale)}</Text>
                 </Pressable>
               );
             })}
@@ -103,12 +106,12 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
 
         {step === 'frequency' ? (
           <View style={styles.block}>
-            {['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'].map((option) => {
+            {frequencyOptions.map((option) => {
               const selected = frequency === option;
 
               return (
                 <Pressable key={option} style={[styles.rowButton, selected && styles.rowButtonActive]} onPress={() => setFrequency(option)}>
-                  <Text style={[styles.rowButtonText, selected && styles.rowButtonTextActive]}>{option}</Text>
+                  <Text style={[styles.rowButtonText, selected && styles.rowButtonTextActive]}>{localizeFrequencyLabel(option, locale)}</Text>
                 </Pressable>
               );
             })}
@@ -140,8 +143,8 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
             />
             <View style={styles.summary}>
               <Text style={styles.summaryLine}>{`${t.name}: ${name || '-'}`}</Text>
-              <Text style={styles.summaryLine}>{`${t.form}: ${form}`}</Text>
-              <Text style={styles.summaryLine}>{`${t.frequency}: ${frequency}`}</Text>
+              <Text style={styles.summaryLine}>{`${t.form}: ${localizeFormLabel(form, locale)}`}</Text>
+              <Text style={styles.summaryLine}>{`${t.frequency}: ${localizeFrequencyLabel(frequency, locale)}`}</Text>
               <Text style={styles.summaryLine}>{`${t.dosage}: ${dosage}`}</Text>
             </View>
           </View>

@@ -24,7 +24,7 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
   const [filter, setFilter] = useState<DoseStatus>('All');
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const shortDisplayName = toShortDisplayName(currentUser.fullName);
-  const doses = useMemo(() => getScheduledDosesForDate(selectedDate), [selectedDate, store.medications, store.events]);
+  const doses = useMemo(() => getScheduledDosesForDate(selectedDate, locale), [selectedDate, locale, store.medications, store.events]);
 
   const filtered = useMemo(() => {
     if (filter === 'All') {

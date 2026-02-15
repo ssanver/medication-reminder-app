@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
+import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { type Locale } from '../features/localization/localization';
 import { setMedicationActive } from '../features/medications/medication-store';
@@ -38,8 +39,8 @@ export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
         return {
           id: item.id,
           name: item.name,
-          details: `${item.frequencyLabel} | ${item.dosage} ${detailsUnit}`,
-          remaining: `Started ${item.startDate} | 10 Capsules remain`,
+          details: `${localizeFrequencyLabel(item.frequencyLabel, locale)} | ${item.dosage} ${localizeFormLabel(item.form, locale)}`,
+          remaining: locale === 'tr' ? `${item.startDate} baslangic | 10 adet kaldi` : `Started ${item.startDate} | 10 Capsules remain`,
           active: item.active,
           emoji: icon,
         };

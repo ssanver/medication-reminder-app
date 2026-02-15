@@ -13,7 +13,7 @@ type ReportsScreenProps = {
 export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
   const store = useMedicationStore();
   const summary = getAdherenceSummary(new Date());
-  const weekly = getWeeklyTrend(new Date());
+  const weekly = getWeeklyTrend(new Date(), locale);
   const medicationRows = getMedicationReport(new Date());
   const isTr = locale === 'tr';
 

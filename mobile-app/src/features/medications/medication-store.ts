@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { localizeFrequencyLabel } from '../localization/medication-localization';
+import { type Locale } from '../localization/localization';
 
 export type MedicationRecurrence = 'daily' | 'every-3-days' | 'hourly';
 export type DoseStatus = 'taken' | 'missed';
@@ -273,7 +275,7 @@ function iconForForm(form: string): string {
   return '🧴';
 }
 
-export function getScheduledDosesForDate(date: Date): ScheduledDoseItem[] {
+export function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): ScheduledDoseItem[] {
   const today = new Date();
   const dayCompare = compareDay(date, today);
   const dateKey = toDateKey(date);
@@ -290,7 +292,7 @@ export function getScheduledDosesForDate(date: Date): ScheduledDoseItem[] {
         medicationId: medication.id,
         name: medication.name,
         details: `${medication.dosage} ${detailsUnit}`,
-        schedule: `${medication.time} | ${medication.frequencyLabel}`,
+        schedule: `${medication.time} | ${localizeFrequencyLabel(medication.frequencyLabel, locale)}`,
         status,
         emoji: iconForForm(medication.form),
       };
@@ -327,8 +329,8 @@ export function getAdherenceSummary(referenceDate: Date): {
   };
 }
 
-export function getWeeklyTrend(referenceDate: Date): Array<{ label: string; value: number }> {
-  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export function getWeeklyTrend(referenceDate: Date, locale: Locale = 'en'): Array<{ label: string; value: number }> {
+  const labels = locale === 'tr' ? ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const out: Array<{ label: string; value: number }> = [];
 
   for (let i = 6; i >= 0; i -= 1) {
