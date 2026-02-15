@@ -134,6 +134,115 @@ public sealed class MedicationsControllerTests
         Assert.Equal(0, await dbContext.Medications.CountAsync());
     }
 
+    [Fact]
+    public async Task AddSchedule_ShouldAppendSchedule_WhenRequestIsValid()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = new MedicationsController(dbContext);
+        var medicationId = Guid.NewGuid();
+
+        var medication = new api.models.Medication
+        {
+            Id = medicationId,
+            Name = "Aferin",
+            Dosage = "200mg",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+            Schedules =
+            [
+                new api.models.MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    MedicationId = medicationId,
+                    RepeatType = "daily",
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        };
+
+        dbContext.Medications.Add(medication);
+        await dbContext.SaveChangesAsync();
+
+        var result = await controller.AddSchedule(medication.Id, new MedicationScheduleInput
+        {
+            RepeatType = "weekly",
+            ReminderTime = new TimeOnly(20, 0),
+            DaysOfWeek = "mon,fri",
+        });
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<MedicationResponse>(okResult.Value);
+
+        Assert.Equal(2, response.Schedules.Count);
+        Assert.Equal(2, await dbContext.MedicationSchedules.CountAsync());
+    }
+
+    [Fact]
+    public async Task AddSchedule_ShouldReturnBadRequest_WhenReminderTimeAlreadyExists()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = new MedicationsController(dbContext);
+        var medicationId = Guid.NewGuid();
+
+        var medication = new api.models.Medication
+        {
+            Id = medicationId,
+            Name = "Aferin",
+            Dosage = "200mg",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+            Schedules =
+            [
+                new api.models.MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    MedicationId = medicationId,
+                    RepeatType = "daily",
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        };
+
+        dbContext.Medications.Add(medication);
+        await dbContext.SaveChangesAsync();
+
+        var result = await controller.AddSchedule(medication.Id, new MedicationScheduleInput
+        {
+            RepeatType = "weekly",
+            ReminderTime = new TimeOnly(8, 0),
+            DaysOfWeek = "mon",
+        });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Duplicate reminder times are not allowed for the same medication.", badRequest.Value);
+    }
+
+    [Fact]
+    public async Task Create_ShouldReturnBadRequest_WhenRepeatTypeIsInvalid()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = new MedicationsController(dbContext);
+
+        var result = await controller.Create(new SaveMedicationRequest
+        {
+            Name = "Parol",
+            Dosage = "500mg",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+            Schedules =
+            [
+                new MedicationScheduleInput
+                {
+                    RepeatType = "monthly",
+                    ReminderTime = new TimeOnly(8, 30),
+                },
+            ],
+        });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Repeat type must be one of: daily, weekly.", badRequest.Value);
+    }
+
     private static AppDbContext CreateInMemoryContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
