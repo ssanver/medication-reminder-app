@@ -44,7 +44,7 @@ export function AppNavigator() {
       return;
     }
 
-    const timer = setTimeout(() => setPhase('onboarding'), 1200);
+    const timer = setTimeout(() => setPhase('onboarding'), 1600);
 
     return () => clearTimeout(timer);
   }, [phase]);
@@ -69,6 +69,7 @@ export function AppNavigator() {
             locale={locale}
             stepIndex={onboardingStep}
             onSkip={() => setPhase('signup')}
+            onOpenSignIn={() => setPhase('signin')}
             onNextStep={() => {
               const lastStepIndex = steps.length - 1;
 
@@ -141,6 +142,8 @@ export function AppNavigator() {
           setLocale,
           fontScale,
           setFontScale,
+          () => setActiveTab('add-meds'),
+          () => setActiveTab('my-meds'),
           () => setOverlayScreen('reports'),
           () => setOverlayScreen('profile'),
         )}
@@ -165,16 +168,18 @@ function renderTab(
   onLocaleChange: (locale: Locale) => void,
   fontScale: number,
   onFontScaleChange: (value: number) => void,
+  onOpenAddMeds: () => void,
+  onMedicationSaved: () => void,
   onOpenReports: () => void,
   onOpenProfile: () => void,
 ) {
   switch (tab) {
     case 'today':
-      return <TodayScreen locale={locale} fontScale={fontScale} />;
+      return <TodayScreen locale={locale} fontScale={fontScale} onOpenAddMedication={onOpenAddMeds} />;
     case 'my-meds':
       return <MyMedsScreen locale={locale} fontScale={fontScale} />;
     case 'add-meds':
-      return <AddMedsScreen locale={locale} fontScale={fontScale} />;
+      return <AddMedsScreen locale={locale} fontScale={fontScale} onMedicationSaved={onMedicationSaved} />;
     case 'settings':
       return (
         <SettingsScreen
@@ -191,7 +196,7 @@ function renderTab(
         />
       );
     default:
-      return <TodayScreen locale={locale} fontScale={fontScale} />;
+      return <TodayScreen locale={locale} fontScale={fontScale} onOpenAddMedication={onOpenAddMeds} />;
   }
 }
 

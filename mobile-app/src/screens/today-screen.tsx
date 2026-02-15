@@ -14,11 +14,12 @@ import { theme } from '../theme';
 type TodayScreenProps = {
   locale: Locale;
   fontScale: number;
+  onOpenAddMedication: () => void;
 };
 
 type DoseStatus = 'All' | 'Taken' | 'Missed';
 
-export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
+export function TodayScreen({ locale, fontScale, onOpenAddMedication }: TodayScreenProps) {
   const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<DoseStatus>('All');
@@ -104,7 +105,7 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
           <Text style={styles.emptyIcon}>💊</Text>
           <Text style={styles.emptyTitle}>{t.noMedicationTitle}</Text>
           <Text style={styles.emptyDescription}>{t.noMedicationDescription}</Text>
-          <Button label={t.addMedication} onPress={() => setFilter('All')} />
+          <Button label={t.addMedication} onPress={onOpenAddMedication} />
         </View>
       ) : (
         <View style={styles.list}>

@@ -11,9 +11,10 @@ type OnboardingScreenProps = {
   stepIndex: number;
   onNextStep: () => void;
   onSkip: () => void;
+  onOpenSignIn: () => void;
 };
 
-export function OnboardingScreen({ locale, stepIndex, onNextStep, onSkip }: OnboardingScreenProps) {
+export function OnboardingScreen({ locale, stepIndex, onNextStep, onSkip, onOpenSignIn }: OnboardingScreenProps) {
   const t = getTranslations(locale);
   const steps = getOnboardingSteps(locale);
   const step = steps[stepIndex];
@@ -43,7 +44,10 @@ export function OnboardingScreen({ locale, stepIndex, onNextStep, onSkip }: Onbo
         <Text style={styles.description}>{step.description}</Text>
       </View>
 
-      <Button label={isLastStep ? t.createAccount : t.next} onPress={onNextStep} />
+      <View style={styles.actions}>
+        <Button label={isLastStep ? t.createAccount : t.next} onPress={onNextStep} />
+        {isLastStep ? <Button label={t.signIn} variant="outlined" onPress={onOpenSignIn} /> : null}
+      </View>
     </View>
   );
 }
@@ -92,5 +96,8 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
     textAlign: 'center',
+  },
+  actions: {
+    gap: theme.spacing[8],
   },
 });
