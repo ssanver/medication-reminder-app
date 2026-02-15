@@ -1,0 +1,16 @@
+# Node
+node_modules/
+
+# React Native / Expo
+.expo/
+dist/
+
+# .NET
+bin/
+obj/
+
+# Logs
+*.log
+
+# OS
+.DS_Store

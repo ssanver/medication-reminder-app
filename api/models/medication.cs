@@ -1,0 +1,16 @@
+namespace api.models;
+
+public sealed class Medication
+{
+    public Guid Id { get; set; }
+    public required string Name { get; set; }
+    public required string Dosage { get; set; }
+    public string? UsageType { get; set; }
+    public bool IsBeforeMeal { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public ICollection<MedicationSchedule> Schedules { get; set; } = [];
+}
