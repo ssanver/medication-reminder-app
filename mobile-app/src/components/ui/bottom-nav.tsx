@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
+import { AppIcon } from './app-icon';
+import type { AppIconName } from './app-icon';
 
 export type BottomNavItem = {
   key: string;
   label: string;
-  icon: string;
+  icon: AppIconName;
 };
 
 type BottomNavProps = {
@@ -20,7 +22,11 @@ export function BottomNav({ items, activeKey, onChange }: BottomNavProps) {
         const active = item.key === activeKey;
         return (
           <Pressable key={item.key} style={styles.item} onPress={() => onChange(item.key)}>
-            <Text style={[styles.icon, active && styles.iconActive]}>{item.icon}</Text>
+            <AppIcon
+              name={item.icon}
+              size={13}
+              color={active ? theme.colors.primaryBlue[500] : theme.colors.semantic.textSecondary}
+            />
             <Text style={[styles.label, active && styles.labelActive]}>{item.label}</Text>
           </Pressable>
         );
@@ -46,13 +52,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: theme.spacing[4],
     borderRadius: theme.radius[16],
-  },
-  icon: {
-    ...theme.typography.bodyScale.xmMedium,
-    color: theme.colors.semantic.textSecondary,
-  },
-  iconActive: {
-    color: theme.colors.primaryBlue[500],
   },
   label: {
     ...theme.typography.captionScale.lRegular,

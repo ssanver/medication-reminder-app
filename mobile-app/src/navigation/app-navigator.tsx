@@ -4,6 +4,7 @@ import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibilit
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import { BottomNav } from '../components/ui/bottom-nav';
+import type { AppIconName } from '../components/ui/app-icon';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
@@ -13,11 +14,11 @@ import { theme } from '../theme';
 
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
 
-const tabGlyph: Record<TabKey, string> = {
-  today: '⌂',
-  'my-meds': '💊',
-  'add-meds': '⊕',
-  settings: '⚙',
+const tabGlyph: Record<TabKey, AppIconName> = {
+  today: 'home',
+  'my-meds': 'pill',
+  'add-meds': 'add',
+  settings: 'settings',
 };
 
 export function AppNavigator() {
