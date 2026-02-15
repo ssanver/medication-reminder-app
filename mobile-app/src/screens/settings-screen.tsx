@@ -56,7 +56,17 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
       </Section>
 
       <Section title="General">
-        <MenuRow label="Language" value={locale.toUpperCase()} onPress={() => onLocaleChange(locale === 'tr' ? 'en' : 'tr')} />
+        <View style={styles.languageBlock}>
+          <Text style={styles.rowTitle}>Language</Text>
+          <View style={styles.languageRow}>
+            <Pressable onPress={() => onLocaleChange('tr')} style={[styles.languageChip, locale === 'tr' && styles.languageChipActive]}>
+              <Text style={[styles.languageChipText, locale === 'tr' && styles.languageChipTextActive]}>Turkish (TR)</Text>
+            </Pressable>
+            <Pressable onPress={() => onLocaleChange('en')} style={[styles.languageChip, locale === 'en' && styles.languageChipActive]}>
+              <Text style={[styles.languageChipText, locale === 'en' && styles.languageChipTextActive]}>English (EN)</Text>
+            </Pressable>
+          </View>
+        </View>
         <MenuRow label="Display zoom" value={`${Math.round(fontScale * 100)}%`} />
         <View style={styles.zoomRow}>
           {fontScaleLevels.map((level) => {
@@ -189,6 +199,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  languageBlock: {
+    paddingHorizontal: theme.spacing[16],
+    paddingVertical: theme.spacing[8],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.semantic.divider,
+    gap: theme.spacing[8],
+  },
+  languageRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
+  },
+  languageChip: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.neutral[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing[8],
+  },
+  languageChipActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  languageChipText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  languageChipTextActive: {
+    color: theme.colors.primaryBlue[500],
+    fontWeight: '700',
   },
   rowTitle: {
     ...theme.typography.bodyScale.xmMedium,

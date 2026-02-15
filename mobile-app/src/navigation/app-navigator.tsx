@@ -30,7 +30,7 @@ const tabGlyph: Record<TabKey, AppIconName> = {
 
 export function AppNavigator() {
   const [phase, setPhase] = useState<AppPhase>('splash');
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocale] = useState<Locale>('tr');
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
   const [activeTab, setActiveTab] = useState<TabKey>('today');
   const [onboardingStep, setOnboardingStep] = useState(0);
