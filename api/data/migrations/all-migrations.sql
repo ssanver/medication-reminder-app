@@ -284,3 +284,67 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120326_AddSecurityCompliance'
+)
+BEGIN
+    CREATE TABLE [audit-logs] (
+        [Id] uniqueidentifier NOT NULL,
+        [EventType] nvarchar(80) NOT NULL,
+        [PayloadMasked] nvarchar(2000) NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_audit-logs] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120326_AddSecurityCompliance'
+)
+BEGIN
+    CREATE TABLE [consent-records] (
+        [Id] uniqueidentifier NOT NULL,
+        [UserReference] nvarchar(120) NOT NULL,
+        [PrivacyVersion] nvarchar(40) NOT NULL,
+        [AcceptedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_consent-records] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120326_AddSecurityCompliance'
+)
+BEGIN
+    CREATE INDEX [IX_audit-logs_CreatedAt] ON [audit-logs] ([CreatedAt]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120326_AddSecurityCompliance'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_consent-records_UserReference_PrivacyVersion] ON [consent-records] ([UserReference], [PrivacyVersion]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120326_AddSecurityCompliance'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260215120326_AddSecurityCompliance', N'8.0.12');
+END;
+GO
+
+COMMIT;
+GO
+

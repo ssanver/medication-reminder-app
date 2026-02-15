@@ -2,6 +2,7 @@ using api.contracts;
 using api.data;
 using api.models;
 using api.services;
+using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/dose-events")]
-public sealed class DoseEventsController(AppDbContext dbContext) : ControllerBase
+public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger auditLogger) : ControllerBase
 {
     private static readonly HashSet<string> AllowedActions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -29,6 +30,9 @@ public sealed class DoseEventsController(AppDbContext dbContext) : ControllerBas
         var medicationExists = await dbContext.Medications.AnyAsync(x => x.Id == request.MedicationId);
         if (!medicationExists)
         {
+            await auditLogger.LogAsync(
+                "unauthorized-attempt",
+                $"medication-not-found medicationId={request.MedicationId} actionType={request.ActionType}");
             return NotFound("Medication not found.");
         }
 

@@ -12,6 +12,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PrescriptionReminder> PrescriptionReminders => Set<PrescriptionReminder>();
     public DbSet<SyncEvent> SyncEvents => Set<SyncEvent>();
     public DbSet<HealthEvent> HealthEvents => Set<HealthEvent>();
+    public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -109,6 +111,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.EventAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
             entity.HasIndex(x => new { x.MedicationId, x.EventAt });
+        });
+
+        modelBuilder.Entity<ConsentRecord>(entity =>
+        {
+            entity.ToTable("consent-records");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserReference).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.PrivacyVersion).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.AcceptedAt).IsRequired();
+            entity.HasIndex(x => new { x.UserReference, x.PrivacyVersion }).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("audit-logs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventType).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.PayloadMasked).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.HasIndex(x => x.CreatedAt);
         });
     }
 }

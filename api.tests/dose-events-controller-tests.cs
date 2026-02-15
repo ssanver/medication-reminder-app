@@ -14,7 +14,7 @@ public sealed class DoseEventsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var medication = await AddMedication(dbContext);
-        var controller = new DoseEventsController(dbContext);
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
 
         var result = await controller.Action(new DoseActionRequest
         {
@@ -33,7 +33,7 @@ public sealed class DoseEventsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var medication = await AddMedication(dbContext);
-        var controller = new DoseEventsController(dbContext);
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
 
         var result = await controller.Action(new DoseActionRequest
         {
@@ -61,7 +61,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext);
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
         var result = await controller.GetHistory(new DoseHistoryQuery { MedicationId = medication.Id });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -93,7 +93,7 @@ public sealed class DoseEventsControllerTests
             });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext);
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
         var result = await controller.GetHistory(new DoseHistoryQuery { ActionType = "missed" });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -135,7 +135,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext);
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
         var result = await controller.GetSummary(new DateOnly(2026, 2, 20), new DateOnly(2026, 2, 22));
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -159,7 +159,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext);
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
         await controller.Action(new DoseActionRequest
         {
             MedicationId = medication.Id,
@@ -168,6 +168,23 @@ public sealed class DoseEventsControllerTests
 
         var stock = await dbContext.InventoryRecords.Where(x => x.MedicationId == medication.Id).Select(x => x.CurrentStock).SingleAsync();
         Assert.Equal(1, stock);
+    }
+
+    [Fact]
+    public async Task Action_ShouldWriteAuditLog_WhenMedicationIsMissing()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+
+        var result = await controller.Action(new DoseActionRequest
+        {
+            MedicationId = Guid.NewGuid(),
+            ActionType = "taken",
+        });
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+        var logCount = await dbContext.AuditLogs.CountAsync(x => x.EventType == "unauthorized-attempt");
+        Assert.Equal(1, logCount);
     }
 
     private static async Task<Medication> AddMedication(AppDbContext dbContext)
@@ -193,5 +210,20 @@ public sealed class DoseEventsControllerTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    private sealed class TestAuditLogger(AppDbContext dbContext) : api.services.security.IAuditLogger
+    {
+        public async Task LogAsync(string eventType, string payload)
+        {
+            dbContext.AuditLogs.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                EventType = eventType,
+                PayloadMasked = payload,
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+            await dbContext.SaveChangesAsync();
+        }
     }
 }
