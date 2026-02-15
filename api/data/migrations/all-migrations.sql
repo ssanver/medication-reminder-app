@@ -114,3 +114,46 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115406_AddInventoryRecords'
+)
+BEGIN
+    CREATE TABLE [inventory-records] (
+        [Id] uniqueidentifier NOT NULL,
+        [MedicationId] uniqueidentifier NOT NULL,
+        [CurrentStock] int NOT NULL,
+        [Threshold] int NOT NULL,
+        [LastAlertAt] datetimeoffset NULL,
+        [UpdatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_inventory-records] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_inventory-records_medications_MedicationId] FOREIGN KEY ([MedicationId]) REFERENCES [medications] ([Id]) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115406_AddInventoryRecords'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_inventory-records_MedicationId] ON [inventory-records] ([MedicationId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215115406_AddInventoryRecords'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260215115406_AddInventoryRecords', N'8.0.12');
+END;
+GO
+
+COMMIT;
+GO
+

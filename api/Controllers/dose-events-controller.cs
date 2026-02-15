@@ -49,6 +49,21 @@ public sealed class DoseEventsController(AppDbContext dbContext) : ControllerBas
         };
 
         dbContext.DoseEvents.Add(doseEvent);
+
+        if (doseEvent.ActionType == "taken")
+        {
+            var inventory = await dbContext.InventoryRecords.FirstOrDefaultAsync(x => x.MedicationId == request.MedicationId);
+            if (inventory is not null)
+            {
+                inventory.CurrentStock = Math.Max(0, inventory.CurrentStock - 1);
+                inventory.UpdatedAt = DateTimeOffset.UtcNow;
+                if (inventory.CurrentStock <= inventory.Threshold)
+                {
+                    inventory.LastAlertAt = DateTimeOffset.UtcNow;
+                }
+            }
+        }
+
         await dbContext.SaveChangesAsync();
 
         return Ok(ToResponse(doseEvent));

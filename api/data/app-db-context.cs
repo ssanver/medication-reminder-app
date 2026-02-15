@@ -8,6 +8,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Medication> Medications => Set<Medication>();
     public DbSet<MedicationSchedule> MedicationSchedules => Set<MedicationSchedule>();
     public DbSet<DoseEvent> DoseEvents => Set<DoseEvent>();
+    public DbSet<InventoryRecord> InventoryRecords => Set<InventoryRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,6 +50,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .HasOne(x => x.Medication)
                 .WithMany(x => x.DoseEvents)
                 .HasForeignKey(x => x.MedicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InventoryRecord>(entity =>
+        {
+            entity.ToTable("inventory-records");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.CurrentStock).IsRequired();
+            entity.Property(x => x.Threshold).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => x.MedicationId).IsUnique();
+
+            entity
+                .HasOne(x => x.Medication)
+                .WithOne(x => x.Inventory)
+                .HasForeignKey<InventoryRecord>(x => x.MedicationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

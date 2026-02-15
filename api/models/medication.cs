@@ -14,4 +14,5 @@ public sealed class Medication
 
     public ICollection<MedicationSchedule> Schedules { get; set; } = [];
     public ICollection<DoseEvent> DoseEvents { get; set; } = [];
+    public InventoryRecord? Inventory { get; set; }
 }

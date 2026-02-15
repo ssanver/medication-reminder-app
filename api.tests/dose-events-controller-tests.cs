@@ -145,6 +145,31 @@ public sealed class DoseEventsControllerTests
         Assert.Equal(0.3333m, payload.AdherenceRate);
     }
 
+    [Fact]
+    public async Task Action_ShouldDecreaseInventory_WhenTakenActionIsSent()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var medication = await AddMedication(dbContext);
+        dbContext.InventoryRecords.Add(new InventoryRecord
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medication.Id,
+            CurrentStock = 2,
+            Threshold = 1,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext);
+        await controller.Action(new DoseActionRequest
+        {
+            MedicationId = medication.Id,
+            ActionType = "taken",
+        });
+
+        var stock = await dbContext.InventoryRecords.Where(x => x.MedicationId == medication.Id).Select(x => x.CurrentStock).SingleAsync();
+        Assert.Equal(1, stock);
+    }
+
     private static async Task<Medication> AddMedication(AppDbContext dbContext)
     {
         var medication = new Medication
