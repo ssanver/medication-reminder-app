@@ -32,12 +32,12 @@ describe('isSignUpFormValid', () => {
     ).toBe(false);
   });
 
-  it('sifre alti karakterden kisa ise false doner', () => {
+  it('sifre dort karakterden kisa ise false doner', () => {
     expect(
       isSignUpFormValid({
         name: 'Hanie',
         email: 'hanie@example.com',
-        password: '12345',
+        password: '123',
       }),
     ).toBe(false);
   });

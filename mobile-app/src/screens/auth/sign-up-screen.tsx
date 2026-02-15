@@ -75,7 +75,11 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         label="Create an account"
         onPress={() => {
           if (!canSubmit) {
-            setErrorText(locale === 'tr' ? 'Lutfen tum alanlari doldurun ve gecerli e-posta/sifre girin.' : 'Please fill all fields with valid email and password.');
+            setErrorText(
+              locale === 'tr'
+                ? 'Lutfen tum alanlari doldurun. E-posta gecerli olmali ve sifre en az 4 karakter olmali.'
+                : 'Please fill all fields. Email must be valid and password must be at least 4 characters.',
+            );
             return;
           }
           setErrorText('');

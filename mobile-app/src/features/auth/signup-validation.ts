@@ -17,5 +17,5 @@ export function isSignUpFormValid(form: SignUpForm): boolean {
     return false;
   }
 
-  return password.trim().length >= 6;
+  return password.trim().length >= 4;
 }
