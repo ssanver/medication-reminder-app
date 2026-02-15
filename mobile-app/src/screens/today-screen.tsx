@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
@@ -27,6 +27,7 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
   const store = useMedicationStore();
   const [filter, setFilter] = useState<DoseStatus>('All');
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [actionWarning, setActionWarning] = useState<string | null>(null);
   const shortDisplayName = toShortDisplayName(currentUser.fullName);
   const doses = useMemo(() => getScheduledDosesForDate(selectedDate, locale), [selectedDate, locale, store.medications, store.events]);
 
@@ -51,6 +52,19 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
     }),
     [doses],
   );
+  const hasAnyDoseForSelectedDate = doses.length > 0;
+  const isMissedFilter = filter === 'Missed';
+  const showMissedEmptyWarningOnly = isMissedFilter && filtered.length === 0 && hasAnyDoseForSelectedDate;
+  const dateDelta = useMemo(() => {
+    const normalize = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    return normalize(selectedDate) - normalize(new Date());
+  }, [selectedDate]);
+  const isFutureDate = dateDelta > 0;
+  const isPastDate = dateDelta < 0;
+
+  useEffect(() => {
+    setActionWarning(null);
+  }, [selectedDate, filter]);
 
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
@@ -106,9 +120,9 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
       {filtered.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>💊</Text>
-          <Text style={styles.emptyTitle}>{t.noMedicationTitle}</Text>
-          <Text style={styles.emptyDescription}>{t.noMedicationDescription}</Text>
-          <Button label={t.addMedication} onPress={onOpenAddMedication} />
+          <Text style={styles.emptyTitle}>{showMissedEmptyWarningOnly ? t.noMissedMedicationTitle : t.noMedicationTitle}</Text>
+          {!showMissedEmptyWarningOnly ? <Text style={styles.emptyDescription}>{t.noMedicationDescription}</Text> : null}
+          {!showMissedEmptyWarningOnly ? <Button label={t.addMedication} onPress={onOpenAddMedication} /> : null}
         </View>
       ) : (
         <View style={styles.list}>
@@ -118,12 +132,39 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
               name={item.name}
               details={item.details}
               schedule={item.schedule}
-              actionLabel={item.status === 'taken' ? t.taken : t.take}
-              actionVariant={item.status === 'taken' ? 'success' : item.status === 'missed' ? 'danger' : 'filled'}
+              actionLabel={
+                isPastDate ? (item.status === 'taken' ? t.markAsMissed : t.markAsTaken) : item.status === 'taken' ? t.taken : t.take
+              }
+              actionVariant={
+                isPastDate
+                  ? item.status === 'taken'
+                    ? 'danger'
+                    : 'success'
+                  : item.status === 'taken'
+                    ? 'success'
+                    : item.status === 'missed'
+                      ? 'danger'
+                      : 'filled'
+              }
               statusBadge={item.status === 'missed' ? 'missed' : item.status === 'pending' ? 'ontime' : undefined}
               showAction
               medEmoji={item.emoji}
-              onActionPress={() => void setDoseStatus(item.medicationId, selectedDate, 'taken')}
+              onActionPress={() => {
+                if (isFutureDate) {
+                  setActionWarning(t.forwardDateActionNotAllowed);
+                  return;
+                }
+
+                if (isPastDate) {
+                  const nextStatus = item.status === 'taken' ? 'missed' : 'taken';
+                  void setDoseStatus(item.medicationId, selectedDate, nextStatus);
+                  setActionWarning(null);
+                  return;
+                }
+
+                void setDoseStatus(item.medicationId, selectedDate, 'taken');
+                setActionWarning(null);
+              }}
               secondaryActionLabel={
                 remindersEnabled && item.status === 'pending' ? t.snoozeInMinutes.replace('15', `${snoozeMinutes}`) : undefined
               }
@@ -145,6 +186,7 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
         </View>
       )}
 
+      {actionWarning ? <Text style={styles.warning}>{actionWarning}</Text> : null}
       {!remindersEnabled ? <Text style={styles.warning}>{t.notificationPermissionRequired}</Text> : null}
       <View style={styles.bottomSpacer} />
       <Text style={styles.hidden}>{`${t.today}-${selectedDate.getTime()}`}</Text>

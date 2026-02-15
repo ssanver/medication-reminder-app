@@ -21,12 +21,25 @@ function getApiBaseUrl(): string {
   return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:5047';
 }
 
+function getPlatformOs(): string {
+  try {
+    return (require('react-native') as { Platform?: { OS?: string } }).Platform?.OS ?? 'ios';
+  } catch {
+    return 'ios';
+  }
+}
+
 function getGoogleClientId(): string {
-  const configuredClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  const platformOs = getPlatformOs();
+  const configuredClientId =
+    (platformOs === 'ios' ? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID : process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) ??
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
   if (!configuredClientId) {
     throw new Error(
-      'Google OAuth client id bulunamadi. mobile-app/.env dosyasina EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID veya EXPO_PUBLIC_GOOGLE_CLIENT_ID ekleyin.',
+      platformOs === 'ios'
+        ? 'Google OAuth client id bulunamadi. mobile-app/.env dosyasina EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID veya EXPO_PUBLIC_GOOGLE_CLIENT_ID ekleyin.'
+        : 'Google OAuth client id bulunamadi. mobile-app/.env dosyasina EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID veya EXPO_PUBLIC_GOOGLE_CLIENT_ID ekleyin.',
     );
   }
 
@@ -97,9 +110,29 @@ async function getAppleIdentityToken(): Promise<string> {
     throw new Error('Apple Sign In bu cihazda kullanilamiyor.');
   }
 
-  const credential = await AppleAuthentication.signInAsync({
-    requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
-  });
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      const code = (error as { code?: string }).code;
+      if (code === 'ERR_REQUEST_CANCELED') {
+        throw new Error('Apple giris islemi iptal edildi.');
+      }
+
+      if (code === 'ERR_INVALID_OPERATION') {
+        throw new Error(
+          'Apple girisi baslatilamadi. iOS simulator veya cihazda Apple ID ile giris yaptiginizdan ve development build kullandiginizdan emin olun.',
+        );
+      }
+    }
+
+    throw new Error(
+      'Apple girisi basarisiz. iOS simulator/cihaz Apple ID girisi, Sign In with Apple yetkisi ve development build ayarlarini kontrol edin.',
+    );
+  }
 
   if (!credential.identityToken) {
     throw new Error('Apple identity token alinamadi.');
