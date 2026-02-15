@@ -14,3 +14,8 @@ obj/
 
 # OS
 .DS_Store
+
+# Env
+mobile-app/.env
+mobile-app/.env.local
+mobile-app/.env.*.local

@@ -25,7 +25,9 @@ function getGoogleClientId(): string {
   const configuredClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
   if (!configuredClientId) {
-    throw new Error('Google OAuth client id bulunamadi. EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID tanimlayin.');
+    throw new Error(
+      'Google OAuth client id bulunamadi. mobile-app/.env dosyasina EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID veya EXPO_PUBLIC_GOOGLE_CLIENT_ID ekleyin.',
+    );
   }
 
   return configuredClientId;
