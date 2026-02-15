@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
+import { getDoseCounts, getDosesForDate, getMedicationSectionTitle, type DoseItem } from '../features/date/daily-medications';
 import { getDateTitle, getWeekStrip } from '../features/date/week-strip';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { toShortDisplayName } from '../features/profile/display-name';
@@ -16,28 +17,12 @@ type TodayScreenProps = {
 
 type DoseStatus = 'All' | 'Taken' | 'Missed';
 
-type DoseItem = {
-  id: string;
-  name: string;
-  details: string;
-  schedule: string;
-  status: 'taken' | 'missed' | 'pending';
-  emoji: string;
-};
-
-const doses: DoseItem[] = [
-  { id: '1', name: 'Metformin', details: '1 Capsules', schedule: '09:00 | Daily', status: 'pending', emoji: '💊' },
-  { id: '2', name: 'Captopril', details: '2 Capsules', schedule: '20:00 | Daily', status: 'pending', emoji: '🧴' },
-  { id: '3', name: 'B 12', details: '1 Injection', schedule: '22:00 | Daily', status: 'taken', emoji: '💉' },
-  { id: '4', name: 'I-DROP MGD', details: '2 Drops', schedule: '22:00 | Daily', status: 'missed', emoji: '🫙' },
-  { id: '5', name: 'Niacin', details: '0.5 Pill', schedule: '22:00 | Daily', status: 'pending', emoji: '🧪' },
-];
-
 export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
   const t = getTranslations(locale);
   const [filter, setFilter] = useState<DoseStatus>('All');
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const shortDisplayName = toShortDisplayName(currentUser.fullName);
+  const doses = useMemo(() => getDosesForDate(selectedDate), [selectedDate]);
 
   const filtered = useMemo(() => {
     if (filter === 'All') {
@@ -50,19 +35,13 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
     } as const;
 
     return doses.filter((item) => item.status === map[filter]);
-  }, [filter]);
+  }, [filter, doses]);
 
-  const counts = useMemo(
-    () => ({
-      all: doses.length,
-      taken: doses.filter((item) => item.status === 'taken').length,
-      missed: doses.filter((item) => item.status === 'missed').length,
-    }),
-    [],
-  );
+  const counts = useMemo(() => getDoseCounts(doses), [doses]);
 
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
+  const sectionTitle = useMemo(() => getMedicationSectionTitle(selectedDate, locale), [selectedDate, locale]);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -96,7 +75,7 @@ export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
         </Pressable>
       </View>
 
-      <Text style={styles.sectionTitle}>{t.todaysMedication}</Text>
+      <Text style={styles.sectionTitle}>{sectionTitle}</Text>
       <SegmentedControl
         options={[
           { label: t.all, value: 'All', count: counts.all },
