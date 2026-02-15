@@ -3,7 +3,7 @@
 ## 1. Doküman Bilgisi
 - Proje Adı: İlaç Hatırlatma Uygulaması
 - Doküman Tipi: Teknik Analiz Dokümanı
-- Versiyon: 1.0
+- Versiyon: 1.1
 - Tarih: 2026-02-15
 - Girdi Dokümanlar:
   - `docs/business-requirements-document.md`
@@ -12,9 +12,12 @@
 ## 2. Teknoloji Kararları
 - Mobil Uygulama: React Native
 - Backend API: .NET 8 (ASP.NET Core Web API)
+- Veritabanı: Microsoft SQL Server
+- ORM: Entity Framework Core
 - Mimari Yaklaşım: Katmanlı + modül bazlı (medication, reminder, inventory, caregiver, sync)
 - Veri Senkronizasyonu: Sunucu kaynaklı senkron + istemci offline kuyruk
 - Çakışma Çözümü: Son güncelleyen kazanır (LWW - Last Write Wins)
+- Şema Yönetimi: Tüm veritabanı değişiklikleri EF Core migration ile yapılır.
 
 ## 3. Çözüm Yaklaşımı ve Modül Kırılımı
 - `mobile-app` (React Native):
@@ -27,6 +30,7 @@
   - İlaç/plan/doz/stok CRUD servisleri
   - Reçete ve etkinlik hatırlatma kuralları
   - Senkronizasyon endpoint'leri ve denetim kayıtları
+  - EF Core DbContext ve migration tabanlı şema sürümleme
 - `notification-service`:
   - Push/local bildirim tetikleme
   - Ertele ve aksiyon callback işleme
@@ -52,6 +56,13 @@
   - `dose-event` hem kullanıcı zamanı hem sistem zamanı tutar.
   - `inventory` negatif değeri engelleyen kural içerir.
   - `caregiver-permission` ekran/modül bazlı yetki seviyesi saklar.
+  - Migration geçmişi SQL Server üzerinde izlenebilir olmalıdır (`__EFMigrationsHistory`).
+
+## 4.1 Veritabanı ve Migration Stratejisi
+- SQL Server, prod ve test ortamlarında birincil veritabanıdır.
+- Şema güncellemesi doğrudan SQL script ile değil, EF Core migration ile yapılır.
+- Her migration geri alınabilir (rollback) ve CI hattında doğrulanabilir olmalıdır.
+- Migration adlandırması iş kuralı veya modül etkisini yansıtmalıdır (örn. `add-medication-schedule-index`).
 
 ## 5. API Etki Analizi (Yüksek Seviye)
 - `POST /api/medications`, `PUT /api/medications/{id}`, `DELETE /api/medications/{id}`
@@ -87,11 +98,13 @@
 ## 8. PBI Backlog (Geliştiriciye Hazır)
 
 ### PBI-001 - Proje İskeleti ve CI Temeli
-- Kapsam: React Native ve .NET 8 repo yapısı, temel build/test pipeline.
+- Kapsam: React Native, .NET 8, SQL Server ve EF Core temel iskelet + build/test pipeline.
 - Kabul Kriterleri:
 1. `mobile-app` ve `api` klasörleri ayrı çalıştırılabilir olmalıdır.
 2. API sağlık endpoint'i (`/health`) 200 dönmelidir.
 3. Mobil uygulama debug modunda açılmalıdır.
+4. API projesinde SQL Server bağlantısı ve EF Core DbContext yapılandırılmış olmalıdır.
+5. İlk migration oluşturulup veritabanına uygulanabilir olmalıdır.
 
 ### PBI-002 - Onboarding, Açık Rıza ve Dil Seçimi
 - Kapsam: 5 adım onboarding, bildirim izni akışı, TR/EN başlangıç dili.
@@ -188,6 +201,7 @@
 - Geliştirici başlangıç sırası: PBI-001 -> PBI-002 -> PBI-003 -> PBI-004 -> PBI-005.
 - Her PBI'da iş analizi referansı (`US-xx`) issue açıklamasında belirtilmelidir.
 - Geliştirme başlamadan önce API sözleşmesi ve mobil state modeli PBI-001 çıktısında dondurulmalıdır.
+- Geliştirme başlamadan önce SQL Server bağlantı politikası ve EF migration akışı PBI-001 çıktısında dondurulmalıdır.
 
 ## 10. GitHub Issue Eşlemesi
 - PBI-001: [Issue #1](https://github.com/ssanver/medication-reminder-app/issues/1)
