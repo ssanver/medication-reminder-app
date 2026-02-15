@@ -348,3 +348,68 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120810_AddCaregiverAccess'
+)
+BEGIN
+    CREATE TABLE [caregiver-invites] (
+        [Id] uniqueidentifier NOT NULL,
+        [CaregiverReference] nvarchar(120) NOT NULL,
+        [InviteToken] nvarchar(120) NOT NULL,
+        [IsActive] bit NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_caregiver-invites] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120810_AddCaregiverAccess'
+)
+BEGIN
+    CREATE TABLE [caregiver-permissions] (
+        [Id] uniqueidentifier NOT NULL,
+        [CaregiverInviteId] uniqueidentifier NOT NULL,
+        [AllowedModulesCsv] nvarchar(240) NOT NULL,
+        [UpdatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_caregiver-permissions] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120810_AddCaregiverAccess'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_caregiver-invites_InviteToken] ON [caregiver-invites] ([InviteToken]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120810_AddCaregiverAccess'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_caregiver-permissions_CaregiverInviteId] ON [caregiver-permissions] ([CaregiverInviteId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260215120810_AddCaregiverAccess'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260215120810_AddCaregiverAccess', N'8.0.12');
+END;
+GO
+
+COMMIT;
+GO
+

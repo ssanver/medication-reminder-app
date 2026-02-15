@@ -14,6 +14,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<HealthEvent> HealthEvents => Set<HealthEvent>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<CaregiverInvite> CaregiverInvites => Set<CaregiverInvite>();
+    public DbSet<CaregiverPermission> CaregiverPermissions => Set<CaregiverPermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -131,6 +133,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.PayloadMasked).HasMaxLength(2000).IsRequired();
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.HasIndex(x => x.CreatedAt);
+        });
+
+        modelBuilder.Entity<CaregiverInvite>(entity =>
+        {
+            entity.ToTable("caregiver-invites");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.CaregiverReference).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.InviteToken).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.IsActive).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.HasIndex(x => x.InviteToken).IsUnique();
+        });
+
+        modelBuilder.Entity<CaregiverPermission>(entity =>
+        {
+            entity.ToTable("caregiver-permissions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.AllowedModulesCsv).HasMaxLength(240).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => x.CaregiverInviteId).IsUnique();
         });
     }
 }

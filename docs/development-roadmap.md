@@ -41,7 +41,7 @@
 | PBI-010 | Done | `api/Controllers/health-events-controller.cs`, `api.tests/health-events-controller-tests.cs`, `dotnet test` (24/24) |
 | PBI-011 | Done | `api/Controllers/security-controller.cs`, `api/services/security/log-masker.cs`, `dotnet test` (27/27) |
 | PBI-012 | Done | `mobile-app/src/features/accessibility/*`, `mobile-app/src/features/performance/*`, `npm test` (9/9) |
-| PBI-013 | Todo | - |
+| PBI-013 | Done | `api/Controllers/caregivers-controller.cs`, `api.tests/caregivers-controller-tests.cs`, `dotnet test` (29/29) |
 | PBI-014 | Todo | - |
 
 ## 4. Faz Bazli Kabul Kriterleri
