@@ -5,9 +5,10 @@ import { theme } from '../theme';
 
 type AddMedsScreenProps = {
   locale: Locale;
+  fontScale: number;
 };
 
-export function AddMedsScreen({ locale }: AddMedsScreenProps) {
+export function AddMedsScreen({ locale, fontScale }: AddMedsScreenProps) {
   const t = getTranslations(locale);
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
@@ -19,7 +20,16 @@ export function AddMedsScreen({ locale }: AddMedsScreenProps) {
 
   return (
     <View style={{ gap: theme.spacing[16] }}>
-      <Text style={{ ...theme.typography.heading5, color: theme.colors.semantic.textPrimary }}>{t.addMeds}</Text>
+      <Text
+        style={{
+          ...theme.typography.heading5,
+          fontSize: theme.typography.heading5.fontSize * fontScale,
+          lineHeight: theme.typography.heading5.lineHeight * fontScale,
+          color: theme.colors.semantic.textPrimary,
+        }}
+      >
+        {t.addMeds}
+      </Text>
       <TextInput
         value={name}
         onChangeText={setName}

@@ -40,7 +40,7 @@
 | PBI-009 | Done | `api/Controllers/sync-controller.cs`, `mobile-app/src/features/sync/offline-queue.ts`, `dotnet test` (22/22), `npm test` (5/5) |
 | PBI-010 | Done | `api/Controllers/health-events-controller.cs`, `api.tests/health-events-controller-tests.cs`, `dotnet test` (24/24) |
 | PBI-011 | Done | `api/Controllers/security-controller.cs`, `api/services/security/log-masker.cs`, `dotnet test` (27/27) |
-| PBI-012 | Todo | - |
+| PBI-012 | Done | `mobile-app/src/features/accessibility/*`, `mobile-app/src/features/performance/*`, `npm test` (9/9) |
 | PBI-013 | Todo | - |
 | PBI-014 | Todo | - |
 

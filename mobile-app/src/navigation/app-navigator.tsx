@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
@@ -13,6 +14,7 @@ type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
 
 export function AppNavigator() {
   const [locale, setLocale] = useState<Locale>('tr');
+  const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
   const [activeTab, setActiveTab] = useState<TabKey>('today');
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -58,7 +60,7 @@ export function AppNavigator() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>{renderTab(activeTab, locale, setLocale)}</View>
+      <View style={styles.content}>{renderTab(activeTab, locale, setLocale, fontScale, setFontScale)}</View>
       <View style={styles.tabBar}>
         {renderTabButton('today', t.today, activeTab, setActiveTab)}
         {renderTabButton('my-meds', t.myMeds, activeTab, setActiveTab)}
@@ -69,18 +71,35 @@ export function AppNavigator() {
   );
 }
 
-function renderTab(tab: TabKey, locale: Locale, onLocaleChange: (locale: Locale) => void) {
+function renderTab(
+  tab: TabKey,
+  locale: Locale,
+  onLocaleChange: (locale: Locale) => void,
+  fontScale: number,
+  onFontScaleChange: (value: number) => void,
+) {
   switch (tab) {
     case 'today':
-      return <TodayScreen locale={locale} />;
+      return <TodayScreen locale={locale} fontScale={fontScale} />;
     case 'my-meds':
-      return <MyMedsScreen locale={locale} />;
+      return <MyMedsScreen locale={locale} fontScale={fontScale} />;
     case 'add-meds':
-      return <AddMedsScreen locale={locale} />;
+      return <AddMedsScreen locale={locale} fontScale={fontScale} />;
     case 'settings':
-      return <SettingsScreen locale={locale} onLocaleChange={onLocaleChange} />;
+      return (
+        <SettingsScreen
+          locale={locale}
+          onLocaleChange={onLocaleChange}
+          fontScale={fontScale}
+          onFontScaleChange={(value) => {
+            if (isFontScaleLevelValid(value)) {
+              onFontScaleChange(value);
+            }
+          }}
+        />
+      );
     default:
-      return <TodayScreen locale={locale} />;
+      return <TodayScreen locale={locale} fontScale={fontScale} />;
   }
 }
 

@@ -4,15 +4,32 @@ import { theme } from '../theme';
 
 type MyMedsScreenProps = {
   locale: Locale;
+  fontScale: number;
 };
 
-export function MyMedsScreen({ locale }: MyMedsScreenProps) {
+export function MyMedsScreen({ locale, fontScale }: MyMedsScreenProps) {
   const t = getTranslations(locale);
 
   return (
     <View>
-      <Text style={{ ...theme.typography.heading5, color: theme.colors.semantic.textPrimary }}>{t.myMeds}</Text>
-      <Text style={{ ...theme.typography.body, color: theme.colors.semantic.textSecondary }}>
+      <Text
+        style={{
+          ...theme.typography.heading5,
+          fontSize: theme.typography.heading5.fontSize * fontScale,
+          lineHeight: theme.typography.heading5.lineHeight * fontScale,
+          color: theme.colors.semantic.textPrimary,
+        }}
+      >
+        {t.myMeds}
+      </Text>
+      <Text
+        style={{
+          ...theme.typography.body,
+          fontSize: theme.typography.body.fontSize * fontScale,
+          lineHeight: theme.typography.body.lineHeight * fontScale,
+          color: theme.colors.semantic.textSecondary,
+        }}
+      >
         Aktif ve pasif ilac kartlari bu ekranda olacak.
       </Text>
     </View>

@@ -1,13 +1,16 @@
 import { Pressable, Text, View } from 'react-native';
+import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
 type SettingsScreenProps = {
   locale: Locale;
   onLocaleChange: (locale: Locale) => void;
+  fontScale: number;
+  onFontScaleChange: (fontScale: number) => void;
 };
 
-export function SettingsScreen({ locale, onLocaleChange }: SettingsScreenProps) {
+export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleChange }: SettingsScreenProps) {
   const t = getTranslations(locale);
 
   return (
@@ -30,6 +33,27 @@ export function SettingsScreen({ locale, onLocaleChange }: SettingsScreenProps) 
         >
           <Text>EN</Text>
         </Pressable>
+      </View>
+
+      <Text style={{ ...theme.typography.body, color: theme.colors.semantic.textPrimary }}>Display zoom</Text>
+      <View style={{ flexDirection: 'row', gap: theme.spacing[8] }}>
+        {fontScaleLevels.map((level) => {
+          const isSelected = level === fontScale;
+          return (
+            <Pressable
+              key={level}
+              onPress={() => onFontScaleChange(level)}
+              style={{
+                borderWidth: 1,
+                borderColor: isSelected ? theme.colors.semantic.brandPrimary : theme.colors.neutral[300],
+                borderRadius: theme.radius[8],
+                padding: 8,
+              }}
+            >
+              <Text>{`${Math.round(level * 100)}%`}</Text>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
