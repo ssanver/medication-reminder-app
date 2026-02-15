@@ -1,4 +1,8 @@
-import { Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { AppHeader } from '../components/ui/app-header';
+import { EmptyState } from '../components/ui/empty-state';
+import { SegmentedControl } from '../components/ui/segmented-control';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
@@ -7,31 +11,91 @@ type TodayScreenProps = {
   fontScale: number;
 };
 
+type DoseStatus = 'All' | 'Taken' | 'Missed';
+
+const mockData = [
+  { id: '1', name: 'Parol 500mg', status: 'Taken' },
+  { id: '2', name: 'Aferin 200mg', status: 'Missed' },
+];
+
 export function TodayScreen({ locale, fontScale }: TodayScreenProps) {
   const t = getTranslations(locale);
+  const [filter, setFilter] = useState<DoseStatus>('All');
+
+  const list = useMemo(() => {
+    if (filter === 'All') {
+      return mockData;
+    }
+
+    return mockData.filter((item) => item.status === filter);
+  }, [filter]);
 
   return (
-    <View>
-      <Text
-        style={{
-          ...theme.typography.heading5,
-          fontSize: theme.typography.heading5.fontSize * fontScale,
-          lineHeight: theme.typography.heading5.lineHeight * fontScale,
-          color: theme.colors.semantic.textPrimary,
-        }}
-      >
-        {t.today}
-      </Text>
-      <Text
-        style={{
-          ...theme.typography.body,
-          fontSize: theme.typography.body.fontSize * fontScale,
-          lineHeight: theme.typography.body.lineHeight * fontScale,
-          color: theme.colors.semantic.textSecondary,
-        }}
-      >
-        Ilac hatirlatmalari burada listelenecek.
-      </Text>
+    <View style={styles.container}>
+      <AppHeader title={t.today} subtitle="Gunluk planlanan dozlar" />
+      <SegmentedControl options={['All', 'Taken', 'Missed']} value={filter} onChange={(v) => setFilter(v as DoseStatus)} />
+
+      {list.length === 0 ? (
+        <EmptyState
+          title="Kayit yok"
+          description="Bu filtrede goruntulenecek doz kaydi bulunmuyor."
+          ctaLabel="Filtreyi sifirla"
+          onPress={() => setFilter('All')}
+        />
+      ) : (
+        <View style={styles.cardList}>
+          {list.map((item) => (
+            <View key={item.id} style={styles.card}>
+              <Text
+                style={{
+                  ...theme.typography.body,
+                  fontSize: theme.typography.body.fontSize * fontScale,
+                  lineHeight: theme.typography.body.lineHeight * fontScale,
+                  color: theme.colors.semantic.textPrimary,
+                  fontWeight: '600',
+                }}
+              >
+                {item.name}
+              </Text>
+              <Text style={[styles.badge, item.status === 'Taken' ? styles.taken : styles.missed]}>{item.status}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  cardList: {
+    gap: theme.spacing[16],
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+    borderRadius: theme.radius[16],
+    padding: theme.spacing[16],
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  badge: {
+    ...theme.typography.caption,
+    paddingHorizontal: theme.spacing[8],
+    paddingVertical: theme.spacing[4],
+    borderRadius: theme.radius[8],
+    overflow: 'hidden',
+  },
+  taken: {
+    color: theme.colors.semantic.stateSuccess,
+    backgroundColor: '#E6F5E6',
+  },
+  missed: {
+    color: theme.colors.semantic.stateError,
+    backgroundColor: '#FCE6E6',
+  },
+});

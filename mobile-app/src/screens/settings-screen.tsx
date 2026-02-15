@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppHeader } from '../components/ui/app-header';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
@@ -14,47 +15,72 @@ export function SettingsScreen({ locale, onLocaleChange, fontScale, onFontScaleC
   const t = getTranslations(locale);
 
   return (
-    <View style={{ gap: theme.spacing[16] }}>
-      <Text style={{ ...theme.typography.heading5, color: theme.colors.semantic.textPrimary }}>{t.settings}</Text>
-      <Text style={{ ...theme.typography.body, color: theme.colors.semantic.textSecondary }}>
-        Dil, bildirim ve erisilebilirlik ayarlari bu ekranda yonetilecek.
-      </Text>
-      <Text style={{ ...theme.typography.body, color: theme.colors.semantic.textPrimary }}>{t.languageTitle}</Text>
-      <View style={{ flexDirection: 'row', gap: theme.spacing[8] }}>
-        <Pressable
-          onPress={() => onLocaleChange('tr')}
-          style={{ borderWidth: 1, borderColor: theme.colors.neutral[300], borderRadius: theme.radius[8], padding: 8 }}
-        >
-          <Text>TR</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onLocaleChange('en')}
-          style={{ borderWidth: 1, borderColor: theme.colors.neutral[300], borderRadius: theme.radius[8], padding: 8 }}
-        >
-          <Text>EN</Text>
-        </Pressable>
+    <View style={styles.container}>
+      <AppHeader title={t.settings} subtitle="Dil, bildirim ve erisilebilirlik" />
+
+      <View style={styles.group}>
+        <Text style={styles.label}>{t.languageTitle}</Text>
+        <View style={styles.row}>
+          <Pressable onPress={() => onLocaleChange('tr')} style={[styles.chip, locale === 'tr' && styles.chipActive]}>
+            <Text style={styles.chipText}>TR</Text>
+          </Pressable>
+          <Pressable onPress={() => onLocaleChange('en')} style={[styles.chip, locale === 'en' && styles.chipActive]}>
+            <Text style={styles.chipText}>EN</Text>
+          </Pressable>
+        </View>
       </View>
 
-      <Text style={{ ...theme.typography.body, color: theme.colors.semantic.textPrimary }}>Display zoom</Text>
-      <View style={{ flexDirection: 'row', gap: theme.spacing[8] }}>
-        {fontScaleLevels.map((level) => {
-          const isSelected = level === fontScale;
-          return (
-            <Pressable
-              key={level}
-              onPress={() => onFontScaleChange(level)}
-              style={{
-                borderWidth: 1,
-                borderColor: isSelected ? theme.colors.semantic.brandPrimary : theme.colors.neutral[300],
-                borderRadius: theme.radius[8],
-                padding: 8,
-              }}
-            >
-              <Text>{`${Math.round(level * 100)}%`}</Text>
-            </Pressable>
-          );
-        })}
+      <View style={styles.group}>
+        <Text style={styles.label}>Display zoom</Text>
+        <View style={styles.row}>
+          {fontScaleLevels.map((level) => {
+            const selected = level === fontScale;
+            return (
+              <Pressable key={level} onPress={() => onFontScaleChange(level)} style={[styles.chip, selected && styles.chipActive]}>
+                <Text style={styles.chipText}>{`${Math.round(level * 100)}%`}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: theme.spacing[24],
+  },
+  group: {
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+    borderRadius: theme.radius[16],
+    backgroundColor: '#FFFFFF',
+    padding: theme.spacing[16],
+    gap: theme.spacing[8],
+  },
+  label: {
+    ...theme.typography.body,
+    color: theme.colors.semantic.textPrimary,
+    fontWeight: '600',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[300],
+    borderRadius: theme.radius[8],
+    paddingHorizontal: theme.spacing[16],
+    paddingVertical: theme.spacing[8],
+  },
+  chipActive: {
+    borderColor: theme.colors.semantic.brandPrimary,
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  chipText: {
+    ...theme.typography.caption,
+    color: theme.colors.semantic.textPrimary,
+  },
+});

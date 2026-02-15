@@ -4,13 +4,20 @@ import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibilit
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
-import { TodayScreen } from '../screens/today-screen';
-import { MyMedsScreen } from '../screens/my-meds-screen';
 import { AddMedsScreen } from '../screens/add-meds-screen';
+import { MyMedsScreen } from '../screens/my-meds-screen';
 import { SettingsScreen } from '../screens/settings-screen';
+import { TodayScreen } from '../screens/today-screen';
 import { theme } from '../theme';
 
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
+
+const tabGlyph: Record<TabKey, string> = {
+  today: 'T',
+  'my-meds': 'M',
+  'add-meds': '+',
+  settings: 'S',
+};
 
 export function AppNavigator() {
   const [locale, setLocale] = useState<Locale>('tr');
@@ -112,7 +119,8 @@ function renderTabButton(
   const isActive = tab === activeTab;
 
   return (
-    <Pressable key={tab} onPress={() => setActiveTab(tab)} style={styles.tabButton}>
+    <Pressable key={tab} onPress={() => setActiveTab(tab)} style={[styles.tabButton, isActive && styles.activeTabButton]}>
+      <Text style={[styles.glyph, isActive && styles.activeGlyph]}>{tabGlyph[tab]}</Text>
       <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>{label}</Text>
     </Pressable>
   );
@@ -121,7 +129,7 @@ function renderTabButton(
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.semantic.backgroundDefault,
+    backgroundColor: theme.colors.primaryBlue[50],
   },
   content: {
     flex: 1,
@@ -131,13 +139,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: theme.colors.neutral[200],
-    backgroundColor: theme.colors.semantic.backgroundDefault,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[8],
+    paddingVertical: theme.spacing[8],
+    gap: theme.spacing[8],
   },
   tabButton: {
     flex: 1,
     minHeight: 56,
+    borderRadius: theme.radius[16],
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
+  },
+  activeTabButton: {
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  glyph: {
+    ...theme.typography.caption,
+    color: theme.colors.semantic.textSecondary,
+    fontWeight: '700',
+  },
+  activeGlyph: {
+    color: theme.colors.semantic.brandPrimary,
   },
   tabLabel: {
     ...theme.typography.caption,

@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppHeader } from '../components/ui/app-header';
+import { PrimaryButton } from '../components/ui/primary-button';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
@@ -12,92 +14,64 @@ export function AddMedsScreen({ locale, fontScale }: AddMedsScreenProps) {
   const t = getTranslations(locale);
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
-  const [reminderTimes, setReminderTimes] = useState<string[]>([]);
-  const [newReminderTime, setNewReminderTime] = useState('08:00');
-  const [feedback, setFeedback] = useState<string>('');
+  const [frequency, setFrequency] = useState('Daily');
+  const [reminder, setReminder] = useState('08:00');
+  const [feedback, setFeedback] = useState('');
 
-  const canSave = name.trim().length > 0 && reminderTimes.length > 0;
+  const canSave = name.trim().length > 0 && reminder.trim().length > 0;
 
   return (
-    <View style={{ gap: theme.spacing[16] }}>
-      <Text
-        style={{
-          ...theme.typography.heading5,
-          fontSize: theme.typography.heading5.fontSize * fontScale,
-          lineHeight: theme.typography.heading5.lineHeight * fontScale,
-          color: theme.colors.semantic.textPrimary,
-        }}
-      >
-        {t.addMeds}
-      </Text>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="Medication name"
-        style={{ borderWidth: 1, borderColor: theme.colors.neutral[300], borderRadius: theme.radius[8], padding: 10 }}
-      />
-      <TextInput
-        value={dosage}
-        onChangeText={setDosage}
-        placeholder="Dosage"
-        style={{ borderWidth: 1, borderColor: theme.colors.neutral[300], borderRadius: theme.radius[8], padding: 10 }}
-      />
-      <View style={{ flexDirection: 'row', gap: theme.spacing[8] }}>
-        <TextInput
-          value={newReminderTime}
-          onChangeText={setNewReminderTime}
-          placeholder="HH:mm"
-          style={{ flex: 1, borderWidth: 1, borderColor: theme.colors.neutral[300], borderRadius: theme.radius[8], padding: 10 }}
-        />
-        <Pressable
-          style={{
-            minWidth: 90,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: theme.radius[8],
-            borderWidth: 1,
-            borderColor: theme.colors.neutral[300],
-          }}
-          onPress={() => {
-            const value = newReminderTime.trim();
-            if (value.length === 0 || reminderTimes.includes(value)) {
-              return;
-            }
+    <View style={styles.container}>
+      <AppHeader title={t.addMeds} subtitle="5 adimli hizli ilac ekleme" />
 
-            setReminderTimes((previous) => [...previous, value]);
-          }}
-        >
-          <Text>Ekle</Text>
-        </Pressable>
+      <View style={styles.form}>
+        <TextInput style={styles.input} placeholder="Medication name" value={name} onChangeText={setName} />
+        <TextInput style={styles.input} placeholder="Dosage" value={dosage} onChangeText={setDosage} />
+        <TextInput style={styles.input} placeholder="Frequency (Daily/Weekly)" value={frequency} onChangeText={setFrequency} />
+        <TextInput style={styles.input} placeholder="Reminder time (HH:mm)" value={reminder} onChangeText={setReminder} />
       </View>
 
-      <Text style={{ ...theme.typography.caption, color: theme.colors.semantic.textSecondary }}>
-        Hatirlatmalar: {reminderTimes.join(', ') || '-'}
-      </Text>
-
-      <Pressable
-        style={{
-          minHeight: 44,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.colors.semantic.brandPrimary,
-          borderRadius: theme.radius[8],
-          opacity: canSave ? 1 : 0.35,
-        }}
+      <PrimaryButton
+        label="Done"
         disabled={!canSave}
         onPress={() => {
-          setFeedback(`Kaydedildi: ${name} (${dosage || '-'})`);
+          setFeedback(`${name} kaydedildi.`);
           setName('');
           setDosage('');
-          setReminderTimes([]);
+          setFrequency('Daily');
+          setReminder('08:00');
         }}
-      >
-        <Text style={{ ...theme.typography.body, color: '#fff', fontWeight: '600' }}>Done</Text>
-      </Pressable>
+      />
 
       {feedback ? (
-        <Text style={{ ...theme.typography.body, color: theme.colors.semantic.stateSuccess }}>{feedback}</Text>
+        <Text
+          style={{
+            ...theme.typography.body,
+            fontSize: theme.typography.body.fontSize * fontScale,
+            lineHeight: theme.typography.body.lineHeight * fontScale,
+            color: theme.colors.semantic.stateSuccess,
+          }}
+        >
+          {feedback}
+        </Text>
       ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    gap: theme.spacing[16],
+  },
+  form: {
+    gap: theme.spacing[16],
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[300],
+    borderRadius: theme.radius[8],
+    backgroundColor: '#FFFFFF',
+    padding: theme.spacing[16],
+  },
+});

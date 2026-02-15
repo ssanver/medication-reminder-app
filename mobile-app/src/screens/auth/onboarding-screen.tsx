@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { getOnboardingSteps } from '../../features/onboarding/onboarding-steps';
+import { PrimaryButton } from '../../components/ui/primary-button';
 import { type Locale, getTranslations } from '../../features/localization/localization';
+import { getOnboardingSteps } from '../../features/onboarding/onboarding-steps';
 import { theme } from '../../theme';
 
 type OnboardingScreenProps = {
@@ -34,17 +35,25 @@ export function OnboardingScreen({
       <View style={styles.languageRow}>
         <Text style={styles.secondaryText}>{t.languageTitle}</Text>
         <View style={styles.languageButtons}>
-          <Pressable onPress={() => onLocaleChange('tr')} style={styles.chip}>
+          <Pressable onPress={() => onLocaleChange('tr')} style={[styles.chip, locale === 'tr' && styles.chipActive]}>
             <Text>TR</Text>
           </Pressable>
-          <Pressable onPress={() => onLocaleChange('en')} style={styles.chip}>
+          <Pressable onPress={() => onLocaleChange('en')} style={[styles.chip, locale === 'en' && styles.chipActive]}>
             <Text>EN</Text>
           </Pressable>
         </View>
       </View>
 
-      <Text style={styles.title}>{step.title}</Text>
-      <Text style={styles.secondaryText}>{step.description}</Text>
+      <View style={styles.heroCard}>
+        <Text style={styles.title}>{step.title}</Text>
+        <Text style={styles.secondaryText}>{step.description}</Text>
+      </View>
+
+      <View style={styles.dotsRow}>
+        {steps.map((item, index) => (
+          <View key={item.id} style={[styles.dot, index === stepIndex && styles.dotActive]} />
+        ))}
+      </View>
 
       {step.id === 'consent' ? (
         <View style={styles.card}>
@@ -64,13 +73,7 @@ export function OnboardingScreen({
         </View>
       ) : null}
 
-      <Pressable
-        onPress={onNextStep}
-        disabled={isLastStep && !consentAccepted}
-        style={[styles.primaryButton, isLastStep && !consentAccepted && styles.disabledButton]}
-      >
-        <Text style={styles.primaryButtonText}>{isLastStep ? t.finish : t.next}</Text>
-      </Pressable>
+      <PrimaryButton label={isLastStep ? t.finish : t.next} onPress={onNextStep} disabled={isLastStep && !consentAccepted} />
       <Text style={styles.secondaryText}>{`${stepIndex + 1}/${steps.length}`}</Text>
     </View>
   );
@@ -98,6 +101,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.neutral[300],
   },
+  chipActive: {
+    borderColor: theme.colors.semantic.brandPrimary,
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  heroCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+    borderRadius: theme.radius[16],
+    backgroundColor: '#FFFFFF',
+    padding: theme.spacing[16],
+    gap: theme.spacing[16],
+  },
   title: {
     ...theme.typography.heading5,
     color: theme.colors.semantic.textPrimary,
@@ -106,12 +121,28 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     color: theme.colors.semantic.textSecondary,
   },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.neutral[300],
+  },
+  dotActive: {
+    width: 18,
+    backgroundColor: theme.colors.semantic.brandPrimary,
+  },
   card: {
     padding: theme.spacing[16],
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.neutral[200],
     gap: theme.spacing[16],
+    backgroundColor: '#FFFFFF',
   },
   switchRow: {
     flexDirection: 'row',
@@ -125,24 +156,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius[8],
     paddingHorizontal: theme.spacing[16],
     paddingVertical: theme.spacing[8],
+    backgroundColor: '#FFFFFF',
   },
   hint: {
     ...theme.typography.caption,
     color: theme.colors.semantic.textSecondary,
-  },
-  primaryButton: {
-    minHeight: 44,
-    borderRadius: theme.radius[8],
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.semantic.brandPrimary,
-  },
-  primaryButtonText: {
-    ...theme.typography.body,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.4,
   },
 });
