@@ -4,6 +4,7 @@ using api.data;
 using api.models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace api.tests;
 
@@ -14,7 +15,7 @@ public sealed class NotificationActionsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var delivery = await AddDelivery(dbContext);
-        var controller = new NotificationActionsController(dbContext);
+        var controller = new NotificationActionsController(dbContext, NullLogger<NotificationActionsController>.Instance);
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {
@@ -37,7 +38,7 @@ public sealed class NotificationActionsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var delivery = await AddDelivery(dbContext);
-        var controller = new NotificationActionsController(dbContext);
+        var controller = new NotificationActionsController(dbContext, NullLogger<NotificationActionsController>.Instance);
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {
@@ -57,7 +58,7 @@ public sealed class NotificationActionsControllerTests
     public async Task Create_ShouldReturnNotFound_WhenDeliveryIsMissing()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new NotificationActionsController(dbContext);
+        var controller = new NotificationActionsController(dbContext, NullLogger<NotificationActionsController>.Instance);
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {

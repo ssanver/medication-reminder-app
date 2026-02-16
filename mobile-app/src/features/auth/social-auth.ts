@@ -1,6 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import { createCorrelationId } from '../network/correlation-id';
 
 export type SocialProvider = 'Apple' | 'Google';
 
@@ -56,10 +57,12 @@ function getGoogleRedirectUri(clientId: string): string {
 }
 
 async function exchangeSocialToken(provider: SocialProvider, providerToken: string): Promise<SocialLoginResult> {
+  const correlationId = createCorrelationId('social-login');
   const response = await fetch(`${getApiBaseUrl()}/api/auth/social-login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Correlation-ID': correlationId,
     },
     body: JSON.stringify({
       provider: provider.toLowerCase(),

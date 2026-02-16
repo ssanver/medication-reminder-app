@@ -1,6 +1,7 @@
 using api.contracts;
 using api.data;
 using api.models;
+using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/notification-actions")]
-public sealed class NotificationActionsController(AppDbContext dbContext) : ControllerBase
+public sealed class NotificationActionsController(AppDbContext dbContext, ILogger<NotificationActionsController> logger) : ControllerBase
 {
     private static readonly HashSet<string> ValidActions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -63,6 +64,14 @@ public sealed class NotificationActionsController(AppDbContext dbContext) : Cont
         dbContext.NotificationActions.Add(entity);
         await dbContext.SaveChangesAsync();
 
+        logger.LogInformation(
+            "action-received actionId={ActionId} deliveryId={DeliveryId} actionType={ActionType} user={UserRefMasked} platform={Platform}",
+            entity.Id,
+            entity.DeliveryId,
+            entity.ActionType,
+            LogMasker.Mask(entity.UserReference),
+            entity.ClientPlatform);
+
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToResponse(entity));
     }
 
@@ -113,6 +122,12 @@ public sealed class NotificationActionsController(AppDbContext dbContext) : Cont
             .Take(take)
             .Select(x => ToResponse(x))
             .ToArrayAsync();
+
+        logger.LogInformation(
+            "action-list-requested userFilter={UserRefMasked} actionType={ActionType} count={Count}",
+            LogMasker.Mask(userReference),
+            actionType,
+            items.Length);
 
         return Ok(items);
     }

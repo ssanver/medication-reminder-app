@@ -4,6 +4,7 @@ using api.data;
 using api.models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace api.tests;
 
@@ -13,7 +14,7 @@ public sealed class NotificationDeliveriesControllerTests
     public async Task Create_ShouldPersistDelivery_WhenRequestIsValid()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new NotificationDeliveriesController(dbContext);
+        var controller = new NotificationDeliveriesController(dbContext, NullLogger<NotificationDeliveriesController>.Instance);
 
         var result = await controller.Create(new CreateNotificationDeliveryRequest
         {
@@ -36,7 +37,7 @@ public sealed class NotificationDeliveriesControllerTests
     public async Task Create_ShouldReturnBadRequest_WhenStatusIsInvalid()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new NotificationDeliveriesController(dbContext);
+        var controller = new NotificationDeliveriesController(dbContext, NullLogger<NotificationDeliveriesController>.Instance);
 
         var result = await controller.Create(new CreateNotificationDeliveryRequest
         {
@@ -73,7 +74,7 @@ public sealed class NotificationDeliveriesControllerTests
             });
         await dbContext.SaveChangesAsync();
 
-        var controller = new NotificationDeliveriesController(dbContext);
+        var controller = new NotificationDeliveriesController(dbContext, NullLogger<NotificationDeliveriesController>.Instance);
         var result = await controller.List("u-1", null, 100);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);

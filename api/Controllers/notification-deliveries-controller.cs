@@ -1,6 +1,7 @@
 using api.contracts;
 using api.data;
 using api.models;
+using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/notification-deliveries")]
-public sealed class NotificationDeliveriesController(AppDbContext dbContext) : ControllerBase
+public sealed class NotificationDeliveriesController(AppDbContext dbContext, ILogger<NotificationDeliveriesController> logger) : ControllerBase
 {
     private static readonly HashSet<string> ValidStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -61,6 +62,13 @@ public sealed class NotificationDeliveriesController(AppDbContext dbContext) : C
         dbContext.NotificationDeliveries.Add(entity);
         await dbContext.SaveChangesAsync();
 
+        logger.LogInformation(
+            "reminder-scheduled deliveryId={DeliveryId} user={UserRefMasked} status={Status} channel={Channel}",
+            entity.Id,
+            LogMasker.Mask(entity.UserReference),
+            entity.Status,
+            entity.Channel);
+
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToResponse(entity));
     }
 
@@ -111,6 +119,12 @@ public sealed class NotificationDeliveriesController(AppDbContext dbContext) : C
             .Take(take)
             .Select(x => ToResponse(x))
             .ToArrayAsync();
+
+        logger.LogInformation(
+            "delivery-list-requested userFilter={UserRefMasked} statusFilter={Status} count={Count}",
+            LogMasker.Mask(userReference),
+            status,
+            items.Length);
 
         return Ok(items);
     }
