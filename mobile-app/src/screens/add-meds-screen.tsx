@@ -26,7 +26,7 @@ const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
 const dosageOptions = ['0.5', '1', '2', '3'];
 const quickTimes = ['07:00', '09:00', '12:00', '18:00', '21:00', '23:00'];
 const defaultDoseTimes = ['09:00', '14:00', '20:00'];
-const dayIntervalOptions = [1, 2, 3, 7] as const;
+const dayIntervalOptions = [1, 2, 3, 7, 14] as const;
 const dosesPerDayOptions = [1, 2, 3] as const;
 
 const formOptions: FormOption[] = [
@@ -85,6 +85,10 @@ function toFrequencyLabel(dayInterval: number): string {
 
   if (dayInterval === 7) {
     return 'Every 7 Days';
+  }
+
+  if (dayInterval === 14) {
+    return 'Every 14 Days';
   }
 
   return 'Every 1 Day';

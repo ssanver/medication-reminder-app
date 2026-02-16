@@ -7,6 +7,7 @@ export type MedicationRecurrence =
   | 'every-2-days'
   | 'every-3-days'
   | 'every-7-days'
+  | 'every-14-days'
   | 'every-8-hours'
   | 'every-12-hours'
   | 'hourly';
@@ -122,6 +123,10 @@ function recurrenceFromLabel(label: string): MedicationRecurrence {
 
   if (label === 'Every 7 Days') {
     return 'every-7-days';
+  }
+
+  if (label === 'Every 14 Days') {
+    return 'every-14-days';
   }
 
   if (label === 'Every 8 Hours') {
@@ -345,6 +350,10 @@ function recurrenceIntervalDays(recurrence: MedicationRecurrence): number {
 
   if (recurrence === 'every-7-days') {
     return 7;
+  }
+
+  if (recurrence === 'every-14-days') {
+    return 14;
   }
 
   return 1;
