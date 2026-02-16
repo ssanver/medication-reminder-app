@@ -20,6 +20,7 @@ const MEDICATION_NOTIFICATION_IDS_KEY = 'scheduled-medication-notification-ids-v
 const REMINDER_CATEGORY_ID = 'medication-dose-actions';
 const TAKE_NOW_ACTION_ID = 'take-now';
 const SKIP_ACTION_ID = 'skip-dose';
+const SNOOZE_MINUTES = 5;
 const SCHEDULE_WINDOW_DAYS = 30;
 const MAX_SCHEDULED_REMINDERS = 60;
 const LATE_REMINDER_GRACE_MS = 15 * 60 * 1000;
@@ -57,6 +58,12 @@ export function subscribeReminderPrompt(listener: () => void): () => void {
   return () => {
     reminderPromptListeners.delete(listener);
   };
+}
+
+function formatTime(date: Date): string {
+  const hours = `${date.getHours()}`.padStart(2, '0');
+  const minutes = `${date.getMinutes()}`.padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 function toDosePromptKey(payload: Pick<ReminderPrompt, 'medicationId' | 'dateKey' | 'scheduledTime'>): string {
@@ -209,6 +216,7 @@ export function ensureMedicationNotificationResponseListener(): void {
     if (response.actionIdentifier === SKIP_ACTION_ID) {
       dismissReminderPrompt();
       void setDoseStatus(payload.medicationId, date, 'missed', payload.scheduledTime);
+      void scheduleDoseFollowUpReminder(payload, SNOOZE_MINUTES);
       return;
     }
 
@@ -385,6 +393,38 @@ export async function scheduleSnoozeReminder(payload: {
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: Math.max(payload.minutes, 1) * 60,
+      channelId: 'medication-reminders',
+    },
+  });
+}
+
+export async function scheduleDoseFollowUpReminder(payload: ReminderPrompt, minutes = SNOOZE_MINUTES): Promise<void> {
+  const granted = await ensureNotificationPermissions();
+  if (!granted) {
+    return;
+  }
+
+  await configureNotificationChannel();
+  const triggerDate = new Date(Date.now() + Math.max(minutes, 1) * 60 * 1000);
+  const nextTime = formatTime(triggerDate);
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: `${nextTime} Medicines`,
+      body: `${payload.medicationName} • ${payload.medicationDetails}`,
+      sound: 'default',
+      categoryIdentifier: REMINDER_CATEGORY_ID,
+      data: {
+        medicationId: payload.medicationId,
+        dateKey: payload.dateKey,
+        scheduledTime: payload.scheduledTime,
+        medicationName: payload.medicationName,
+        medicationDetails: payload.medicationDetails,
+      } satisfies MedicationReminderPayload,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: triggerDate,
       channelId: 'medication-reminders',
     },
   });

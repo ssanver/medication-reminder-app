@@ -14,6 +14,7 @@ import {
   emitDueReminderPrompt,
   ensureNotificationPermissions,
   getReminderPromptSnapshot,
+  scheduleDoseFollowUpReminder,
   subscribeReminderPrompt,
   syncMedicationReminderNotifications,
 } from '../features/notifications/local-notifications';
@@ -383,6 +384,14 @@ export function AppNavigator() {
 
           dismissReminderPrompt();
         }}
+        onSnooze={() => {
+          if (!reminderPrompt) {
+            return;
+          }
+
+          void scheduleDoseFollowUpReminder(reminderPrompt, 5);
+          dismissReminderPrompt();
+        }}
         onSkip={() => {
           if (!reminderPrompt) {
             return;
@@ -393,6 +402,7 @@ export function AppNavigator() {
             void setDoseStatus(reminderPrompt.medicationId, date, 'missed', reminderPrompt.scheduledTime);
           }
 
+          void scheduleDoseFollowUpReminder(reminderPrompt, 5);
           dismissReminderPrompt();
         }}
       />
