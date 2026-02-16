@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 
 type SegmentOption = string | { label: string; value: string; count?: number };
@@ -18,6 +19,7 @@ function normalizeOption(option: SegmentOption) {
 }
 
 export function SegmentedControl({ options, value, onChange }: SegmentedControlProps) {
+  const fontScale = useAppFontScale();
   return (
     <View style={styles.container}>
       {options.map((raw, index) => {
@@ -30,10 +32,16 @@ export function SegmentedControl({ options, value, onChange }: SegmentedControlP
             onPress={() => onChange(option.value)}
             style={[styles.item, selected && styles.selected, index === 0 && styles.first]}
           >
-            <Text style={[styles.text, selected && styles.selectedText]}>{option.label}</Text>
+            <Text style={[styles.text, { fontSize: theme.typography.bodyScale.xmMedium.fontSize * fontScale }, selected && styles.selectedText]}>
+              {option.label}
+            </Text>
             {option.count !== undefined ? (
               <View style={[styles.countPill, selected && styles.selectedCountPill]}>
-                <Text style={[styles.countText, selected && styles.selectedCountText]}>{option.count}</Text>
+                <Text
+                  style={[styles.countText, { fontSize: theme.typography.captionScale.mRegular.fontSize * fontScale }, selected && styles.selectedCountText]}
+                >
+                  {option.count}
+                </Text>
               </View>
             ) : null}
           </Pressable>

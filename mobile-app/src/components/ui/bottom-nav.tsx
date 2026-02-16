@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 import { AppIcon } from './app-icon';
 import type { AppIconName } from './app-icon';
@@ -16,6 +17,7 @@ type BottomNavProps = {
 };
 
 export function BottomNav({ items, activeKey, onChange }: BottomNavProps) {
+  const fontScale = useAppFontScale();
   return (
     <View style={styles.container}>
       {items.map((item) => {
@@ -27,7 +29,9 @@ export function BottomNav({ items, activeKey, onChange }: BottomNavProps) {
               size={18}
               color={active ? theme.colors.primaryBlue[500] : theme.colors.semantic.textSecondary}
             />
-            <Text style={[styles.label, active && styles.labelActive]}>{item.label}</Text>
+            <Text style={[styles.label, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }, active && styles.labelActive]}>
+              {item.label}
+            </Text>
           </Pressable>
         );
       })}

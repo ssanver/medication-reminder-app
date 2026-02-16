@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 
 type FieldState = 'default' | 'focused' | 'disabled' | 'error';
@@ -32,11 +33,20 @@ export function TextField({
   autoCapitalize = 'none',
   onChangeText,
 }: TextFieldProps) {
+  const fontScale = useAppFontScale();
   const state: FieldState = !editable ? 'disabled' : errorText ? 'error' : value.length > 0 ? 'focused' : 'default';
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, state === 'error' && styles.labelError]}>{label}</Text>
+      <Text
+        style={[
+          styles.label,
+          { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale },
+          state === 'error' && styles.labelError,
+        ]}
+      >
+        {label}
+      </Text>
       <View style={[styles.inputShell, shellStateStyles[state]]}>
         {leadingIcon ? <Text style={styles.leadingIcon}>{leadingIcon}</Text> : null}
         <TextInput
@@ -46,7 +56,7 @@ export function TextField({
           secureTextEntry={secureTextEntry}
           autoCapitalize={autoCapitalize}
           placeholderTextColor={theme.colors.neutral[400]}
-          style={styles.input}
+          style={[styles.input, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}
           onChangeText={onChangeText}
         />
         {trailingIcon ? (
@@ -55,7 +65,15 @@ export function TextField({
           </Pressable>
         ) : null}
       </View>
-      <Text style={[styles.helperText, state === 'error' && styles.errorText]}>{errorText ?? helperText ?? ' '}</Text>
+      <Text
+        style={[
+          styles.helperText,
+          { fontSize: theme.typography.captionScale.mRegular.fontSize * fontScale },
+          state === 'error' && styles.errorText,
+        ]}
+      >
+        {errorText ?? helperText ?? ' '}
+      </Text>
     </View>
   );
 }

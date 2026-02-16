@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 
 type ButtonVariant = 'filled' | 'filled-dark' | 'outlined' | 'ghost' | 'success' | 'danger';
@@ -26,6 +27,14 @@ export function Button({
   fullWidth = true,
   onPress,
 }: ButtonProps) {
+  const fontScale = useAppFontScale();
+  const textBaseBySize = {
+    xs: theme.typography.button.xsMedium,
+    s: theme.typography.button.sMedium,
+    m: theme.typography.button.mMedium,
+    l: theme.typography.button.lMedium,
+  } as const;
+
   return (
     <Pressable
       onPress={onPress}
@@ -40,7 +49,16 @@ export function Button({
     >
       <View style={styles.contentRow}>
         {leadingNode ? <View style={styles.leadingNode}>{leadingNode}</View> : null}
-        <Text style={[textSizeStyles[size], textVariantStyles[variant], disabled && styles.disabledText]}>
+        <Text
+          style={[
+            textSizeStyles[size],
+            {
+              fontSize: textBaseBySize[size].fontSize * fontScale,
+            },
+            textVariantStyles[variant],
+            disabled && styles.disabledText,
+          ]}
+        >
           {leadingIcon ? `${leadingIcon}  ` : ''}
           {label}
         </Text>

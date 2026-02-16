@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 import { Button } from './button';
 
@@ -41,11 +42,14 @@ export function MedicationCard({
   onActionPress,
   onPress,
 }: MedicationCardProps) {
+  const fontScale = useAppFontScale();
   return (
     <Pressable style={[styles.card, compact && styles.cardCompact, !active && styles.cardDisabled]} onPress={onPress}>
       {statusBadge ? (
         <View style={[styles.badge, statusBadge === 'missed' ? styles.badgeMissed : styles.badgeOnTime]}>
-          <Text style={styles.badgeText}>{statusBadge === 'missed' ? 'Missed' : '2h 23m'}</Text>
+          <Text style={[styles.badgeText, { fontSize: theme.typography.captionScale.mRegular.fontSize * fontScale }]}>
+            {statusBadge === 'missed' ? 'Missed' : '2h 23m'}
+          </Text>
         </View>
       ) : null}
 
@@ -55,10 +59,10 @@ export function MedicationCard({
         </View>
 
         <View style={styles.content}>
-          <Text style={[styles.title, compact && styles.titleCompact]}>{name}</Text>
-          <Text style={[styles.meta, compact && styles.metaCompact]}>{details}</Text>
-          <Text style={[styles.meta, compact && styles.metaCompact]}>{schedule}</Text>
-          {remaining ? <Text style={styles.metaMuted}>{remaining}</Text> : null}
+          <Text style={[styles.title, { fontSize: theme.typography.bodyScale.mBold.fontSize * fontScale }, compact && styles.titleCompact]}>{name}</Text>
+          <Text style={[styles.meta, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }, compact && styles.metaCompact]}>{details}</Text>
+          <Text style={[styles.meta, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }, compact && styles.metaCompact]}>{schedule}</Text>
+          {remaining ? <Text style={[styles.metaMuted, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }]}>{remaining}</Text> : null}
         </View>
 
         {showToggle ? (
@@ -76,7 +80,9 @@ export function MedicationCard({
         <View style={styles.actionWrap}>
           {secondaryActionLabel ? (
             <Pressable onPress={onSecondaryActionPress} style={styles.secondaryAction}>
-              <Text style={styles.secondaryActionText}>{secondaryActionLabel}</Text>
+              <Text style={[styles.secondaryActionText, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }]}>
+                {secondaryActionLabel}
+              </Text>
             </Pressable>
           ) : null}
           <Button

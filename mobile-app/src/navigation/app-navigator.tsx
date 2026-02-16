@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BottomNav } from '../components/ui/bottom-nav';
 import type { AppIconName } from '../components/ui/app-icon';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
+import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import { ensureNotificationPermissions } from '../features/notifications/local-notifications';
@@ -88,6 +89,10 @@ export function AppNavigator() {
       snoozeMinutes,
     });
   }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
+
+  useEffect(() => {
+    setAppFontScale(fontScale);
+  }, [fontScale]);
 
   if (!isOnboardingStepCountValid(steps)) {
     return (

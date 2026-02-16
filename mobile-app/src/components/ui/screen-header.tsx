@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 import { IconButton } from './icon-button';
 
@@ -10,16 +11,17 @@ type ScreenHeaderProps = {
 };
 
 export function ScreenHeader({ title, subtitle, leftAction, rightAction }: ScreenHeaderProps) {
+  const fontScale = useAppFontScale();
   return (
     <View style={styles.wrapper}>
       <View style={styles.row}>
         <View style={styles.side}>{leftAction ? <IconButton icon={leftAction.icon} onPress={leftAction.onPress} /> : null}</View>
-        <Text numberOfLines={1} style={styles.title}>
+        <Text numberOfLines={1} style={[styles.title, { fontSize: theme.typography.heading.h5Semibold.fontSize * fontScale }]}>
           {title}
         </Text>
         <View style={styles.side}>{rightAction ? <IconButton icon={rightAction.icon} onPress={rightAction.onPress} /> : null}</View>
       </View>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {subtitle ? <Text style={[styles.subtitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{subtitle}</Text> : null}
     </View>
   );
 }
