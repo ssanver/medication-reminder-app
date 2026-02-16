@@ -53,8 +53,15 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
     [doses],
   );
   const hasAnyDoseForSelectedDate = doses.length > 0;
+  const isTakenFilter = filter === 'Taken';
   const isMissedFilter = filter === 'Missed';
-  const showMissedEmptyWarningOnly = isMissedFilter && filtered.length === 0 && hasAnyDoseForSelectedDate;
+  const showFilteredEmptyWarningOnly = (isMissedFilter || isTakenFilter) && filtered.length === 0 && hasAnyDoseForSelectedDate;
+  const filteredEmptyTitle =
+    isMissedFilter
+      ? t.noMissedMedicationTitle
+      : locale === 'tr'
+        ? 'Alınan ilacınız bulunmamaktadır'
+        : 'No taken medications were found';
   const dateDelta = useMemo(() => {
     const normalize = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
     return normalize(selectedDate) - normalize(new Date());
@@ -120,9 +127,9 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
       {filtered.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>💊</Text>
-          <Text style={styles.emptyTitle}>{showMissedEmptyWarningOnly ? t.noMissedMedicationTitle : t.noMedicationTitle}</Text>
-          {!showMissedEmptyWarningOnly ? <Text style={styles.emptyDescription}>{t.noMedicationDescription}</Text> : null}
-          {!showMissedEmptyWarningOnly ? <Button label={t.addMedication} onPress={onOpenAddMedication} /> : null}
+          <Text style={styles.emptyTitle}>{showFilteredEmptyWarningOnly ? filteredEmptyTitle : t.noMedicationTitle}</Text>
+          {!showFilteredEmptyWarningOnly ? <Text style={styles.emptyDescription}>{t.noMedicationDescription}</Text> : null}
+          {!showFilteredEmptyWarningOnly ? <Button label={t.addMedication} onPress={onOpenAddMedication} /> : null}
         </View>
       ) : (
         <View style={styles.list}>
