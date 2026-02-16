@@ -12,6 +12,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PrescriptionReminder> PrescriptionReminders => Set<PrescriptionReminder>();
     public DbSet<SyncEvent> SyncEvents => Set<SyncEvent>();
     public DbSet<HealthEvent> HealthEvents => Set<HealthEvent>();
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CaregiverInvite> CaregiverInvites => Set<CaregiverInvite>();
@@ -114,6 +115,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.EventAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
             entity.HasIndex(x => new { x.MedicationId, x.EventAt });
+        });
+
+        modelBuilder.Entity<NotificationDelivery>(entity =>
+        {
+            entity.ToTable("notification-deliveries");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserReference).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Channel).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.ProviderMessageId).HasMaxLength(120);
+            entity.Property(x => x.ErrorCode).HasMaxLength(80);
+            entity.Property(x => x.ErrorMessage).HasMaxLength(500);
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.HasIndex(x => new { x.UserReference, x.ScheduledAt });
+            entity.HasIndex(x => new { x.Status, x.SentAt });
         });
 
         modelBuilder.Entity<ConsentRecord>(entity =>
