@@ -1,6 +1,8 @@
 using api.data;
 using api.middleware;
+using api.services.notification_persistence;
 using api.services.security;
+using api_application.notification_application;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +15,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+builder.Services.AddScoped<INotificationDeliveryRepository, EfNotificationDeliveryRepository>();
+builder.Services.AddScoped<INotificationActionRepository, EfNotificationActionRepository>();
+builder.Services.AddScoped<NotificationDeliveryApplicationService>();
+builder.Services.AddScoped<NotificationActionApplicationService>();
 builder.Logging.AddJsonConsole();
 
 var app = builder.Build();

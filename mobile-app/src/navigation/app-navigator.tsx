@@ -6,16 +6,13 @@ import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
-import { setDoseStatus } from '../features/medications/medication-store';
-import { recordNotificationHistory } from '../features/notifications/notification-history';
 import { useMedicationStore } from '../features/medications/use-medication-store';
+import { handleReminderSkip, handleReminderSnooze, handleReminderTakeNow } from '../features/notifications/notification-center-service';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import {
-  dismissReminderPrompt,
   emitDueReminderPrompt,
   ensureNotificationPermissions,
   getReminderPromptSnapshot,
-  scheduleDoseFollowUpReminder,
   subscribeReminderPrompt,
   syncMedicationReminderNotifications,
 } from '../features/notifications/local-notifications';
@@ -390,50 +387,19 @@ export function AppNavigator() {
           if (!reminderPrompt) {
             return;
           }
-
-          const date = new Date(`${reminderPrompt.dateKey}T00:00:00`);
-          if (!Number.isNaN(date.getTime())) {
-            void setDoseStatus(reminderPrompt.medicationId, date, 'taken', reminderPrompt.scheduledTime);
-          }
-          void recordNotificationHistory({
-            medicationId: reminderPrompt.medicationId,
-            dateKey: reminderPrompt.dateKey,
-            scheduledTime: reminderPrompt.scheduledTime,
-            medicationName: reminderPrompt.medicationName,
-            medicationDetails: reminderPrompt.medicationDetails,
-            action: 'take-now',
-          });
-
-          dismissReminderPrompt();
+          void handleReminderTakeNow(reminderPrompt);
         }}
         onSnooze={() => {
           if (!reminderPrompt) {
             return;
           }
-
-          void scheduleDoseFollowUpReminder(reminderPrompt, 5);
-          dismissReminderPrompt();
+          void handleReminderSnooze(reminderPrompt);
         }}
         onSkip={() => {
           if (!reminderPrompt) {
             return;
           }
-
-          const date = new Date(`${reminderPrompt.dateKey}T00:00:00`);
-          if (!Number.isNaN(date.getTime())) {
-            void setDoseStatus(reminderPrompt.medicationId, date, 'missed', reminderPrompt.scheduledTime);
-          }
-          void recordNotificationHistory({
-            medicationId: reminderPrompt.medicationId,
-            dateKey: reminderPrompt.dateKey,
-            scheduledTime: reminderPrompt.scheduledTime,
-            medicationName: reminderPrompt.medicationName,
-            medicationDetails: reminderPrompt.medicationDetails,
-            action: 'skip',
-          });
-
-          void scheduleDoseFollowUpReminder(reminderPrompt, 5);
-          dismissReminderPrompt();
+          void handleReminderSkip(reminderPrompt);
         }}
       />
     </View>

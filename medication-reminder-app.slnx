@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="api-application/api-application.csproj" />
+  <Project Path="api-domain/api-domain.csproj" />
   <Project Path="api.tests/api.tests.csproj" />
   <Project Path="api/api.csproj" />
 </Solution>

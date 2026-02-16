@@ -2,6 +2,8 @@ using api.Controllers;
 using api.contracts;
 using api.data;
 using api.models;
+using api.services.notification_persistence;
+using api_application.notification_application;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,7 +17,11 @@ public sealed class NotificationActionsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var delivery = await AddDelivery(dbContext);
-        var controller = new NotificationActionsController(dbContext, NullLogger<NotificationActionsController>.Instance);
+        var controller = new NotificationActionsController(
+            new NotificationActionApplicationService(
+                new EfNotificationActionRepository(dbContext),
+                new EfNotificationDeliveryRepository(dbContext)),
+            NullLogger<NotificationActionsController>.Instance);
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {
@@ -38,7 +44,11 @@ public sealed class NotificationActionsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var delivery = await AddDelivery(dbContext);
-        var controller = new NotificationActionsController(dbContext, NullLogger<NotificationActionsController>.Instance);
+        var controller = new NotificationActionsController(
+            new NotificationActionApplicationService(
+                new EfNotificationActionRepository(dbContext),
+                new EfNotificationDeliveryRepository(dbContext)),
+            NullLogger<NotificationActionsController>.Instance);
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {
@@ -58,7 +68,11 @@ public sealed class NotificationActionsControllerTests
     public async Task Create_ShouldReturnNotFound_WhenDeliveryIsMissing()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new NotificationActionsController(dbContext, NullLogger<NotificationActionsController>.Instance);
+        var controller = new NotificationActionsController(
+            new NotificationActionApplicationService(
+                new EfNotificationActionRepository(dbContext),
+                new EfNotificationDeliveryRepository(dbContext)),
+            NullLogger<NotificationActionsController>.Instance);
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {

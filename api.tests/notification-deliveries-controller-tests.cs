@@ -2,6 +2,8 @@ using api.Controllers;
 using api.contracts;
 using api.data;
 using api.models;
+using api.services.notification_persistence;
+using api_application.notification_application;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,7 +16,9 @@ public sealed class NotificationDeliveriesControllerTests
     public async Task Create_ShouldPersistDelivery_WhenRequestIsValid()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new NotificationDeliveriesController(dbContext, NullLogger<NotificationDeliveriesController>.Instance);
+        var controller = new NotificationDeliveriesController(
+            new NotificationDeliveryApplicationService(new EfNotificationDeliveryRepository(dbContext)),
+            NullLogger<NotificationDeliveriesController>.Instance);
 
         var result = await controller.Create(new CreateNotificationDeliveryRequest
         {
@@ -37,7 +41,9 @@ public sealed class NotificationDeliveriesControllerTests
     public async Task Create_ShouldReturnBadRequest_WhenStatusIsInvalid()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new NotificationDeliveriesController(dbContext, NullLogger<NotificationDeliveriesController>.Instance);
+        var controller = new NotificationDeliveriesController(
+            new NotificationDeliveryApplicationService(new EfNotificationDeliveryRepository(dbContext)),
+            NullLogger<NotificationDeliveriesController>.Instance);
 
         var result = await controller.Create(new CreateNotificationDeliveryRequest
         {
@@ -74,7 +80,9 @@ public sealed class NotificationDeliveriesControllerTests
             });
         await dbContext.SaveChangesAsync();
 
-        var controller = new NotificationDeliveriesController(dbContext, NullLogger<NotificationDeliveriesController>.Instance);
+        var controller = new NotificationDeliveriesController(
+            new NotificationDeliveryApplicationService(new EfNotificationDeliveryRepository(dbContext)),
+            NullLogger<NotificationDeliveriesController>.Instance);
         var result = await controller.List("u-1", null, 100);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
