@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
@@ -142,10 +142,17 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     () => Array.from({ length: dosesPerDay }, (_, index) => doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00'),
     [doseTimes, dosesPerDay],
   );
+  const isWeeklyCadence = dayInterval >= 7;
   const hasDuplicateTimes = useMemo(
     () => new Set(selectedDoseTimes.map((item) => item.trim())).size !== selectedDoseTimes.length,
     [selectedDoseTimes],
   );
+
+  useEffect(() => {
+    if (isWeeklyCadence && dosesPerDay !== 1) {
+      setDosesPerDay(1);
+    }
+  }, [isWeeklyCadence, dosesPerDay]);
 
   const canProceed =
     (step === 'name' && name.trim().length > 1) ||
@@ -307,19 +314,29 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
             </View>
           </Pressable>
 
-          <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Günde kaç kez' : 'Doses per day'}</Text>
-            <View style={styles.doseCountChipRow}>
-              {dosesPerDayOptions.map((count) => {
-                const selected = count === dosesPerDay;
-                return (
-                  <Pressable key={count} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
-                    <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
-                  </Pressable>
-                );
-              })}
+          {isWeeklyCadence ? (
+            <View style={styles.weeklyInfoCard}>
+              <Text style={styles.weeklyInfoText}>
+                {locale === 'tr'
+                  ? 'Haftalık planlarda karışıklığı önlemek için günde tek doz saati kullanılır.'
+                  : 'Weekly plans use a single dose time per day to keep setup simple.'}
+              </Text>
             </View>
-          </View>
+          ) : (
+            <View style={styles.doseCountRow}>
+              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Günde kaç kez' : 'Doses per day'}</Text>
+              <View style={styles.doseCountChipRow}>
+                {dosesPerDayOptions.map((count) => {
+                  const selected = count === dosesPerDay;
+                  return (
+                    <Pressable key={count} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
+                      <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           <Pressable style={styles.selectionRow} onPress={openDateSheet}>
             <View style={styles.selectionLeft}>
@@ -680,6 +697,18 @@ const styles = StyleSheet.create({
   },
   doseCountRow: {
     gap: theme.spacing[8],
+  },
+  weeklyInfoCard: {
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.neutral[50],
+    paddingHorizontal: theme.spacing[8],
+    paddingVertical: theme.spacing[8],
+  },
+  weeklyInfoText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
   },
   doseCountChipRow: {
     flexDirection: 'row',
