@@ -13,4 +13,6 @@ public sealed class NotificationDelivery
     public string? ErrorCode { get; set; }
     public string? ErrorMessage { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public ICollection<NotificationAction> Actions { get; set; } = [];
 }

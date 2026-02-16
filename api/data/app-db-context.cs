@@ -13,6 +13,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SyncEvent> SyncEvents => Set<SyncEvent>();
     public DbSet<HealthEvent> HealthEvents => Set<HealthEvent>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+    public DbSet<NotificationAction> NotificationActions => Set<NotificationAction>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CaregiverInvite> CaregiverInvites => Set<CaregiverInvite>();
@@ -130,6 +131,25 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.HasIndex(x => new { x.UserReference, x.ScheduledAt });
             entity.HasIndex(x => new { x.Status, x.SentAt });
+        });
+
+        modelBuilder.Entity<NotificationAction>(entity =>
+        {
+            entity.ToTable("notification-actions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserReference).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.ActionType).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.ClientPlatform).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.AppVersion).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.MetadataJson).HasMaxLength(2000);
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.HasIndex(x => new { x.UserReference, x.ActionAt });
+
+            entity
+                .HasOne(x => x.Delivery)
+                .WithMany(x => x.Actions)
+                .HasForeignKey(x => x.DeliveryId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ConsentRecord>(entity =>
