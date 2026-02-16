@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
@@ -18,11 +19,12 @@ type TodayScreenProps = {
   remindersEnabled: boolean;
   snoozeMinutes: number;
   onOpenAddMedication: () => void;
+  onOpenNotificationHistory: () => void;
 };
 
 type DoseStatus = 'All' | 'Taken' | 'Missed';
 
-export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes, onOpenAddMedication }: TodayScreenProps) {
+export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes, onOpenAddMedication, onOpenNotificationHistory }: TodayScreenProps) {
   const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<DoseStatus>('All');
@@ -84,11 +86,16 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.profileRow}>
-        <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩</Text></View>
-        <View>
-          <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
-          <Text style={styles.welcome}>{t.welcome}</Text>
+        <View style={styles.profileLeft}>
+          <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩</Text></View>
+          <View>
+            <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
+            <Text style={styles.welcome}>{t.welcome}</Text>
+          </View>
         </View>
+        <Pressable style={styles.bellButton} onPress={onOpenNotificationHistory}>
+          <AppIcon name="alarm" size={18} color={theme.colors.semantic.textSecondary} />
+        </Pressable>
       </View>
 
       <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{dateTitle}</Text>
@@ -226,7 +233,23 @@ const styles = StyleSheet.create({
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: theme.spacing[8],
+  },
+  profileLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+  },
+  bellButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatar: {
     width: 38,

@@ -7,6 +7,7 @@ import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibilit
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { setDoseStatus } from '../features/medications/medication-store';
+import { recordNotificationHistory } from '../features/notifications/notification-history';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import {
@@ -27,6 +28,7 @@ import { ChangePasswordScreen } from '../screens/change-password-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
 import { MedicationDetailsScreen } from '../screens/medication-details-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
+import { NotificationHistoryScreen } from '../screens/notification-history-screen';
 import { NotificationSettingsScreen } from '../screens/notification-settings-screen';
 import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
@@ -42,6 +44,7 @@ type OverlayScreen =
   | 'reports'
   | 'profile'
   | 'medication-details'
+  | 'notification-history'
   | 'notification-settings'
   | 'reminder-preferences'
   | 'change-password'
@@ -237,6 +240,16 @@ export function AppNavigator() {
     );
   }
 
+  if (overlayScreen === 'notification-history') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <NotificationHistoryScreen locale={locale} onBack={() => setOverlayScreen('none')} />
+        </View>
+      </View>
+    );
+  }
+
   if (overlayScreen === 'notification-settings') {
     return (
       <View style={styles.container}>
@@ -353,6 +366,7 @@ export function AppNavigator() {
           () => setOverlayScreen('reports'),
           () => setOverlayScreen('profile'),
           () => setOverlayScreen('notification-settings'),
+          () => setOverlayScreen('notification-history'),
           () => setOverlayScreen('reminder-preferences'),
           () => setOverlayScreen('change-password'),
           () => setOverlayScreen('about-us'),
@@ -381,6 +395,14 @@ export function AppNavigator() {
           if (!Number.isNaN(date.getTime())) {
             void setDoseStatus(reminderPrompt.medicationId, date, 'taken', reminderPrompt.scheduledTime);
           }
+          void recordNotificationHistory({
+            medicationId: reminderPrompt.medicationId,
+            dateKey: reminderPrompt.dateKey,
+            scheduledTime: reminderPrompt.scheduledTime,
+            medicationName: reminderPrompt.medicationName,
+            medicationDetails: reminderPrompt.medicationDetails,
+            action: 'take-now',
+          });
 
           dismissReminderPrompt();
         }}
@@ -401,6 +423,14 @@ export function AppNavigator() {
           if (!Number.isNaN(date.getTime())) {
             void setDoseStatus(reminderPrompt.medicationId, date, 'missed', reminderPrompt.scheduledTime);
           }
+          void recordNotificationHistory({
+            medicationId: reminderPrompt.medicationId,
+            dateKey: reminderPrompt.dateKey,
+            scheduledTime: reminderPrompt.scheduledTime,
+            medicationName: reminderPrompt.medicationName,
+            medicationDetails: reminderPrompt.medicationDetails,
+            action: 'skip',
+          });
 
           void scheduleDoseFollowUpReminder(reminderPrompt, 5);
           dismissReminderPrompt();
@@ -428,6 +458,7 @@ function renderTab(
   onOpenReports: () => void,
   onOpenProfile: () => void,
   onOpenNotificationSettings: () => void,
+  onOpenNotificationHistory: () => void,
   onOpenReminderPreferences: () => void,
   onOpenChangePassword: () => void,
   onOpenAboutUs: () => void,
@@ -441,6 +472,7 @@ function renderTab(
           onOpenAddMedication={onOpenAddMeds}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
+          onOpenNotificationHistory={onOpenNotificationHistory}
         />
       );
     case 'my-meds':
@@ -480,6 +512,7 @@ function renderTab(
           onOpenAddMedication={onOpenAddMeds}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
+          onOpenNotificationHistory={onOpenNotificationHistory}
         />
       );
   }

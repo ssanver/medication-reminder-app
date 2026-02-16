@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 import { theme } from '../../theme';
 
-export type AppIconName = 'home' | 'pill' | 'add' | 'settings' | 'back' | 'forward' | 'close' | 'check';
+export type AppIconName = 'home' | 'pill' | 'add' | 'settings' | 'back' | 'forward' | 'close' | 'check' | 'alarm';
 
 type AppIconProps = {
   name: AppIconName;
@@ -47,6 +47,12 @@ export function AppIcon({ name, color = theme.colors.semantic.textSecondary, siz
           </>
         ) : null}
         {name === 'check' ? <Path d="M5.8 12.4L10 16.5L18.2 8.3" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /> : null}
+        {name === 'alarm' ? (
+          <>
+            <Path d="M12 4.3C8.7 4.3 6 7 6 10.3V13.6L4.7 16.1H19.3L18 13.6V10.3C18 7 15.3 4.3 12 4.3Z" stroke={color} strokeWidth={1.8} />
+            <Path d="M10.1 18.1C10.4 19.2 11.1 19.7 12 19.7C12.9 19.7 13.6 19.2 13.9 18.1" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+          </>
+        ) : null}
       </Svg>
     </View>
   );

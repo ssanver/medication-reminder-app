@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { type Locale } from '../localization/localization';
 import { getScheduledDosesForDate, setDoseStatus } from '../medications/medication-store';
+import { recordNotificationHistory } from './notification-history';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -209,18 +210,42 @@ export function ensureMedicationNotificationResponseListener(): void {
 
     if (response.actionIdentifier === TAKE_NOW_ACTION_ID) {
       dismissReminderPrompt();
+      void recordNotificationHistory({
+        medicationId: payload.medicationId,
+        dateKey: payload.dateKey,
+        scheduledTime: payload.scheduledTime,
+        medicationName: payload.medicationName,
+        medicationDetails: payload.medicationDetails,
+        action: 'take-now',
+      });
       void setDoseStatus(payload.medicationId, date, 'taken', payload.scheduledTime);
       return;
     }
 
     if (response.actionIdentifier === SKIP_ACTION_ID) {
       dismissReminderPrompt();
+      void recordNotificationHistory({
+        medicationId: payload.medicationId,
+        dateKey: payload.dateKey,
+        scheduledTime: payload.scheduledTime,
+        medicationName: payload.medicationName,
+        medicationDetails: payload.medicationDetails,
+        action: 'skip',
+      });
       void setDoseStatus(payload.medicationId, date, 'missed', payload.scheduledTime);
       void scheduleDoseFollowUpReminder(payload, SNOOZE_MINUTES);
       return;
     }
 
     if (response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      void recordNotificationHistory({
+        medicationId: payload.medicationId,
+        dateKey: payload.dateKey,
+        scheduledTime: payload.scheduledTime,
+        medicationName: payload.medicationName,
+        medicationDetails: payload.medicationDetails,
+        action: 'open',
+      });
       setReminderPrompt(payload);
     }
   });
@@ -243,6 +268,14 @@ export function ensureMedicationNotificationReceivedListener(): void {
       return;
     }
 
+    void recordNotificationHistory({
+      medicationId: payload.medicationId,
+      dateKey: payload.dateKey,
+      scheduledTime: payload.scheduledTime,
+      medicationName: payload.medicationName,
+      medicationDetails: payload.medicationDetails,
+      action: 'shown',
+    });
     setReminderPrompt(payload);
   });
 
@@ -368,6 +401,14 @@ export function emitDueReminderPrompt(locale: Locale, reference = new Date()): v
   };
 
   promptedDoseKeys.add(toDosePromptKey(payload));
+  void recordNotificationHistory({
+    medicationId: payload.medicationId,
+    dateKey: payload.dateKey,
+    scheduledTime: payload.scheduledTime,
+    medicationName: payload.medicationName,
+    medicationDetails: payload.medicationDetails,
+    action: 'shown',
+  });
   setReminderPrompt(payload);
 }
 
@@ -407,6 +448,14 @@ export async function scheduleDoseFollowUpReminder(payload: ReminderPrompt, minu
   await configureNotificationChannel();
   const triggerDate = new Date(Date.now() + Math.max(minutes, 1) * 60 * 1000);
   const nextTime = formatTime(triggerDate);
+  await recordNotificationHistory({
+    medicationId: payload.medicationId,
+    dateKey: payload.dateKey,
+    scheduledTime: payload.scheduledTime,
+    medicationName: payload.medicationName,
+    medicationDetails: payload.medicationDetails,
+    action: 'snooze-5min',
+  });
 
   await Notifications.scheduleNotificationAsync({
     content: {
