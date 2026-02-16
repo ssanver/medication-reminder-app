@@ -25,12 +25,13 @@ type FormOption = {
 
 const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
 const dosageOptions = ['0.5', '1', '2', '3'];
-const quickTimes = ['07:00', '09:00', '12:00', '18:00', '21:00', '23:00'];
 const defaultDoseTimes = ['09:00', '14:00', '20:00'];
 const dayIntervalOptions = [1, 2, 3] as const;
 const weekIntervalOptions = [1, 2] as const;
 const dosesPerDayOptions = [1, 2, 3] as const;
 const weekdayOptions = [1, 2, 3, 4, 5, 6, 0] as const;
+const hourOptions = Array.from({ length: 24 }, (_, hour) => `${hour}`.padStart(2, '0'));
+const minuteOptions = Array.from({ length: 12 }, (_, index) => `${index * 5}`.padStart(2, '0'));
 
 const formOptions: FormOption[] = [
   { key: 'Capsule', emoji: '💊' },
@@ -119,6 +120,13 @@ function alignDateToWeekday(baseDate: string, weekday: number): string {
   return formatDate(aligned);
 }
 
+function splitTime(value: string): { hour: string; minute: string } {
+  const [rawHour = '09', rawMinute = '00'] = value.split(':');
+  const hour = `${Math.min(23, Math.max(0, Number(rawHour)))}`.padStart(2, '0');
+  const minute = `${Math.min(59, Math.max(0, Number(rawMinute)))}`.padStart(2, '0');
+  return { hour, minute };
+}
+
 export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);
   const [step, setStep] = useState<WizardStep>('name');
@@ -137,7 +145,8 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
-  const [draftTime, setDraftTime] = useState(defaultDoseTimes[0]);
+  const [draftHour, setDraftHour] = useState('09');
+  const [draftMinute, setDraftMinute] = useState('00');
   const [editingTimeIndex, setEditingTimeIndex] = useState(0);
 
   const stepIndex = steps.indexOf(step);
@@ -274,7 +283,10 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
   function openTimeSheet(index: number) {
     setEditingTimeIndex(index);
-    setDraftTime(doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00');
+    const initialTime = doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00';
+    const { hour, minute } = splitTime(initialTime);
+    setDraftHour(hour);
+    setDraftMinute(minute);
     setSheet('time');
   }
 
@@ -611,23 +623,37 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
             {sheet === 'time' ? (
               <View style={styles.timeWrap}>
-                <View style={styles.timeGrid}>
-                  {quickTimes.map((option) => {
-                    const selected = draftTime === option;
+                <Text style={styles.timeSectionLabel}>{locale === 'tr' ? 'Saat' : 'Hour'}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeHorizontalList}>
+                  {hourOptions.map((option) => {
+                    const selected = draftHour === option;
                     return (
-                      <Pressable key={option} onPress={() => setDraftTime(option)} style={[styles.timeChip, selected && styles.timeChipSelected]}>
-                        <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>{option}</Text>
+                      <Pressable key={`hour-${option}`} onPress={() => setDraftHour(option)} style={[styles.timeUnitChip, selected && styles.timeUnitChipSelected]}>
+                        <Text style={[styles.timeUnitChipText, selected && styles.timeUnitChipTextSelected]}>{option}</Text>
                       </Pressable>
                     );
                   })}
-                </View>
+                </ScrollView>
+
+                <Text style={styles.timeSectionLabel}>{locale === 'tr' ? 'Dakika' : 'Minute'}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeHorizontalList}>
+                  {minuteOptions.map((option) => {
+                    const selected = draftMinute === option;
+                    return (
+                      <Pressable key={`minute-${option}`} onPress={() => setDraftMinute(option)} style={[styles.timeUnitChip, selected && styles.timeUnitChipSelected]}>
+                        <Text style={[styles.timeUnitChipText, selected && styles.timeUnitChipTextSelected]}>{option}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
 
                 <Button
                   label={t.done}
                   onPress={() => {
+                    const normalized = `${draftHour}:${draftMinute}`;
                     setDoseTimes((prev) => {
                       const next = [...prev];
-                      next[editingTimeIndex] = draftTime;
+                      next[editingTimeIndex] = normalized;
                       return next;
                     });
                     setSheet('none');
@@ -1027,30 +1053,34 @@ const styles = StyleSheet.create({
   timeWrap: {
     gap: theme.spacing[16],
   },
-  timeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing[8],
+  timeSectionLabel: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
   },
-  timeChip: {
-    width: '31%',
+  timeHorizontalList: {
+    gap: theme.spacing[8],
+    paddingRight: theme.spacing[8],
+  },
+  timeUnitChip: {
+    minWidth: 52,
     minHeight: 40,
-    borderRadius: theme.radius[8],
+    borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: theme.spacing[8],
   },
-  timeChipSelected: {
+  timeUnitChipSelected: {
     borderColor: theme.colors.primaryBlue[500],
     backgroundColor: theme.colors.primaryBlue[50],
   },
-  timeChipText: {
+  timeUnitChipText: {
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.semantic.textSecondary,
   },
-  timeChipTextSelected: {
+  timeUnitChipTextSelected: {
     color: theme.colors.primaryBlue[600],
   },
 });
