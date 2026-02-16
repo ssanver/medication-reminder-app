@@ -21,6 +21,7 @@ const TAKE_NOW_ACTION_ID = 'take-now';
 const SKIP_ACTION_ID = 'skip-dose';
 const SCHEDULE_WINDOW_DAYS = 30;
 const MAX_SCHEDULED_REMINDERS = 60;
+const LATE_REMINDER_GRACE_MS = 15 * 60 * 1000;
 
 type MedicationReminderPayload = {
   medicationId: string;
@@ -182,7 +183,18 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
     const doses = getScheduledDosesForDate(date, locale).filter((dose) => dose.status === 'pending');
 
     for (const dose of doses) {
-      const triggerDate = toScheduledDate(date, dose.scheduledTime);
+      let triggerDate = toScheduledDate(date, dose.scheduledTime);
+      if (triggerDate.getTime() <= now.getTime()) {
+        const delay = now.getTime() - triggerDate.getTime();
+        if (delay > LATE_REMINDER_GRACE_MS) {
+          continue;
+        }
+
+        // If a dose is very recently due, fire a near-immediate notification
+        // instead of silently dropping it during resync.
+        triggerDate = new Date(now.getTime() + 5000);
+      }
+
       if (triggerDate.getTime() <= now.getTime()) {
         continue;
       }
