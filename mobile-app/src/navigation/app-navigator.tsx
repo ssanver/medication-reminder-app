@@ -11,6 +11,7 @@ import { AddMedsScreen } from '../screens/add-meds-screen';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
+import { ChangePasswordScreen } from '../screens/change-password-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
 import { MedicationDetailsScreen } from '../screens/medication-details-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
@@ -31,8 +32,6 @@ type OverlayScreen =
   | 'medication-details'
   | 'notification-settings'
   | 'reminder-preferences'
-  | 'appearance'
-  | 'privacy-security'
   | 'change-password'
   | 'about-us';
 type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
@@ -73,6 +72,7 @@ export function AppNavigator() {
     void (async () => {
       const preferences = await loadAppPreferences();
       setLocale(preferences.locale);
+      setFontScale(preferences.fontScale);
       setNotificationsEnabled(preferences.notificationsEnabled);
       setMedicationRemindersEnabled(preferences.medicationRemindersEnabled);
       setSnoozeMinutes(preferences.snoozeMinutes);
@@ -82,11 +82,12 @@ export function AppNavigator() {
   useEffect(() => {
     void saveAppPreferences({
       locale,
+      fontScale,
       notificationsEnabled,
       medicationRemindersEnabled,
       snoozeMinutes,
     });
-  }, [locale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
+  }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
 
   if (!isOnboardingStepCountValid(steps)) {
     return (
@@ -248,48 +249,11 @@ export function AppNavigator() {
     );
   }
 
-  if (overlayScreen === 'appearance') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <PlaceholderDetailScreen
-            locale={locale}
-            title={t.appearance}
-            description={t.appearanceDescription}
-            items={[t.language, t.displayZoom]}
-            onBack={() => setOverlayScreen('none')}
-          />
-        </View>
-      </View>
-    );
-  }
-
-  if (overlayScreen === 'privacy-security') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <PlaceholderDetailScreen
-            locale={locale}
-            title={t.privacySecurity}
-            description={t.privacySecurityDescription}
-            items={[t.changePassword]}
-            onBack={() => setOverlayScreen('none')}
-          />
-        </View>
-      </View>
-    );
-  }
-
   if (overlayScreen === 'change-password') {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <PlaceholderDetailScreen
-            locale={locale}
-            title={t.changePassword}
-            description={t.changePasswordDescription}
-            onBack={() => setOverlayScreen('none')}
-          />
+          <ChangePasswordScreen locale={locale} onBack={() => setOverlayScreen('none')} />
         </View>
       </View>
     );
@@ -343,8 +307,6 @@ export function AppNavigator() {
           () => setOverlayScreen('profile'),
           () => setOverlayScreen('notification-settings'),
           () => setOverlayScreen('reminder-preferences'),
-          () => setOverlayScreen('appearance'),
-          () => setOverlayScreen('privacy-security'),
           () => setOverlayScreen('change-password'),
           () => setOverlayScreen('about-us'),
         )}
@@ -382,8 +344,6 @@ function renderTab(
   onOpenProfile: () => void,
   onOpenNotificationSettings: () => void,
   onOpenReminderPreferences: () => void,
-  onOpenAppearance: () => void,
-  onOpenPrivacySecurity: () => void,
   onOpenChangePassword: () => void,
   onOpenAboutUs: () => void,
 ) {
@@ -406,14 +366,17 @@ function renderTab(
       return (
         <SettingsScreen
           locale={locale}
-          onLocaleChange={onLocaleChange}
           fontScale={fontScale}
+          onSaveAppearance={(nextLocale, nextFontScale) => {
+            onLocaleChange(nextLocale);
+            if (isFontScaleLevelValid(nextFontScale)) {
+              onFontScaleChange(nextFontScale);
+            }
+          }}
           onOpenReports={onOpenReports}
           onOpenProfile={onOpenProfile}
           onOpenNotificationSettings={onOpenNotificationSettings}
           onOpenReminderPreferences={onOpenReminderPreferences}
-          onOpenAppearance={onOpenAppearance}
-          onOpenPrivacySecurity={onOpenPrivacySecurity}
           onOpenChangePassword={onOpenChangePassword}
           onOpenAboutUs={onOpenAboutUs}
           notificationsEnabled={notificationsEnabled}
@@ -422,11 +385,6 @@ function renderTab(
           onNotificationsToggle={onNotificationsToggle}
           onMedicationRemindersToggle={onMedicationRemindersToggle}
           onEnableNotifications={onEnableNotifications}
-          onFontScaleChange={(value) => {
-            if (isFontScaleLevelValid(value)) {
-              onFontScaleChange(value);
-            }
-          }}
         />
       );
     default:

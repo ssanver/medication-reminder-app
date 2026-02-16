@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { getLocaleTag, type Locale } from '../localization/localization';
 
-export type MedicationRecurrence = 'daily' | 'every-3-days' | 'hourly';
+export type MedicationRecurrence = 'daily' | 'every-2-days' | 'every-3-days' | 'every-8-hours' | 'every-12-hours' | 'hourly';
 export type DoseStatus = 'taken' | 'missed';
 
 export type Medication = {
@@ -103,8 +103,20 @@ function diffDays(from: Date, to: Date): number {
 }
 
 function recurrenceFromLabel(label: string): MedicationRecurrence {
+  if (label === 'Every 2 Days') {
+    return 'every-2-days';
+  }
+
   if (label === 'Every 3 Days') {
     return 'every-3-days';
+  }
+
+  if (label === 'Every 8 Hours') {
+    return 'every-8-hours';
+  }
+
+  if (label === 'Every 12 Hours') {
+    return 'every-12-hours';
   }
 
   if (label === 'Every 1 Hour') {
@@ -250,6 +262,28 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
   await persist();
 }
 
+export async function clearDoseStatus(medicationId: string, date: Date): Promise<void> {
+  const dateKey = toDateKey(date);
+  state = {
+    ...state,
+    events: state.events.filter((item) => !(item.medicationId === medicationId && item.dateKey === dateKey)),
+  };
+  emit();
+  await persist();
+}
+
+function recurrenceIntervalDays(recurrence: MedicationRecurrence): number {
+  if (recurrence === 'every-2-days') {
+    return 2;
+  }
+
+  if (recurrence === 'every-3-days') {
+    return 3;
+  }
+
+  return 1;
+}
+
 function isScheduled(medication: Medication, date: Date): boolean {
   const dayDiff = diffDays(parseDateKey(medication.startDate), date);
 
@@ -257,11 +291,16 @@ function isScheduled(medication: Medication, date: Date): boolean {
     return false;
   }
 
-  if (medication.recurrence === 'daily' || medication.recurrence === 'hourly') {
+  if (
+    medication.recurrence === 'daily' ||
+    medication.recurrence === 'hourly' ||
+    medication.recurrence === 'every-8-hours' ||
+    medication.recurrence === 'every-12-hours'
+  ) {
     return true;
   }
 
-  return dayDiff % 3 === 0;
+  return dayDiff % recurrenceIntervalDays(medication.recurrence) === 0;
 }
 
 function compareDay(a: Date, b: Date): number {

@@ -46,6 +46,15 @@ function getGoogleClientId(): string {
   return configuredClientId;
 }
 
+function getGoogleRedirectUri(clientId: string): string {
+  const nativeClient = clientId.replace('.apps.googleusercontent.com', '');
+  const nativeScheme = `com.googleusercontent.apps.${nativeClient}`;
+
+  return AuthSession.makeRedirectUri({
+    native: `${nativeScheme}:/oauth2redirect`,
+  });
+}
+
 async function exchangeSocialToken(provider: SocialProvider, providerToken: string): Promise<SocialLoginResult> {
   const response = await fetch(`${getApiBaseUrl()}/api/auth/social-login`, {
     method: 'POST',
@@ -67,19 +76,16 @@ async function exchangeSocialToken(provider: SocialProvider, providerToken: stri
 }
 
 async function getGoogleIdToken(): Promise<string> {
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'medication-reminder',
-    path: 'oauth2redirect',
-  });
+  const clientId = getGoogleClientId();
+  const redirectUri = getGoogleRedirectUri(clientId);
 
   const request = new AuthSession.AuthRequest({
-    clientId: getGoogleClientId(),
+    clientId,
     redirectUri,
     scopes: ['openid', 'profile', 'email'],
-    responseType: 'id_token',
-    usePKCE: false,
+    responseType: 'code',
+    usePKCE: true,
     extraParams: {
-      nonce: `${Date.now()}`,
       prompt: 'select_account',
     },
   });
@@ -95,13 +101,34 @@ async function getGoogleIdToken(): Promise<string> {
     throw new Error('Google sign-in iptal edildi.');
   }
 
-  const idToken = result.params.id_token;
+  // Prefer direct id_token when provided by provider.
+  const directIdToken = result.params.id_token;
+  if (directIdToken) {
+    return directIdToken;
+  }
 
-  if (!idToken) {
+  const code = result.params.code;
+  if (!code) {
+    throw new Error('Google authorization code alinamadi.');
+  }
+
+  const tokenResponse = await AuthSession.exchangeCodeAsync(
+    {
+      clientId,
+      code,
+      redirectUri,
+      extraParams: {
+        code_verifier: request.codeVerifier ?? '',
+      },
+    },
+    discovery,
+  );
+
+  if (!tokenResponse.idToken) {
     throw new Error('Google id token alinamadi.');
   }
 
-  return idToken;
+  return tokenResponse.idToken;
 }
 
 async function getAppleIdentityToken(): Promise<string> {

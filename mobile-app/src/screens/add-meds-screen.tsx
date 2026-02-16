@@ -24,7 +24,7 @@ type FormOption = {
 
 const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
 const dosageOptions = ['0.5', '1', '2', '3'];
-const frequencyOptions = ['Every 1 Day', 'Every 3 Days', 'Every 1 Hour'];
+const frequencyOptions = ['Every 1 Day', 'Every 2 Days', 'Every 3 Days', 'Every 8 Hours', 'Every 12 Hours', 'Every 1 Hour'];
 const quickTimes = ['08:00', '12:00', '18:00', '24:00'];
 
 const formOptions: FormOption[] = [
@@ -73,8 +73,20 @@ function buildCalendarCells(month: Date): Array<Date | null> {
 }
 
 function toFrequencyLabel(value: string): string {
+  if (value === 'Every 2 Days') {
+    return 'Every 2 Days';
+  }
+
   if (value === 'Every 3 Days') {
     return 'Every 3 Days';
+  }
+
+  if (value === 'Every 8 Hours') {
+    return 'Every 8 Hours';
+  }
+
+  if (value === 'Every 12 Hours') {
+    return 'Every 12 Hours';
   }
 
   if (value === 'Every 1 Hour') {
@@ -121,6 +133,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       year: 'numeric',
     });
   }, [locale, startDate]);
+  const addMedicationLabel = useMemo(() => t.addMedication.replace(/^\s*\+\s*/, ''), [t.addMedication]);
 
   const canProceed =
     (step === 'name' && name.trim().length > 1) ||
@@ -208,7 +221,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
               placeholder={t.medicationNamePlaceholder}
               placeholderTextColor={theme.colors.neutral[400]}
               style={styles.searchInput}
-              autoCapitalize="words"
+              autoCapitalize="none"
             />
           </View>
 
@@ -216,7 +229,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
             {name.trim().length > 0 ? (
               <Pressable onPress={() => setName(name.trim())} style={styles.suggestionRow}>
                 <Text style={styles.addNewBullet}>＋</Text>
-                <Text numberOfLines={1} style={styles.suggestionPrimaryText}>{`${t.addMedication} ${name.trim()}`}</Text>
+                <Text numberOfLines={1} style={styles.suggestionPrimaryText}>{`${addMedicationLabel} ${name.trim()}`}</Text>
               </Pressable>
             ) : null}
 
@@ -330,7 +343,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
         <Pressable onPress={onBack} disabled={stepIndex === 0} style={styles.headerIconButton}>
           {stepIndex > 0 ? <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} /> : null}
         </Pressable>
-        <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <Text style={[styles.headerTitle, { fontSize: theme.typography.heading.h8Semibold.fontSize * _fontScale }]}>{headerTitle}</Text>
         <View style={styles.headerIconButton}>
           {step === 'note' ? (
             <Pressable onPress={() => void handleSave(true)} hitSlop={8}>

@@ -14,6 +14,7 @@ type TextFieldProps = {
   leadingIcon?: string;
   trailingIcon?: string;
   onTrailingPress?: () => void;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   onChangeText: (value: string) => void;
 };
 
@@ -28,6 +29,7 @@ export function TextField({
   leadingIcon,
   trailingIcon,
   onTrailingPress,
+  autoCapitalize = 'none',
   onChangeText,
 }: TextFieldProps) {
   const state: FieldState = !editable ? 'disabled' : errorText ? 'error' : value.length > 0 ? 'focused' : 'default';
@@ -42,6 +44,7 @@ export function TextField({
           editable={editable}
           placeholder={placeholder}
           secureTextEntry={secureTextEntry}
+          autoCapitalize={autoCapitalize}
           placeholderTextColor={theme.colors.neutral[400]}
           style={styles.input}
           onChangeText={onChangeText}

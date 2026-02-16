@@ -12,8 +12,8 @@ const STORAGE_KEY = 'profile-state-v1';
 const defaultProfile: ProfileState = {
   fullName: 'Suleyman Şanver',
   email: 'suleymansanver@gmail.com',
-  birthDate: '1 - October - 1998',
-  gender: 'Female',
+  birthDate: '',
+  gender: '',
 };
 
 export async function loadProfile(): Promise<ProfileState> {
@@ -38,4 +38,3 @@ export async function loadProfile(): Promise<ProfileState> {
 export async function saveProfile(nextProfile: ProfileState): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
 }
-

@@ -121,7 +121,10 @@
   },
   "frequencyLabels": {
     "Every 1 Day": "Every 1 Day",
+    "Every 2 Days": "Every 2 Days",
     "Every 3 Days": "Every 3 Days",
+    "Every 8 Hours": "Every 8 Hours",
+    "Every 12 Hours": "Every 12 Hours",
     "Every 1 Hour": "Every 1 Hour"
   },
   "localeDisplayNames": {

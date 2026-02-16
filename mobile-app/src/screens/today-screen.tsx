@@ -5,7 +5,7 @@ import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getDateTitle, getWeekStrip } from '../features/date/week-strip';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
-import { getScheduledDosesForDate, setDoseStatus } from '../features/medications/medication-store';
+import { clearDoseStatus, getScheduledDosesForDate, setDoseStatus } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { scheduleSnoozeReminder } from '../features/notifications/local-notifications';
 import { toShortDisplayName } from '../features/profile/display-name';
@@ -133,7 +133,15 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
               details={item.details}
               schedule={item.schedule}
               actionLabel={
-                isPastDate ? (item.status === 'taken' ? t.markAsMissed : t.markAsTaken) : item.status === 'taken' ? t.taken : t.take
+                isPastDate
+                  ? item.status === 'taken'
+                    ? t.markAsMissed
+                    : item.status === 'missed'
+                      ? t.take
+                      : t.markAsTaken
+                  : item.status === 'taken'
+                    ? t.taken
+                    : t.take
               }
               actionVariant={
                 isPastDate
@@ -156,8 +164,13 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
                 }
 
                 if (isPastDate) {
-                  const nextStatus = item.status === 'taken' ? 'missed' : 'taken';
-                  void setDoseStatus(item.medicationId, selectedDate, nextStatus);
+                  if (item.status === 'taken') {
+                    void setDoseStatus(item.medicationId, selectedDate, 'missed');
+                  } else if (item.status === 'missed') {
+                    void clearDoseStatus(item.medicationId, selectedDate);
+                  } else {
+                    void setDoseStatus(item.medicationId, selectedDate, 'taken');
+                  }
                   setActionWarning(null);
                   return;
                 }

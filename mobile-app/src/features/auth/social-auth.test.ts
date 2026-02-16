@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loginWithSocial } from './social-auth';
 
-const { promptAsyncMock, makeRedirectUriMock, isAppleAvailableMock, appleSignInMock } = vi.hoisted(() => ({
+const { promptAsyncMock, makeRedirectUriMock, isAppleAvailableMock, appleSignInMock, exchangeCodeAsyncMock } = vi.hoisted(() => ({
   promptAsyncMock: vi.fn(),
   makeRedirectUriMock: vi.fn(() => 'medication-reminder://oauth2redirect'),
   isAppleAvailableMock: vi.fn(),
   appleSignInMock: vi.fn(),
+  exchangeCodeAsyncMock: vi.fn(),
 }));
 
 vi.mock('expo-web-browser', () => ({
@@ -14,6 +15,7 @@ vi.mock('expo-web-browser', () => ({
 
 vi.mock('expo-auth-session', () => ({
   makeRedirectUri: makeRedirectUriMock,
+  exchangeCodeAsync: exchangeCodeAsyncMock,
   AuthRequest: class {
     promptAsync = promptAsyncMock;
   },
@@ -46,7 +48,10 @@ describe('loginWithSocial', () => {
   it('google flow sonrasi apiye token gonderir', async () => {
     promptAsyncMock.mockResolvedValue({
       type: 'success',
-      params: { id_token: 'google-id-token' },
+      params: { code: 'auth-code' },
+    });
+    exchangeCodeAsyncMock.mockResolvedValue({
+      idToken: 'google-id-token',
     });
 
     vi.stubGlobal(
@@ -73,6 +78,7 @@ describe('loginWithSocial', () => {
         method: 'POST',
       }),
     );
+    expect(exchangeCodeAsyncMock).toHaveBeenCalled();
   });
 
   it('apple flow sonrasi apiye token gonderir', async () => {

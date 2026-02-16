@@ -5,13 +5,26 @@ const STORAGE_KEY = 'app-preferences-v1';
 
 export type AppPreferences = {
   locale: Locale;
+  fontScale: number;
   notificationsEnabled: boolean;
   medicationRemindersEnabled: boolean;
   snoozeMinutes: number;
 };
 
+function resolveDefaultLocale(): Locale {
+  const rawLocale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
+  const baseCode = rawLocale.split('-')[0] ?? '';
+
+  if (isSupportedLocale(baseCode)) {
+    return baseCode;
+  }
+
+  return 'en';
+}
+
 const defaultPreferences: AppPreferences = {
-  locale: 'tr',
+  locale: resolveDefaultLocale(),
+  fontScale: 1,
   notificationsEnabled: true,
   medicationRemindersEnabled: true,
   snoozeMinutes: 15,
@@ -26,6 +39,7 @@ export async function loadAppPreferences(): Promise<AppPreferences> {
 
     const parsed = JSON.parse(raw) as Partial<AppPreferences>;
     const locale = typeof parsed.locale === 'string' && isSupportedLocale(parsed.locale) ? parsed.locale : defaultPreferences.locale;
+    const fontScale = typeof parsed.fontScale === 'number' ? parsed.fontScale : defaultPreferences.fontScale;
     const notificationsEnabled =
       typeof parsed.notificationsEnabled === 'boolean' ? parsed.notificationsEnabled : defaultPreferences.notificationsEnabled;
     const medicationRemindersEnabled =
@@ -36,6 +50,7 @@ export async function loadAppPreferences(): Promise<AppPreferences> {
 
     return {
       locale,
+      fontScale,
       notificationsEnabled,
       medicationRemindersEnabled,
       snoozeMinutes,

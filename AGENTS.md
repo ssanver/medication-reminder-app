@@ -12,6 +12,8 @@
 - Her PBI/iş kalemi tamamlandığında zorunlu sıra: `test` -> `build` -> `commit` -> `push` -> `issue durumu güncelleme`.
 - Bir adım başarısızsa bir sonraki adıma geçilmez; hata düzeltilip aynı adım tekrar çalıştırılır.
 - Tamamlanan her iş kalemi için kanıt niteliğinde komut çıktısı veya test sonucu üretilmelidir.
+- Kod geliştirme/doğrulama akışında zorunlu sıra: `kodu yaz` -> `build` -> `test` -> `tekrar build` -> `çalıştır`.
+- Push adımından önce remote'a gönderilmemiş commit varsa kullanıcıdan açık onay alınmalıdır (`pushlayayım mı?`).
 
 ## Global Definition of Done
 - İlgili kapsam maddesi için kod veya çıktı tamamlanmış olmalıdır.

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
+import { getLocaleOptions, getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { TextField } from '../components/ui/text-field';
 import { loadProfile, saveProfile } from '../features/profile/profile-store';
 import { theme } from '../theme';
@@ -13,15 +13,65 @@ type ProfileScreenProps = {
   onBack: () => void;
 };
 
+type SheetType = 'none' | 'language' | 'birth-date' | 'gender';
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(value: string): Date {
+  if (!value) {
+    return new Date();
+  }
+
+  return new Date(`${value}T00:00:00`);
+}
+
+function shiftMonth(base: Date, delta: number): Date {
+  return new Date(base.getFullYear(), base.getMonth() + delta, 1);
+}
+
+function buildCalendarCells(month: Date): Array<Date | null> {
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const firstDay = new Date(year, monthIndex, 1);
+  const mondayStartOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const cells: Array<Date | null> = Array.from({ length: mondayStartOffset }, () => null);
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push(new Date(year, monthIndex, day));
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return cells;
+}
+
+function getGenderOptions(locale: Locale): string[] {
+  if (locale === 'tr') {
+    return ['Kadın', 'Erkek', 'Belirtmek istemiyorum'];
+  }
+
+  return ['Female', 'Male', 'Prefer not to say'];
+}
+
 export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenProps) {
   const t = getTranslations(locale);
   const localeOptions = getLocaleOptions(locale);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [birthDate, setBirthDate] = useState('1 - October - 1998');
-  const [gender, setGender] = useState('Female');
-  const [languageOpen, setLanguageOpen] = useState(false);
+  const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState('');
+  const [sheet, setSheet] = useState<SheetType>('none');
   const [savedMessage, setSavedMessage] = useState('');
+  const [draftBirthDate, setDraftBirthDate] = useState(formatDate(new Date()));
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   useEffect(() => {
     void (async () => {
@@ -32,6 +82,22 @@ export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenP
       setGender(profile.gender);
     })();
   }, []);
+
+  const localizedBirthDate = useMemo(() => {
+    if (!birthDate) {
+      return locale === 'tr' ? 'Seçiniz' : 'Select';
+    }
+
+    const parsed = parseDateKey(birthDate);
+    return parsed.toLocaleDateString(getLocaleTag(locale), {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }, [birthDate, locale]);
+
+  const dayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const calendarCells = buildCalendarCells(calendarMonth);
 
   async function onSave() {
     await saveProfile({
@@ -44,6 +110,13 @@ export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenP
     setTimeout(() => setSavedMessage(''), 2000);
   }
 
+  function openDateSheet() {
+    const initialDate = birthDate || formatDate(new Date());
+    setDraftBirthDate(initialDate);
+    setCalendarMonth(parseDateKey(initialDate));
+    setSheet('birth-date');
+  }
+
   return (
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -51,19 +124,38 @@ export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenP
 
         <View style={styles.avatarWrap}>
           <View style={styles.avatar}><Text style={styles.avatarIcon}>👤</Text></View>
-          <Text style={styles.avatarEdit}>⟳</Text>
+          <Pressable
+            style={styles.avatarEditButton}
+            onPress={() => setSavedMessage(locale === 'tr' ? 'Profil fotoğrafı güncelleme yakında aktif olacak.' : 'Profile photo update will be available soon.')}
+          >
+            <Text style={styles.avatarEditIcon}>📷</Text>
+          </Pressable>
         </View>
 
         <View style={styles.card}>
           <TextField label={t.name} value={name} onChangeText={setName} />
           <TextField label={t.email} value={email} onChangeText={setEmail} />
-          <TextField label={t.dateOfBirth} value={birthDate} onChangeText={setBirthDate} />
-          <TextField label={t.gender} value={gender} onChangeText={setGender} />
 
-          <View style={styles.languageWrap}>
-            <Text style={styles.sectionTitle}>{t.language}</Text>
-            <Pressable style={styles.languageCombo} onPress={() => setLanguageOpen(true)}>
-              <Text style={styles.languageText}>{localeOptions.find((item) => item.code === locale)?.label ?? locale}</Text>
+          <View style={styles.fieldWrap}>
+            <Text style={styles.fieldLabel}>{t.dateOfBirth}</Text>
+            <Pressable style={styles.combo} onPress={openDateSheet}>
+              <Text style={styles.comboText}>{localizedBirthDate}</Text>
+              <Text style={styles.chevron}>{'>'}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.fieldWrap}>
+            <Text style={styles.fieldLabel}>{t.gender}</Text>
+            <Pressable style={styles.combo} onPress={() => setSheet('gender')}>
+              <Text style={styles.comboText}>{gender || (locale === 'tr' ? 'Seçiniz' : 'Select')}</Text>
+              <Text style={styles.chevron}>{'>'}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.fieldWrap}>
+            <Text style={styles.fieldLabel}>{t.language}</Text>
+            <Pressable style={styles.combo} onPress={() => setSheet('language')}>
+              <Text style={styles.comboText}>{localeOptions.find((item) => item.code === locale)?.label ?? locale}</Text>
               <Text style={styles.chevron}>{'>'}</Text>
             </Pressable>
           </View>
@@ -73,25 +165,99 @@ export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenP
         </View>
       </ScrollView>
 
-      <Modal transparent visible={languageOpen} animationType="slide" onRequestClose={() => setLanguageOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setLanguageOpen(false)}>
+      <Modal transparent visible={sheet !== 'none'} animationType="slide" onRequestClose={() => setSheet('none')}>
+        <Pressable style={styles.overlay} onPress={() => setSheet('none')}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            <Text style={styles.sheetTitle}>{t.selectLanguage}</Text>
-            {localeOptions.map((option) => {
-              const selected = option.code === locale;
-              return (
-                <Pressable
-                  key={option.code}
-                  style={[styles.languageOption, selected && styles.languageOptionActive]}
+            {sheet === 'language' ? (
+              <>
+                <Text style={styles.sheetTitle}>{t.selectLanguage}</Text>
+                {localeOptions.map((option) => {
+                  const selected = option.code === locale;
+                  return (
+                    <Pressable
+                      key={option.code}
+                      style={[styles.optionRow, selected && styles.optionRowActive]}
+                      onPress={() => {
+                        onLocaleChange(option.code);
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={[styles.optionText, selected && styles.optionTextActive]}>{option.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </>
+            ) : null}
+
+            {sheet === 'gender' ? (
+              <>
+                <Text style={styles.sheetTitle}>{t.gender}</Text>
+                {getGenderOptions(locale).map((option) => {
+                  const selected = option === gender;
+                  return (
+                    <Pressable
+                      key={option}
+                      style={[styles.optionRow, selected && styles.optionRowActive]}
+                      onPress={() => {
+                        setGender(option);
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={[styles.optionText, selected && styles.optionTextActive]}>{option}</Text>
+                    </Pressable>
+                  );
+                })}
+              </>
+            ) : null}
+
+            {sheet === 'birth-date' ? (
+              <>
+                <View style={styles.calendarHeader}>
+                  <Text style={styles.sheetTitle}>{t.selectDate}</Text>
+                </View>
+
+                <View style={styles.monthHeader}>
+                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, -1))} hitSlop={8}>
+                    <Text style={styles.monthArrow}>‹</Text>
+                  </Pressable>
+                  <Text style={styles.monthTitle}>{calendarMonth.toLocaleDateString(getLocaleTag(locale), { month: 'short', year: 'numeric' })}</Text>
+                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, 1))} hitSlop={8}>
+                    <Text style={styles.monthArrow}>›</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.dayHeaderRow}>
+                  {dayHeaders.map((day, index) => (
+                    <Text key={`${day}-${index}`} style={styles.dayHeaderText}>{day}</Text>
+                  ))}
+                </View>
+
+                <View style={styles.calendarGrid}>
+                  {calendarCells.map((dateCell, index) => {
+                    if (!dateCell) {
+                      return <View key={`empty-${index}`} style={styles.calendarCell} />;
+                    }
+
+                    const dateKey = formatDate(dateCell);
+                    const selected = dateKey === draftBirthDate;
+
+                    return (
+                      <Pressable key={dateKey} style={[styles.calendarCell, selected && styles.calendarCellSelected]} onPress={() => setDraftBirthDate(dateKey)}>
+                        <Text style={[styles.calendarCellText, selected && styles.calendarCellTextSelected]}>{dateCell.getDate()}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Button
+                  label={t.save}
                   onPress={() => {
-                    onLocaleChange(option.code);
-                    setLanguageOpen(false);
+                    setBirthDate(draftBirthDate);
+                    setSheet('none');
                   }}
-                >
-                  <Text style={[styles.languageOptionText, selected && styles.languageOptionTextActive]}>{option.label}</Text>
-                </Pressable>
-              );
-            })}
+                />
+              </>
+            ) : null}
           </Pressable>
         </Pressable>
       </Modal>
@@ -124,10 +290,20 @@ const styles = StyleSheet.create({
   avatarIcon: {
     fontSize: 30,
   },
-  avatarEdit: {
+  avatarEditButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.semantic.cardBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'absolute',
-    right: '38%',
+    right: '36%',
     bottom: 0,
+  },
+  avatarEditIcon: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[500],
   },
@@ -140,14 +316,14 @@ const styles = StyleSheet.create({
     gap: theme.spacing[8],
     ...theme.elevation.card,
   },
-  sectionTitle: {
-    ...theme.typography.bodyScale.mMedium,
-    color: theme.colors.semantic.textPrimary,
-  },
-  languageWrap: {
+  fieldWrap: {
     gap: theme.spacing[4],
   },
-  languageCombo: {
+  fieldLabel: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textPrimary,
+  },
+  combo: {
     minHeight: 44,
     borderRadius: theme.radius[8],
     borderWidth: 1,
@@ -158,7 +334,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  languageText: {
+  comboText: {
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.semantic.textPrimary,
   },
@@ -188,7 +364,7 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mMedium,
     color: theme.colors.semantic.textPrimary,
   },
-  languageOption: {
+  optionRow: {
     minHeight: 44,
     borderRadius: theme.radius[8],
     borderWidth: 1,
@@ -197,16 +373,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[16],
     justifyContent: 'center',
   },
-  languageOptionActive: {
+  optionRowActive: {
     borderColor: theme.colors.primaryBlue[500],
     backgroundColor: theme.colors.primaryBlue[50],
   },
-  languageOptionText: {
+  optionText: {
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.semantic.textSecondary,
   },
-  languageOptionTextActive: {
+  optionTextActive: {
     color: theme.colors.primaryBlue[500],
     fontWeight: '700',
+  },
+  calendarHeader: {
+    minHeight: 28,
+    justifyContent: 'center',
+  },
+  monthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing[8],
+  },
+  monthArrow: {
+    ...theme.typography.heading.h6Medium,
+    color: theme.colors.semantic.textSecondary,
+  },
+  monthTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
+  },
+  dayHeaderRow: {
+    flexDirection: 'row',
+  },
+  dayHeaderText: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textMuted,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: theme.spacing[8],
+  },
+  calendarCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius[8],
+  },
+  calendarCellSelected: {
+    backgroundColor: theme.colors.primaryBlue[50],
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[500],
+  },
+  calendarCellText: {
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  calendarCellTextSelected: {
+    color: theme.colors.primaryBlue[600],
+    fontWeight: '600',
   },
 });
