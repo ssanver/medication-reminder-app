@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, Text, View } from 'react-native';
 import { BottomNav } from '../components/ui/bottom-nav';
 import type { AppIconName } from '../components/ui/app-icon';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { useMedicationStore } from '../features/medications/use-medication-store';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
-import { ensureNotificationPermissions } from '../features/notifications/local-notifications';
+import { ensureNotificationPermissions, syncMedicationReminderNotifications } from '../features/notifications/local-notifications';
 import { loadAppPreferences, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
@@ -45,6 +46,7 @@ const tabGlyph: Record<TabKey, AppIconName> = {
 };
 
 export function AppNavigator() {
+  const medicationStore = useMedicationStore();
   const [phase, setPhase] = useState<AppPhase>('splash');
   const [locale, setLocale] = useState<Locale>('tr');
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
@@ -93,6 +95,26 @@ export function AppNavigator() {
   useEffect(() => {
     setAppFontScale(fontScale);
   }, [fontScale]);
+
+  useEffect(() => {
+    if (!medicationStore.isHydrated) {
+      return;
+    }
+
+    void syncMedicationReminderNotifications(locale, notificationsEnabled && medicationRemindersEnabled);
+  }, [locale, notificationsEnabled, medicationRemindersEnabled, medicationStore.isHydrated, medicationStore.medications, medicationStore.events]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && medicationStore.isHydrated) {
+        void syncMedicationReminderNotifications(locale, notificationsEnabled && medicationRemindersEnabled);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [locale, notificationsEnabled, medicationRemindersEnabled, medicationStore.isHydrated]);
 
   if (!isOnboardingStepCountValid(steps)) {
     return (

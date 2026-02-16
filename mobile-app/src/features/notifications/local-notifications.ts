@@ -1,4 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { type Locale } from '../localization/localization';
+import { getScheduledDosesForDate, setDoseStatus } from '../medications/medication-store';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -11,6 +14,19 @@ Notifications.setNotificationHandler({
 });
 
 let configured = false;
+let responseListenerConfigured = false;
+const MEDICATION_NOTIFICATION_IDS_KEY = 'scheduled-medication-notification-ids-v1';
+const REMINDER_CATEGORY_ID = 'medication-dose-actions';
+const TAKE_NOW_ACTION_ID = 'take-now';
+const SKIP_ACTION_ID = 'skip-dose';
+const SCHEDULE_WINDOW_DAYS = 30;
+const MAX_SCHEDULED_REMINDERS = 60;
+
+type MedicationReminderPayload = {
+  medicationId: string;
+  dateKey: string;
+  scheduledTime: string;
+};
 
 export async function ensureNotificationPermissions(): Promise<boolean> {
   try {
@@ -43,7 +59,173 @@ export async function configureNotificationChannel(): Promise<void> {
     // iOS or unsupported env.
   }
 
+  try {
+    const actionLabels = {
+      takeNow: 'Take Now',
+      skip: 'Skip',
+    };
+    await Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY_ID, [
+      {
+        identifier: TAKE_NOW_ACTION_ID,
+        buttonTitle: actionLabels.takeNow,
+        options: {
+          isDestructive: false,
+          opensAppToForeground: true,
+        },
+      },
+      {
+        identifier: SKIP_ACTION_ID,
+        buttonTitle: actionLabels.skip,
+        options: {
+          isDestructive: true,
+          opensAppToForeground: true,
+        },
+      },
+    ]);
+  } catch {
+    // Unsupported env.
+  }
+
   configured = true;
+}
+
+function toDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toScheduledDate(baseDate: Date, scheduledTime: string): Date {
+  const [hours = '0', minutes = '0'] = scheduledTime.split(':');
+  const scheduled = new Date(baseDate);
+  scheduled.setHours(Number(hours), Number(minutes), 0, 0);
+  return scheduled;
+}
+
+async function readTrackedNotificationIds(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(MEDICATION_NOTIFICATION_IDS_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeTrackedNotificationIds(ids: string[]): Promise<void> {
+  await AsyncStorage.setItem(MEDICATION_NOTIFICATION_IDS_KEY, JSON.stringify(ids));
+}
+
+export async function clearMedicationReminderNotifications(): Promise<void> {
+  const ids = await readTrackedNotificationIds();
+  await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)));
+  await writeTrackedNotificationIds([]);
+}
+
+export function ensureMedicationNotificationResponseListener(): void {
+  if (responseListenerConfigured) {
+    return;
+  }
+
+  Notifications.addNotificationResponseReceivedListener((response) => {
+    const payload = response.notification.request.content.data as MedicationReminderPayload | undefined;
+    if (!payload || !payload.medicationId || !payload.dateKey || !payload.scheduledTime) {
+      return;
+    }
+
+    const date = new Date(`${payload.dateKey}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    if (response.actionIdentifier === TAKE_NOW_ACTION_ID) {
+      void setDoseStatus(payload.medicationId, date, 'taken', payload.scheduledTime);
+      return;
+    }
+
+    if (response.actionIdentifier === SKIP_ACTION_ID) {
+      void setDoseStatus(payload.medicationId, date, 'missed', payload.scheduledTime);
+    }
+  });
+
+  responseListenerConfigured = true;
+}
+
+export async function syncMedicationReminderNotifications(locale: Locale, enabled: boolean): Promise<void> {
+  if (!enabled) {
+    await clearMedicationReminderNotifications();
+    return;
+  }
+
+  const granted = await ensureNotificationPermissions();
+  if (!granted) {
+    await clearMedicationReminderNotifications();
+    return;
+  }
+
+  await configureNotificationChannel();
+  ensureMedicationNotificationResponseListener();
+
+  await clearMedicationReminderNotifications();
+
+  const now = new Date();
+  const pendingReminders: Array<{ medicationId: string; dateKey: string; scheduledTime: string; name: string; details: string; triggerDate: Date }> = [];
+
+  for (let offset = 0; offset <= SCHEDULE_WINDOW_DAYS; offset += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+    const dateKey = toDateKey(date);
+    const doses = getScheduledDosesForDate(date, locale).filter((dose) => dose.status === 'pending');
+
+    for (const dose of doses) {
+      const triggerDate = toScheduledDate(date, dose.scheduledTime);
+      if (triggerDate.getTime() <= now.getTime()) {
+        continue;
+      }
+
+      pendingReminders.push({
+        medicationId: dose.medicationId,
+        dateKey,
+        scheduledTime: dose.scheduledTime,
+        name: dose.name,
+        details: dose.details,
+        triggerDate,
+      });
+    }
+  }
+
+  pendingReminders.sort((a, b) => a.triggerDate.getTime() - b.triggerDate.getTime());
+  const upcomingReminders = pendingReminders.slice(0, MAX_SCHEDULED_REMINDERS);
+  const scheduledIds: string[] = [];
+
+  for (const reminder of upcomingReminders) {
+    const identifier = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: locale === 'tr' ? `${reminder.scheduledTime} İlaçları` : `${reminder.scheduledTime} Medicines`,
+        body: `${reminder.name} • ${reminder.details}`,
+        sound: 'default',
+        categoryIdentifier: REMINDER_CATEGORY_ID,
+        data: {
+          medicationId: reminder.medicationId,
+          dateKey: reminder.dateKey,
+          scheduledTime: reminder.scheduledTime,
+        } satisfies MedicationReminderPayload,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: reminder.triggerDate,
+        channelId: 'medication-reminders',
+      },
+    });
+
+    scheduledIds.push(identifier);
+  }
+
+  await writeTrackedNotificationIds(scheduledIds);
 }
 
 export async function scheduleSnoozeReminder(payload: {
