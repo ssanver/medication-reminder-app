@@ -23,6 +23,7 @@ const SKIP_ACTION_ID = 'skip-dose';
 const SCHEDULE_WINDOW_DAYS = 30;
 const MAX_SCHEDULED_REMINDERS = 60;
 const LATE_REMINDER_GRACE_MS = 15 * 60 * 1000;
+const IN_APP_DUE_GRACE_MS = 5 * 60 * 1000;
 
 type MedicationReminderPayload = {
   medicationId: string;
@@ -35,6 +36,8 @@ type MedicationReminderPayload = {
 export type ReminderPrompt = MedicationReminderPayload;
 const reminderPromptListeners = new Set<() => void>();
 let reminderPrompt: ReminderPrompt | null = null;
+const promptedDoseKeys = new Set<string>();
+let promptedDateKey = '';
 
 function setReminderPrompt(next: ReminderPrompt | null): void {
   reminderPrompt = next;
@@ -54,6 +57,10 @@ export function subscribeReminderPrompt(listener: () => void): () => void {
   return () => {
     reminderPromptListeners.delete(listener);
   };
+}
+
+function toDosePromptKey(payload: Pick<ReminderPrompt, 'medicationId' | 'dateKey' | 'scheduledTime'>): string {
+  return `${payload.medicationId}-${payload.dateKey}-${payload.scheduledTime}`;
 }
 
 function buildReminderPayload(
@@ -318,6 +325,42 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
   }
 
   await writeTrackedNotificationIds(scheduledIds);
+}
+
+export function emitDueReminderPrompt(locale: Locale, reference = new Date()): void {
+  const dateKey = toDateKey(reference);
+  if (promptedDateKey !== dateKey) {
+    promptedDateKey = dateKey;
+    promptedDoseKeys.clear();
+  }
+
+  const dueDose = getScheduledDosesForDate(reference, locale)
+    .filter((item) => item.status === 'pending')
+    .find((item) => {
+      const scheduled = toScheduledDate(reference, item.scheduledTime);
+      const elapsed = reference.getTime() - scheduled.getTime();
+      if (elapsed < 0 || elapsed > IN_APP_DUE_GRACE_MS) {
+        return false;
+      }
+
+      const key = `${item.medicationId}-${dateKey}-${item.scheduledTime}`;
+      return !promptedDoseKeys.has(key);
+    });
+
+  if (!dueDose) {
+    return;
+  }
+
+  const payload: ReminderPrompt = {
+    medicationId: dueDose.medicationId,
+    dateKey,
+    scheduledTime: dueDose.scheduledTime,
+    medicationName: dueDose.name,
+    medicationDetails: dueDose.details,
+  };
+
+  promptedDoseKeys.add(toDosePromptKey(payload));
+  setReminderPrompt(payload);
 }
 
 export async function scheduleSnoozeReminder(payload: {

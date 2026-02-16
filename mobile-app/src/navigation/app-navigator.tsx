@@ -11,6 +11,7 @@ import { useMedicationStore } from '../features/medications/use-medication-store
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import {
   dismissReminderPrompt,
+  emitDueReminderPrompt,
   ensureNotificationPermissions,
   getReminderPromptSnapshot,
   subscribeReminderPrompt,
@@ -117,6 +118,9 @@ export function AppNavigator() {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active' && medicationStore.isHydrated) {
         void syncMedicationReminderNotifications(locale, notificationsEnabled && medicationRemindersEnabled);
+        if (notificationsEnabled && medicationRemindersEnabled) {
+          emitDueReminderPrompt(locale);
+        }
       }
     });
 
@@ -124,6 +128,19 @@ export function AppNavigator() {
       subscription.remove();
     };
   }, [locale, notificationsEnabled, medicationRemindersEnabled, medicationStore.isHydrated]);
+
+  useEffect(() => {
+    if (phase !== 'app' || !medicationStore.isHydrated || !notificationsEnabled || !medicationRemindersEnabled) {
+      return;
+    }
+
+    emitDueReminderPrompt(locale);
+    const timer = setInterval(() => {
+      emitDueReminderPrompt(locale);
+    }, 15000);
+
+    return () => clearInterval(timer);
+  }, [phase, locale, notificationsEnabled, medicationRemindersEnabled, medicationStore.isHydrated, medicationStore.medications, medicationStore.events]);
 
   if (!isOnboardingStepCountValid(steps)) {
     return (
