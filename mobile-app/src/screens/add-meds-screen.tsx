@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
@@ -16,6 +16,7 @@ type AddMedsScreenProps = {
 
 type WizardStep = 'name' | 'form-dose' | 'frequency' | 'note';
 type SheetType = 'none' | 'date' | 'time' | 'interval';
+type IntervalUnit = 'day' | 'week';
 
 type FormOption = {
   key: string;
@@ -26,7 +27,8 @@ const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
 const dosageOptions = ['0.5', '1', '2', '3'];
 const quickTimes = ['07:00', '09:00', '12:00', '18:00', '21:00', '23:00'];
 const defaultDoseTimes = ['09:00', '14:00', '20:00'];
-const dayIntervalOptions = [1, 2, 3, 7, 14] as const;
+const dayIntervalOptions = [1, 2, 3] as const;
+const weekIntervalOptions = [1, 2] as const;
 const dosesPerDayOptions = [1, 2, 3] as const;
 
 const formOptions: FormOption[] = [
@@ -98,6 +100,10 @@ function getDayIntervalLabel(dayInterval: number, locale: Locale): string {
   return localizeFrequencyLabel(toFrequencyLabel(dayInterval), locale);
 }
 
+function resolveDayInterval(intervalUnit: IntervalUnit, intervalCount: number): number {
+  return intervalUnit === 'week' ? intervalCount * 7 : intervalCount;
+}
+
 export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);
   const [step, setStep] = useState<WizardStep>('name');
@@ -106,7 +112,8 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const [name, setName] = useState('');
   const [form, setForm] = useState('');
   const [dosage, setDosage] = useState('0.5');
-  const [dayInterval, setDayInterval] = useState<number>(1);
+  const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
+  const [intervalCount, setIntervalCount] = useState<number>(1);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
   const [startDate, setStartDate] = useState(formatDate(new Date()));
   const [doseTimes, setDoseTimes] = useState<string[]>(defaultDoseTimes);
@@ -142,17 +149,11 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     () => Array.from({ length: dosesPerDay }, (_, index) => doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00'),
     [doseTimes, dosesPerDay],
   );
-  const isWeeklyCadence = dayInterval >= 7;
+  const dayInterval = useMemo(() => resolveDayInterval(intervalUnit, intervalCount), [intervalUnit, intervalCount]);
   const hasDuplicateTimes = useMemo(
     () => new Set(selectedDoseTimes.map((item) => item.trim())).size !== selectedDoseTimes.length,
     [selectedDoseTimes],
   );
-
-  useEffect(() => {
-    if (isWeeklyCadence && dosesPerDay !== 1) {
-      setDosesPerDay(1);
-    }
-  }, [isWeeklyCadence, dosesPerDay]);
 
   const canProceed =
     (step === 'name' && name.trim().length > 1) ||
@@ -190,7 +191,8 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     setName('');
     setForm('');
     setDosage('0.5');
-    setDayInterval(1);
+    setIntervalUnit('day');
+    setIntervalCount(1);
     setDosesPerDay(1);
     setStartDate(formatDate(new Date()));
     setDoseTimes(defaultDoseTimes);
@@ -306,37 +308,43 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
           <Pressable style={styles.selectionRow} onPress={openIntervalSheet}>
             <View style={styles.selectionLeft}>
               <Text style={styles.selectionIcon}>📅</Text>
-              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Gün aralığı' : 'Day interval'}</Text>
+              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Interval türü' : 'Interval type'}</Text>
             </View>
             <View style={styles.selectionRight}>
-              <Text style={styles.selectionValue}>{getDayIntervalLabel(dayInterval, locale)}</Text>
+              <Text style={styles.selectionValue}>{locale === 'tr' ? (intervalUnit === 'day' ? 'Gün' : 'Hafta') : intervalUnit}</Text>
               <Text style={styles.selectionChevron}>›</Text>
             </View>
           </Pressable>
 
-          {isWeeklyCadence ? (
-            <View style={styles.weeklyInfoCard}>
-              <Text style={styles.weeklyInfoText}>
-                {locale === 'tr'
-                  ? 'Haftalık planlarda karışıklığı önlemek için günde tek doz saati kullanılır.'
-                  : 'Weekly plans use a single dose time per day to keep setup simple.'}
-              </Text>
+          <View style={styles.doseCountRow}>
+            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Kaç aralıkta bir' : 'Repeat every'}</Text>
+            <View style={styles.doseCountChipRow}>
+              {(intervalUnit === 'day' ? dayIntervalOptions : weekIntervalOptions).map((count) => {
+                const selected = count === intervalCount;
+                return (
+                  <Pressable key={count} onPress={() => setIntervalCount(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
+                    <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-          ) : (
-            <View style={styles.doseCountRow}>
-              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Günde kaç kez' : 'Doses per day'}</Text>
-              <View style={styles.doseCountChipRow}>
-                {dosesPerDayOptions.map((count) => {
-                  const selected = count === dosesPerDay;
-                  return (
-                    <Pressable key={count} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
-                      <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+          </View>
+
+          <View style={styles.doseCountRow}>
+            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'O gün kaç kere' : 'How many times that day'}</Text>
+            <View style={styles.doseCountChipRow}>
+              {dosesPerDayOptions.map((count) => {
+                const selected = count === dosesPerDay;
+                return (
+                  <Pressable key={count} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
+                    <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-          )}
+          </View>
+
+          <Text style={styles.frequencySummary}>{getDayIntervalLabel(dayInterval, locale)}</Text>
 
           <Pressable style={styles.selectionRow} onPress={openDateSheet}>
             <View style={styles.selectionLeft}>
@@ -430,8 +438,8 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
                   : sheet === 'time'
                     ? t.setTime
                     : locale === 'tr'
-                      ? 'Gün aralığı seçin'
-                      : 'Select day interval'}
+                      ? 'Interval türü seçin'
+                      : 'Select interval type'}
               </Text>
               <Pressable onPress={() => setSheet('none')} hitSlop={8}>
                 <Text style={styles.sheetClose}>✕</Text>
@@ -440,23 +448,30 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
             {sheet === 'interval' ? (
               <View style={styles.intervalWrap}>
-                {dayIntervalOptions.map((option) => {
-                  const selected = option === dayInterval;
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[styles.intervalOption, selected && styles.intervalOptionSelected]}
-                      onPress={() => {
-                        setDayInterval(option);
-                        setSheet('none');
-                      }}
-                    >
-                      <Text style={[styles.intervalOptionText, selected && styles.intervalOptionTextSelected]}>
-                        {getDayIntervalLabel(option, locale)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                <Pressable
+                  style={[styles.intervalOption, intervalUnit === 'day' && styles.intervalOptionSelected]}
+                  onPress={() => {
+                    setIntervalUnit('day');
+                    setIntervalCount(1);
+                    setSheet('none');
+                  }}
+                >
+                  <Text style={[styles.intervalOptionText, intervalUnit === 'day' && styles.intervalOptionTextSelected]}>
+                    {locale === 'tr' ? 'Gün' : 'Day'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.intervalOption, intervalUnit === 'week' && styles.intervalOptionSelected]}
+                  onPress={() => {
+                    setIntervalUnit('week');
+                    setIntervalCount(1);
+                    setSheet('none');
+                  }}
+                >
+                  <Text style={[styles.intervalOptionText, intervalUnit === 'week' && styles.intervalOptionTextSelected]}>
+                    {locale === 'tr' ? 'Hafta' : 'Week'}
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
 
@@ -698,17 +713,9 @@ const styles = StyleSheet.create({
   doseCountRow: {
     gap: theme.spacing[8],
   },
-  weeklyInfoCard: {
-    borderRadius: theme.radius[8],
-    borderWidth: 1,
-    borderColor: theme.colors.semantic.borderSoft,
-    backgroundColor: theme.colors.neutral[50],
-    paddingHorizontal: theme.spacing[8],
-    paddingVertical: theme.spacing[8],
-  },
-  weeklyInfoText: {
+  frequencySummary: {
     ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.textSecondary,
+    color: theme.colors.primaryBlue[600],
   },
   doseCountChipRow: {
     flexDirection: 'row',
