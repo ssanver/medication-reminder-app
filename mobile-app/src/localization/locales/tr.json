@@ -14,7 +14,7 @@
   "todaysMedication": "Bugünün İlaçları",
   "noMedicationTitle": "Bu gün için planlı ilaç yok",
   "noMissedMedicationTitle": "Kaçırılan ilacınız bulunmamaktadır",
-  "forwardDateActionNotAllowed": "İleri Tarihli Aksiyon Alamazsınız",
+  "forwardDateActionNotAllowed": "Bu doz ileri bir tarih için planlandı. O gün geldiğinde işaretleyebilirsiniz.",
   "markAsTaken": "Alındı Olarak İşaretle",
   "markAsMissed": "Alınmadı Olarak İşaretle",
   "noMedicationDescription": "Henüz ilaç eklemediyseniz şimdi ekleyebilirsiniz.",
