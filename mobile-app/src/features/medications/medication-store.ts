@@ -2,7 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { getLocaleTag, type Locale } from '../localization/localization';
 
-export type MedicationRecurrence = 'daily' | 'every-2-days' | 'every-3-days' | 'every-8-hours' | 'every-12-hours' | 'hourly';
+export type MedicationRecurrence =
+  | 'daily'
+  | 'every-2-days'
+  | 'every-3-days'
+  | 'every-7-days'
+  | 'every-8-hours'
+  | 'every-12-hours'
+  | 'hourly';
 export type DoseStatus = 'taken' | 'missed';
 
 export type Medication = {
@@ -111,6 +118,10 @@ function recurrenceFromLabel(label: string): MedicationRecurrence {
 
   if (label === 'Every 3 Days') {
     return 'every-3-days';
+  }
+
+  if (label === 'Every 7 Days') {
+    return 'every-7-days';
   }
 
   if (label === 'Every 8 Hours') {
@@ -330,6 +341,10 @@ function recurrenceIntervalDays(recurrence: MedicationRecurrence): number {
 
   if (recurrence === 'every-3-days') {
     return 3;
+  }
+
+  if (recurrence === 'every-7-days') {
+    return 7;
   }
 
   return 1;
