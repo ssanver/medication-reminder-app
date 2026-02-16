@@ -1,81 +1,51 @@
 using api.contracts;
-using api.data;
-using api.models;
 using api.services.security;
+using api_application.notification_application;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/notification-deliveries")]
-public sealed class NotificationDeliveriesController(AppDbContext dbContext, ILogger<NotificationDeliveriesController> logger) : ControllerBase
+public sealed class NotificationDeliveriesController(
+    NotificationDeliveryApplicationService applicationService,
+    ILogger<NotificationDeliveriesController> logger) : ControllerBase
 {
-    private static readonly HashSet<string> ValidStatuses = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "scheduled",
-        "sent",
-        "failed",
-    };
-
-    private static readonly HashSet<string> ValidChannels = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "ios-local",
-        "android-local",
-        "ios-remote",
-        "android-remote",
-    };
-
     [HttpPost]
     public async Task<ActionResult<NotificationDeliveryResponse>> Create([FromBody] CreateNotificationDeliveryRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.UserReference))
+        try
         {
-            return BadRequest("User reference is required.");
+            var created = await applicationService.CreateAsync(new CreateNotificationDeliveryCommand(
+                request.UserReference,
+                request.MedicationId,
+                request.ScheduledAt,
+                request.SentAt,
+                request.Channel,
+                request.Status,
+                request.ProviderMessageId,
+                request.ErrorCode,
+                request.ErrorMessage));
+
+            logger.LogInformation(
+                "reminder-scheduled deliveryId={DeliveryId} user={UserRefMasked} status={Status} channel={Channel}",
+                created.Id,
+                LogMasker.Mask(created.UserReference),
+                created.Status,
+                created.Channel);
+
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToResponse(created));
         }
-
-        if (!ValidStatuses.Contains(request.Status))
+        catch (ArgumentException ex)
         {
-            return BadRequest("Status must be one of: scheduled, sent, failed.");
+            return BadRequest(ex.Message);
         }
-
-        if (!ValidChannels.Contains(request.Channel))
-        {
-            return BadRequest("Channel must be one of: ios-local, android-local, ios-remote, android-remote.");
-        }
-
-        var entity = new NotificationDelivery
-        {
-            Id = Guid.NewGuid(),
-            UserReference = request.UserReference.Trim(),
-            MedicationId = request.MedicationId,
-            ScheduledAt = request.ScheduledAt,
-            SentAt = request.SentAt,
-            Channel = request.Channel.Trim().ToLowerInvariant(),
-            Status = request.Status.Trim().ToLowerInvariant(),
-            ProviderMessageId = request.ProviderMessageId?.Trim(),
-            ErrorCode = request.ErrorCode?.Trim(),
-            ErrorMessage = request.ErrorMessage?.Trim(),
-            CreatedAt = DateTimeOffset.UtcNow,
-        };
-
-        dbContext.NotificationDeliveries.Add(entity);
-        await dbContext.SaveChangesAsync();
-
-        logger.LogInformation(
-            "reminder-scheduled deliveryId={DeliveryId} user={UserRefMasked} status={Status} channel={Channel}",
-            entity.Id,
-            LogMasker.Mask(entity.UserReference),
-            entity.Status,
-            entity.Channel);
-
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToResponse(entity));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<NotificationDeliveryResponse>> GetById(Guid id)
     {
-        var entity = await dbContext.NotificationDeliveries.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        var entity = await applicationService.GetByIdAsync(id);
         if (entity is null)
         {
             return NotFound();
@@ -90,46 +60,23 @@ public sealed class NotificationDeliveriesController(AppDbContext dbContext, ILo
         [FromQuery] string? status,
         [FromQuery] int take = 100)
     {
-        if (take <= 0 || take > 500)
+        try
         {
-            return BadRequest("Take must be between 1 and 500.");
+            var items = await applicationService.ListAsync(new ListNotificationDeliveriesQuery(userReference, status, take));
+            logger.LogInformation(
+                "delivery-list-requested userFilter={UserRefMasked} statusFilter={Status} count={Count}",
+                LogMasker.Mask(userReference),
+                status,
+                items.Count);
+            return Ok(items.Select(ToResponse).ToArray());
         }
-
-        var query = dbContext.NotificationDeliveries.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(userReference))
+        catch (ArgumentException ex)
         {
-            var normalizedUser = userReference.Trim();
-            query = query.Where(x => x.UserReference == normalizedUser);
+            return BadRequest(ex.Message);
         }
-
-        if (!string.IsNullOrWhiteSpace(status))
-        {
-            var normalizedStatus = status.Trim().ToLowerInvariant();
-            if (!ValidStatuses.Contains(normalizedStatus))
-            {
-                return BadRequest("Status must be one of: scheduled, sent, failed.");
-            }
-
-            query = query.Where(x => x.Status == normalizedStatus);
-        }
-
-        var items = await query
-            .OrderByDescending(x => x.ScheduledAt)
-            .Take(take)
-            .Select(x => ToResponse(x))
-            .ToArrayAsync();
-
-        logger.LogInformation(
-            "delivery-list-requested userFilter={UserRefMasked} statusFilter={Status} count={Count}",
-            LogMasker.Mask(userReference),
-            status,
-            items.Length);
-
-        return Ok(items);
     }
 
-    private static NotificationDeliveryResponse ToResponse(NotificationDelivery entity)
+    private static NotificationDeliveryResponse ToResponse(NotificationDeliveryRecord entity)
     {
         return new NotificationDeliveryResponse
         {
