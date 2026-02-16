@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
@@ -183,6 +183,17 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     [selectedDoseTimes],
   );
 
+  useEffect(() => {
+    if (intervalUnit !== 'week') {
+      return;
+    }
+
+    const aligned = alignDateToWeekday(startDate, selectedWeekday);
+    if (aligned !== startDate) {
+      setStartDate(aligned);
+    }
+  }, [intervalUnit, selectedWeekday, startDate]);
+
   const canProceed =
     (step === 'name' && name.trim().length > 1) ||
     (step === 'form-dose' && form.length > 0) ||
@@ -251,8 +262,9 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   }
 
   function openDateSheet() {
-    setDraftDate(startDate);
-    setCalendarMonth(parseDateKey(startDate));
+    const initialDate = intervalUnit === 'week' ? alignDateToWeekday(startDate, selectedWeekday) : startDate;
+    setDraftDate(initialDate);
+    setCalendarMonth(parseDateKey(initialDate));
     setSheet('date');
   }
 
@@ -559,14 +571,29 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
                     const dateKey = formatDate(dateCell);
                     const selected = draftDate === dateKey;
+                    const selectable = intervalUnit !== 'week' || dateCell.getDay() === selectedWeekday;
 
                     return (
                       <Pressable
                         key={dateKey}
-                        onPress={() => setDraftDate(dateKey)}
-                        style={[styles.calendarCell, selected && styles.calendarCellSelected]}
+                        onPress={() => {
+                          if (!selectable) {
+                            return;
+                          }
+                          setDraftDate(dateKey);
+                        }}
+                        disabled={!selectable}
+                        style={[styles.calendarCell, selected && styles.calendarCellSelected, !selectable && styles.calendarCellDisabled]}
                       >
-                        <Text style={[styles.calendarCellText, selected && styles.calendarCellTextSelected]}>{dateCell.getDate()}</Text>
+                        <Text
+                          style={[
+                            styles.calendarCellText,
+                            selected && styles.calendarCellTextSelected,
+                            !selectable && styles.calendarCellTextDisabled,
+                          ]}
+                        >
+                          {dateCell.getDate()}
+                        </Text>
                       </Pressable>
                     );
                   })}
@@ -982,6 +1009,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.primaryBlue[500],
   },
+  calendarCellDisabled: {
+    backgroundColor: theme.colors.neutral[100],
+    opacity: 0.45,
+  },
   calendarCellText: {
     ...theme.typography.bodyScale.xmRegular,
     color: theme.colors.semantic.textSecondary,
@@ -989,6 +1020,9 @@ const styles = StyleSheet.create({
   calendarCellTextSelected: {
     color: theme.colors.primaryBlue[600],
     fontWeight: '600',
+  },
+  calendarCellTextDisabled: {
+    color: theme.colors.semantic.textMuted,
   },
   timeWrap: {
     gap: theme.spacing[16],
