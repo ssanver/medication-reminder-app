@@ -6,15 +6,16 @@ import { getScheduledDosesForDate, setDoseStatus } from '../medications/medicati
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
+    shouldShowAlert: false,
+    shouldShowBanner: false,
+    shouldShowList: false,
     shouldSetBadge: false,
   }),
 });
 
 let configured = false;
 let responseListenerConfigured = false;
+let receivedListenerConfigured = false;
 const MEDICATION_NOTIFICATION_IDS_KEY = 'scheduled-medication-notification-ids-v1';
 const REMINDER_CATEGORY_ID = 'medication-dose-actions';
 const TAKE_NOW_ACTION_ID = 'take-now';
@@ -27,7 +28,51 @@ type MedicationReminderPayload = {
   medicationId: string;
   dateKey: string;
   scheduledTime: string;
+  medicationName: string;
+  medicationDetails: string;
 };
+
+export type ReminderPrompt = MedicationReminderPayload;
+const reminderPromptListeners = new Set<() => void>();
+let reminderPrompt: ReminderPrompt | null = null;
+
+function setReminderPrompt(next: ReminderPrompt | null): void {
+  reminderPrompt = next;
+  reminderPromptListeners.forEach((listener) => listener());
+}
+
+export function dismissReminderPrompt(): void {
+  setReminderPrompt(null);
+}
+
+export function getReminderPromptSnapshot(): ReminderPrompt | null {
+  return reminderPrompt;
+}
+
+export function subscribeReminderPrompt(listener: () => void): () => void {
+  reminderPromptListeners.add(listener);
+  return () => {
+    reminderPromptListeners.delete(listener);
+  };
+}
+
+function buildReminderPayload(
+  payload: Partial<MedicationReminderPayload> | undefined,
+  titleFallback = '',
+  bodyFallback = '',
+): ReminderPrompt | null {
+  if (!payload?.medicationId || !payload?.dateKey || !payload?.scheduledTime) {
+    return null;
+  }
+
+  return {
+    medicationId: payload.medicationId,
+    dateKey: payload.dateKey,
+    scheduledTime: payload.scheduledTime,
+    medicationName: payload.medicationName || titleFallback || 'Medication',
+    medicationDetails: payload.medicationDetails || bodyFallback || 'Dose reminder',
+  };
+}
 
 export async function ensureNotificationPermissions(): Promise<boolean> {
   try {
@@ -134,8 +179,12 @@ export function ensureMedicationNotificationResponseListener(): void {
   }
 
   Notifications.addNotificationResponseReceivedListener((response) => {
-    const payload = response.notification.request.content.data as MedicationReminderPayload | undefined;
-    if (!payload || !payload.medicationId || !payload.dateKey || !payload.scheduledTime) {
+    const payload = buildReminderPayload(
+      response.notification.request.content.data as Partial<MedicationReminderPayload> | undefined,
+      response.notification.request.content.title ?? '',
+      response.notification.request.content.body ?? '',
+    );
+    if (!payload) {
       return;
     }
 
@@ -145,16 +194,44 @@ export function ensureMedicationNotificationResponseListener(): void {
     }
 
     if (response.actionIdentifier === TAKE_NOW_ACTION_ID) {
+      dismissReminderPrompt();
       void setDoseStatus(payload.medicationId, date, 'taken', payload.scheduledTime);
       return;
     }
 
     if (response.actionIdentifier === SKIP_ACTION_ID) {
+      dismissReminderPrompt();
       void setDoseStatus(payload.medicationId, date, 'missed', payload.scheduledTime);
+      return;
+    }
+
+    if (response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      setReminderPrompt(payload);
     }
   });
 
   responseListenerConfigured = true;
+}
+
+export function ensureMedicationNotificationReceivedListener(): void {
+  if (receivedListenerConfigured) {
+    return;
+  }
+
+  Notifications.addNotificationReceivedListener((notification) => {
+    const payload = buildReminderPayload(
+      notification.request.content.data as Partial<MedicationReminderPayload> | undefined,
+      notification.request.content.title ?? '',
+      notification.request.content.body ?? '',
+    );
+    if (!payload) {
+      return;
+    }
+
+    setReminderPrompt(payload);
+  });
+
+  receivedListenerConfigured = true;
 }
 
 export async function syncMedicationReminderNotifications(locale: Locale, enabled: boolean): Promise<void> {
@@ -171,6 +248,7 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
 
   await configureNotificationChannel();
   ensureMedicationNotificationResponseListener();
+  ensureMedicationNotificationReceivedListener();
 
   await clearMedicationReminderNotifications();
 
@@ -225,6 +303,8 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
           medicationId: reminder.medicationId,
           dateKey: reminder.dateKey,
           scheduledTime: reminder.scheduledTime,
+          medicationName: reminder.name,
+          medicationDetails: reminder.details,
         } satisfies MedicationReminderPayload,
       },
       trigger: {

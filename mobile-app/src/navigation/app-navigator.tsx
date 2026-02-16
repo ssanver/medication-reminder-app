@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { BottomNav } from '../components/ui/bottom-nav';
 import type { AppIconName } from '../components/ui/app-icon';
+import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { setDoseStatus } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
-import { ensureNotificationPermissions, syncMedicationReminderNotifications } from '../features/notifications/local-notifications';
+import {
+  dismissReminderPrompt,
+  ensureNotificationPermissions,
+  getReminderPromptSnapshot,
+  subscribeReminderPrompt,
+  syncMedicationReminderNotifications,
+} from '../features/notifications/local-notifications';
 import { loadAppPreferences, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
@@ -47,6 +55,7 @@ const tabGlyph: Record<TabKey, AppIconName> = {
 
 export function AppNavigator() {
   const medicationStore = useMedicationStore();
+  const reminderPrompt = useSyncExternalStore(subscribeReminderPrompt, getReminderPromptSnapshot, getReminderPromptSnapshot);
   const [phase, setPhase] = useState<AppPhase>('splash');
   const [locale, setLocale] = useState<Locale>('tr');
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
@@ -340,6 +349,35 @@ export function AppNavigator() {
         ]}
         activeKey={activeTab}
         onChange={(key) => setActiveTab(key as TabKey)}
+      />
+      <ReminderPromptModal
+        visible={Boolean(reminderPrompt)}
+        locale={locale}
+        reminder={reminderPrompt}
+        onTakeNow={() => {
+          if (!reminderPrompt) {
+            return;
+          }
+
+          const date = new Date(`${reminderPrompt.dateKey}T00:00:00`);
+          if (!Number.isNaN(date.getTime())) {
+            void setDoseStatus(reminderPrompt.medicationId, date, 'taken', reminderPrompt.scheduledTime);
+          }
+
+          dismissReminderPrompt();
+        }}
+        onSkip={() => {
+          if (!reminderPrompt) {
+            return;
+          }
+
+          const date = new Date(`${reminderPrompt.dateKey}T00:00:00`);
+          if (!Number.isNaN(date.getTime())) {
+            void setDoseStatus(reminderPrompt.medicationId, date, 'missed', reminderPrompt.scheduledTime);
+          }
+
+          dismissReminderPrompt();
+        }}
       />
     </View>
   );
