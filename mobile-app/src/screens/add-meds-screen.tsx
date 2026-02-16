@@ -24,8 +24,23 @@ type FormOption = {
 
 const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
 const dosageOptions = ['0.5', '1', '2', '3'];
-const frequencyOptions = ['Every 1 Day', 'Every 2 Days', 'Every 3 Days', 'Every 8 Hours', 'Every 12 Hours', 'Every 1 Hour'];
-const quickTimes = ['08:00', '12:00', '18:00', '24:00'];
+const quickTimes = ['07:00', '09:00', '12:00', '18:00', '21:00', '23:00'];
+const defaultDoseTimes = ['09:00', '14:00', '20:00'];
+
+type FrequencyTemplate = {
+  key: string;
+  frequencyLabel: string;
+  dosesPerDay: number;
+};
+
+const frequencyTemplates: FrequencyTemplate[] = [
+  { key: 'daily-1', frequencyLabel: 'Every 1 Day', dosesPerDay: 1 },
+  { key: 'daily-2', frequencyLabel: 'Every 1 Day', dosesPerDay: 2 },
+  { key: 'daily-3', frequencyLabel: 'Every 1 Day', dosesPerDay: 3 },
+  { key: 'every-2-days-1', frequencyLabel: 'Every 2 Days', dosesPerDay: 1 },
+  { key: 'every-2-days-2', frequencyLabel: 'Every 2 Days', dosesPerDay: 2 },
+  { key: 'every-2-days-3', frequencyLabel: 'Every 2 Days', dosesPerDay: 3 },
+];
 
 const formOptions: FormOption[] = [
   { key: 'Capsule', emoji: '💊' },
@@ -72,28 +87,17 @@ function buildCalendarCells(month: Date): Array<Date | null> {
   return cells;
 }
 
-function toFrequencyLabel(value: string): string {
-  if (value === 'Every 2 Days') {
-    return 'Every 2 Days';
+function toFrequencyLabel(template: FrequencyTemplate): string {
+  return template.frequencyLabel;
+}
+
+function getTemplateLabel(template: FrequencyTemplate, locale: Locale): string {
+  const intervalLabel = localizeFrequencyLabel(template.frequencyLabel, locale);
+  if (locale === 'tr') {
+    return `${intervalLabel} • Günde ${template.dosesPerDay} kez`;
   }
 
-  if (value === 'Every 3 Days') {
-    return 'Every 3 Days';
-  }
-
-  if (value === 'Every 8 Hours') {
-    return 'Every 8 Hours';
-  }
-
-  if (value === 'Every 12 Hours') {
-    return 'Every 12 Hours';
-  }
-
-  if (value === 'Every 1 Hour') {
-    return 'Every 1 Hour';
-  }
-
-  return 'Every 1 Day';
+  return `${intervalLabel} • ${template.dosesPerDay} time(s) per day`;
 }
 
 export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
@@ -104,14 +108,15 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const [name, setName] = useState('');
   const [form, setForm] = useState('');
   const [dosage, setDosage] = useState('0.5');
-  const [frequency, setFrequency] = useState('Every 1 Day');
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState(frequencyTemplates[0].key);
   const [startDate, setStartDate] = useState(formatDate(new Date()));
-  const [time, setTime] = useState('');
+  const [doseTimes, setDoseTimes] = useState<string[]>(defaultDoseTimes);
   const [note, setNote] = useState('');
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
-  const [draftTime, setDraftTime] = useState('08:00');
+  const [draftTime, setDraftTime] = useState(defaultDoseTimes[0]);
+  const [editingTimeIndex, setEditingTimeIndex] = useState(0);
 
   const stepIndex = steps.indexOf(step);
   const progress = (stepIndex + 1) / steps.length;
@@ -134,11 +139,23 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     });
   }, [locale, startDate]);
   const addMedicationLabel = useMemo(() => t.addMedication.replace(/^\s*\+\s*/, ''), [t.addMedication]);
+  const selectedTemplate = useMemo(
+    () => frequencyTemplates.find((item) => item.key === selectedTemplateKey) ?? frequencyTemplates[0],
+    [selectedTemplateKey],
+  );
+  const selectedDoseTimes = useMemo(
+    () => Array.from({ length: selectedTemplate.dosesPerDay }, (_, index) => doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00'),
+    [doseTimes, selectedTemplate.dosesPerDay],
+  );
+  const hasDuplicateTimes = useMemo(
+    () => new Set(selectedDoseTimes.map((item) => item.trim())).size !== selectedDoseTimes.length,
+    [selectedDoseTimes],
+  );
 
   const canProceed =
     (step === 'name' && name.trim().length > 1) ||
     (step === 'form-dose' && form.length > 0) ||
-    (step === 'frequency' && Boolean(startDate && time)) ||
+    (step === 'frequency' && Boolean(startDate) && selectedDoseTimes.every((item) => item.trim().length > 0) && !hasDuplicateTimes) ||
     step === 'note';
 
   const headerTitle =
@@ -152,7 +169,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
   async function handleSave(shouldSkipNote = false) {
     const normalizedName = name.trim();
-    if (!normalizedName || !form || !time) {
+    if (!normalizedName || !form || selectedDoseTimes.length === 0) {
       return;
     }
 
@@ -160,19 +177,20 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       name: normalizedName,
       form,
       dosage,
-      frequencyLabel: toFrequencyLabel(frequency),
+      frequencyLabel: toFrequencyLabel(selectedTemplate),
       note: shouldSkipNote ? '' : note.trim(),
       startDate,
-      time,
+      time: selectedDoseTimes[0],
+      times: selectedDoseTimes,
       active: true,
     });
 
     setName('');
     setForm('');
     setDosage('0.5');
-    setFrequency('Every 1 Day');
+    setSelectedTemplateKey(frequencyTemplates[0].key);
     setStartDate(formatDate(new Date()));
-    setTime('');
+    setDoseTimes(defaultDoseTimes);
     setNote('');
     setStep('name');
     onMedicationSaved();
@@ -204,8 +222,9 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     setSheet('date');
   }
 
-  function openTimeSheet() {
-    setDraftTime(time || '08:00');
+  function openTimeSheet(index: number) {
+    setEditingTimeIndex(index);
+    setDraftTime(doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00');
     setSheet('time');
   }
 
@@ -278,11 +297,15 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       return (
         <View style={styles.stepBody}>
           <View style={styles.frequencyRow}>
-            {frequencyOptions.map((item) => {
-              const selected = item === frequency;
+            {frequencyTemplates.map((item) => {
+              const selected = item.key === selectedTemplateKey;
               return (
-                <Pressable key={item} onPress={() => setFrequency(item)} style={[styles.frequencyChip, selected && styles.frequencyChipSelected]}>
-                  <Text style={[styles.frequencyChipText, selected && styles.frequencyChipTextSelected]}>{localizeFrequencyLabel(item, locale)}</Text>
+                <Pressable
+                  key={item.key}
+                  onPress={() => setSelectedTemplateKey(item.key)}
+                  style={[styles.frequencyChip, selected && styles.frequencyChipSelected]}
+                >
+                  <Text style={[styles.frequencyChipText, selected && styles.frequencyChipTextSelected]}>{getTemplateLabel(item, locale)}</Text>
                 </Pressable>
               );
             })}
@@ -299,16 +322,24 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
             </View>
           </Pressable>
 
-          <Pressable style={styles.selectionRow} onPress={openTimeSheet}>
-            <View style={styles.selectionLeft}>
-              <Text style={styles.selectionIcon}>⏰</Text>
-              <Text style={styles.selectionLabel}>{t.time}</Text>
-            </View>
-            <View style={styles.selectionRight}>
-              <Text style={styles.selectionValue}>{time || '--:--'}</Text>
-              <Text style={styles.selectionChevron}>›</Text>
-            </View>
-          </Pressable>
+          {selectedDoseTimes.map((slotTime, index) => (
+            <Pressable key={`${index}-${slotTime}`} style={styles.selectionRow} onPress={() => openTimeSheet(index)}>
+              <View style={styles.selectionLeft}>
+                <Text style={styles.selectionIcon}>⏰</Text>
+                <Text style={styles.selectionLabel}>{locale === 'tr' ? `${index + 1}. saat` : `${index + 1}. time`}</Text>
+              </View>
+              <View style={styles.selectionRight}>
+                <Text style={styles.selectionValue}>{slotTime || '--:--'}</Text>
+                <Text style={styles.selectionChevron}>›</Text>
+              </View>
+            </Pressable>
+          ))}
+
+          {hasDuplicateTimes ? (
+            <Text style={styles.timeWarning}>
+              {locale === 'tr' ? 'Aynı saat birden fazla kez seçilemez.' : 'You cannot select the same time more than once.'}
+            </Text>
+          ) : null}
         </View>
       );
     }
@@ -439,7 +470,11 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
                 <Button
                   label={t.done}
                   onPress={() => {
-                    setTime(draftTime);
+                    setDoseTimes((prev) => {
+                      const next = [...prev];
+                      next[editingTimeIndex] = draftTime;
+                      return next;
+                    });
                     setSheet('none');
                   }}
                 />
@@ -609,8 +644,9 @@ const styles = StyleSheet.create({
     gap: theme.spacing[8],
   },
   frequencyChip: {
-    minHeight: 34,
-    borderRadius: theme.radius[16],
+    width: '48%',
+    minHeight: 44,
+    borderRadius: theme.radius[8],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
     backgroundColor: '#FFFFFF',
@@ -623,11 +659,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryBlue[50],
   },
   frequencyChipText: {
-    ...theme.typography.captionScale.lRegular,
+    ...theme.typography.captionScale.mRegular,
     color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
   },
   frequencyChipTextSelected: {
     color: theme.colors.primaryBlue[600],
+  },
+  timeWarning: {
+    ...theme.typography.captionScale.mRegular,
+    color: theme.colors.error[500],
   },
   selectionRow: {
     minHeight: 42,
@@ -766,11 +807,11 @@ const styles = StyleSheet.create({
   },
   timeGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: theme.spacing[8],
   },
   timeChip: {
-    flex: 1,
+    width: '31%',
     minHeight: 40,
     borderRadius: theme.radius[8],
     borderWidth: 1,

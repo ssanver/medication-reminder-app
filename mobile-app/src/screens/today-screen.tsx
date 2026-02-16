@@ -172,17 +172,17 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
 
                 if (isPastDate) {
                   if (item.status === 'taken') {
-                    void setDoseStatus(item.medicationId, selectedDate, 'missed');
+                    void setDoseStatus(item.medicationId, selectedDate, 'missed', item.scheduledTime);
                   } else if (item.status === 'missed') {
-                    void clearDoseStatus(item.medicationId, selectedDate);
+                    void clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
                   } else {
-                    void setDoseStatus(item.medicationId, selectedDate, 'taken');
+                    void setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
                   }
                   setActionWarning(null);
                   return;
                 }
 
-                void setDoseStatus(item.medicationId, selectedDate, 'taken');
+                void setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
                 setActionWarning(null);
               }}
               secondaryActionLabel={

@@ -15,12 +15,14 @@ export type Medication = {
   note: string;
   startDate: string;
   time: string;
+  times?: string[];
   active: boolean;
 };
 
 type DoseEvent = {
   medicationId: string;
   dateKey: string;
+  scheduledTime: string;
   status: DoseStatus;
 };
 
@@ -126,6 +128,29 @@ function recurrenceFromLabel(label: string): MedicationRecurrence {
   return 'daily';
 }
 
+function normalizeTime(value: string): string {
+  const [rawHour = '0', rawMinute = '0'] = value.split(':');
+  const hour = Math.min(23, Math.max(0, Number(rawHour)));
+  const minute = Math.min(59, Math.max(0, Number(rawMinute)));
+  return `${`${hour}`.padStart(2, '0')}:${`${minute}`.padStart(2, '0')}`;
+}
+
+function getMedicationTimes(medication: Medication): string[] {
+  const candidates = (Array.isArray(medication.times) && medication.times.length > 0 ? medication.times : [medication.time ?? '09:00'])
+    .map((item) => normalizeTime(item))
+    .filter((item, index, list) => list.indexOf(item) === index);
+  return candidates.sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeMedication(payload: Medication): Medication {
+  const normalizedTimes = getMedicationTimes(payload);
+  return {
+    ...payload,
+    time: normalizedTimes[0] ?? '09:00',
+    times: normalizedTimes,
+  };
+}
+
 function toPersistableState() {
   return {
     medications: state.medications,
@@ -146,10 +171,22 @@ export async function hydrateMedicationStore(): Promise<void> {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
 
     if (raw) {
-      const parsed = JSON.parse(raw) as { medications?: Medication[]; events?: DoseEvent[] };
+      const parsed = JSON.parse(raw) as {
+        medications?: Medication[];
+        events?: Array<Omit<DoseEvent, 'scheduledTime'> & Partial<Pick<DoseEvent, 'scheduledTime'>>>;
+      };
       state = {
-        medications: parsed.medications && parsed.medications.length > 0 ? parsed.medications : defaultMedications,
-        events: parsed.events ?? [],
+        medications:
+          parsed.medications && parsed.medications.length > 0
+            ? parsed.medications.map((item) => normalizeMedication(item))
+            : defaultMedications.map((item) => normalizeMedication(item)),
+        events:
+          parsed.events?.map((item) => ({
+            medicationId: item.medicationId,
+            dateKey: item.dateKey,
+            scheduledTime: typeof item.scheduledTime === 'string' ? normalizeTime(item.scheduledTime) : '',
+            status: item.status,
+          })) ?? [],
         isHydrated: true,
       };
       emit();
@@ -183,11 +220,12 @@ export async function addMedication(payload: {
   note: string;
   startDate?: string;
   time?: string;
+  times?: string[];
   active?: boolean;
 }): Promise<void> {
   const id = `med-${Date.now()}`;
   const today = toDateKey(new Date());
-  const dosageUnit = payload.form.toLowerCase() === 'drop' ? 'Drops' : payload.form.toLowerCase() === 'injection' ? 'Injection' : 'Capsules';
+  const normalizedTimes = (payload.times && payload.times.length > 0 ? payload.times : [payload.time ?? '09:00']).map((item) => normalizeTime(item));
   const medication: Medication = {
     id,
     name: payload.name.trim(),
@@ -197,7 +235,8 @@ export async function addMedication(payload: {
     recurrence: recurrenceFromLabel(payload.frequencyLabel),
     note: payload.note.trim(),
     startDate: payload.startDate ?? today,
-    time: payload.time ?? '09:00',
+    time: normalizedTimes[0] ?? '09:00',
+    times: normalizedTimes,
     active: payload.active ?? true,
   };
 
@@ -215,15 +254,17 @@ export function getMedicationById(medicationId: string): Medication | undefined 
 
 export async function updateMedication(
   medicationId: string,
-  patch: Partial<Pick<Medication, 'name' | 'form' | 'dosage' | 'frequencyLabel' | 'note' | 'startDate' | 'time' | 'active'>>,
+  patch: Partial<Pick<Medication, 'name' | 'form' | 'dosage' | 'frequencyLabel' | 'note' | 'startDate' | 'time' | 'times' | 'active'>>,
 ): Promise<void> {
   state = {
     ...state,
     medications: state.medications.map((item) =>
       item.id === medicationId
         ? {
-            ...item,
-            ...patch,
+            ...normalizeMedication({
+              ...item,
+              ...patch,
+            }),
             recurrence: patch.frequencyLabel ? recurrenceFromLabel(patch.frequencyLabel) : item.recurrence,
           }
         : item,
@@ -242,19 +283,26 @@ export async function setMedicationActive(medicationId: string, active: boolean)
   await persist();
 }
 
-export async function setDoseStatus(medicationId: string, date: Date, status: DoseStatus): Promise<void> {
+export async function setDoseStatus(medicationId: string, date: Date, status: DoseStatus, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
-  const existing = state.events.find((item) => item.medicationId === medicationId && item.dateKey === dateKey);
+  const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
+  const existing = state.events.find(
+    (item) => item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime,
+  );
 
   if (existing) {
     state = {
       ...state,
-      events: state.events.map((item) => (item.medicationId === medicationId && item.dateKey === dateKey ? { ...item, status } : item)),
+      events: state.events.map((item) =>
+        item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime
+          ? { ...item, status }
+          : item,
+      ),
     };
   } else {
     state = {
       ...state,
-      events: [...state.events, { medicationId, dateKey, status }],
+      events: [...state.events, { medicationId, dateKey, scheduledTime: normalizedScheduledTime, status }],
     };
   }
 
@@ -262,11 +310,14 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
   await persist();
 }
 
-export async function clearDoseStatus(medicationId: string, date: Date): Promise<void> {
+export async function clearDoseStatus(medicationId: string, date: Date, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
+  const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
   state = {
     ...state,
-    events: state.events.filter((item) => !(item.medicationId === medicationId && item.dateKey === dateKey)),
+    events: state.events.filter(
+      (item) => !(item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime),
+    ),
   };
   emit();
   await persist();
@@ -317,6 +368,7 @@ function compareDay(a: Date, b: Date): number {
 export type ScheduledDoseItem = {
   id: string;
   medicationId: string;
+  scheduledTime: string;
   name: string;
   details: string;
   schedule: string;
@@ -348,21 +400,28 @@ export function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): Sch
 
   return state.medications
     .filter((medication) => medication.active && isScheduled(medication, date))
-    .map((medication) => {
-      const event = state.events.find((item) => item.medicationId === medication.id && item.dateKey === dateKey);
-      const status = event ? event.status : dayCompare < 0 ? 'missed' : 'pending';
+    .flatMap((medication) => {
       const detailsUnit = medication.form.toLowerCase() === 'drop' ? 'Drops' : medication.form.toLowerCase() === 'injection' ? 'Injection' : 'Capsules';
 
-      return {
-        id: `${medication.id}-${dateKey}`,
-        medicationId: medication.id,
-        name: medication.name,
-        details: `${medication.dosage} ${detailsUnit}`,
-        schedule: `${medication.time} | ${localizeFrequencyLabel(medication.frequencyLabel, locale)}`,
-        status,
-        emoji: iconForForm(medication.form),
-      };
-    });
+      return getMedicationTimes(medication).map((scheduledTime) => {
+        const event = state.events.find(
+          (item) => item.medicationId === medication.id && item.dateKey === dateKey && item.scheduledTime === scheduledTime,
+        );
+        const status: ScheduledDoseItem['status'] = event ? event.status : dayCompare < 0 ? 'missed' : 'pending';
+
+        return {
+          id: `${medication.id}-${dateKey}-${scheduledTime}`,
+          medicationId: medication.id,
+          scheduledTime,
+          name: medication.name,
+          details: `${medication.dosage} ${detailsUnit}`,
+          schedule: `${scheduledTime} | ${localizeFrequencyLabel(medication.frequencyLabel, locale)}`,
+          status,
+          emoji: iconForForm(medication.form),
+        };
+      });
+    })
+    .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
 }
 
 export function getAdherenceSummary(referenceDate: Date): {
