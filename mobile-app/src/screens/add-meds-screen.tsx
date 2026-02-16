@@ -30,6 +30,7 @@ const defaultDoseTimes = ['09:00', '14:00', '20:00'];
 const dayIntervalOptions = [1, 2, 3] as const;
 const weekIntervalOptions = [1, 2] as const;
 const dosesPerDayOptions = [1, 2, 3] as const;
+const weekdayOptions = [1, 2, 3, 4, 5, 6, 0] as const;
 
 const formOptions: FormOption[] = [
   { key: 'Capsule', emoji: '💊' },
@@ -104,6 +105,20 @@ function resolveDayInterval(intervalUnit: IntervalUnit, intervalCount: number): 
   return intervalUnit === 'week' ? intervalCount * 7 : intervalCount;
 }
 
+function getWeekdayLabel(weekday: number, locale: Locale): string {
+  const anchor = new Date(2026, 0, 5 + weekday); // 2026-01-05 is Monday.
+  return anchor.toLocaleDateString(getLocaleTag(locale), { weekday: 'short' });
+}
+
+function alignDateToWeekday(baseDate: string, weekday: number): string {
+  const date = parseDateKey(baseDate);
+  const current = date.getDay();
+  const offset = (weekday - current + 7) % 7;
+  const aligned = new Date(date);
+  aligned.setDate(date.getDate() + offset);
+  return formatDate(aligned);
+}
+
 export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);
   const [step, setStep] = useState<WizardStep>('name');
@@ -114,6 +129,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const [dosage, setDosage] = useState('0.5');
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
   const [intervalCount, setIntervalCount] = useState<number>(1);
+  const [selectedWeekday, setSelectedWeekday] = useState<number>(1);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
   const [startDate, setStartDate] = useState(formatDate(new Date()));
   const [doseTimes, setDoseTimes] = useState<string[]>(defaultDoseTimes);
@@ -150,6 +166,18 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     [doseTimes, dosesPerDay],
   );
   const dayInterval = useMemo(() => resolveDayInterval(intervalUnit, intervalCount), [intervalUnit, intervalCount]);
+  const effectiveStartDate = useMemo(
+    () => (intervalUnit === 'week' ? alignDateToWeekday(startDate, selectedWeekday) : startDate),
+    [intervalUnit, startDate, selectedWeekday],
+  );
+  const localizedEffectiveStartDate = useMemo(() => {
+    const parsed = parseDateKey(effectiveStartDate);
+    return parsed.toLocaleDateString(getLocaleTag(locale), {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }, [effectiveStartDate, locale]);
   const hasDuplicateTimes = useMemo(
     () => new Set(selectedDoseTimes.map((item) => item.trim())).size !== selectedDoseTimes.length,
     [selectedDoseTimes],
@@ -182,7 +210,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       dosage,
       frequencyLabel: toFrequencyLabel(dayInterval),
       note: shouldSkipNote ? '' : note.trim(),
-      startDate,
+      startDate: effectiveStartDate,
       time: selectedDoseTimes[0],
       times: selectedDoseTimes,
       active: true,
@@ -193,6 +221,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     setDosage('0.5');
     setIntervalUnit('day');
     setIntervalCount(1);
+    setSelectedWeekday(1);
     setDosesPerDay(1);
     setStartDate(formatDate(new Date()));
     setDoseTimes(defaultDoseTimes);
@@ -329,6 +358,33 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
               })}
             </View>
           </View>
+
+          {intervalUnit === 'week' ? (
+            <View style={styles.doseCountRow}>
+              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Haftanın günü' : 'Day of week'}</Text>
+              <View style={styles.weekdayChipRow}>
+                {weekdayOptions.map((weekday) => {
+                  const selected = weekday === selectedWeekday;
+                  return (
+                    <Pressable
+                      key={weekday}
+                      onPress={() => setSelectedWeekday(weekday)}
+                      style={[styles.weekdayChip, selected && styles.weekdayChipSelected]}
+                    >
+                      <Text style={[styles.weekdayChipText, selected && styles.weekdayChipTextSelected]}>
+                        {getWeekdayLabel(weekday, locale)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={styles.selectionHint}>
+                {locale === 'tr'
+                  ? `Başlangıç tarihi seçilen güne hizalanır: ${localizedEffectiveStartDate}`
+                  : `Start date will align to selected day: ${localizedEffectiveStartDate}`}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.doseCountRow}>
             <Text style={styles.selectionLabel}>{locale === 'tr' ? 'O gün kaç kere' : 'How many times that day'}</Text>
@@ -720,6 +776,38 @@ const styles = StyleSheet.create({
   doseCountChipRow: {
     flexDirection: 'row',
     gap: theme.spacing[8],
+  },
+  weekdayChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[8],
+  },
+  weekdayChip: {
+    minWidth: 46,
+    minHeight: 34,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing[8],
+  },
+  weekdayChipSelected: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  weekdayChipText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  weekdayChipTextSelected: {
+    color: theme.colors.primaryBlue[600],
+    fontWeight: '700',
+  },
+  selectionHint: {
+    ...theme.typography.captionScale.mRegular,
+    color: theme.colors.semantic.textSecondary,
   },
   doseCountChip: {
     minWidth: 48,
