@@ -2,18 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { getLocaleOptions, getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { TextField } from '../components/ui/text-field';
 import { loadProfile, saveProfile } from '../features/profile/profile-store';
 import { theme } from '../theme';
 
 type ProfileScreenProps = {
   locale: Locale;
-  onLocaleChange: (locale: Locale) => void;
   onBack: () => void;
 };
 
-type SheetType = 'none' | 'language' | 'birth-date' | 'gender';
+type SheetType = 'none' | 'birth-date' | 'gender';
 
 function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -61,9 +60,8 @@ function getGenderOptions(locale: Locale): string[] {
   return ['Female', 'Male', 'Prefer not to say'];
 }
 
-export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenProps) {
+export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
   const t = getTranslations(locale);
-  const localeOptions = getLocaleOptions(locale);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -152,14 +150,6 @@ export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenP
             </Pressable>
           </View>
 
-          <View style={styles.fieldWrap}>
-            <Text style={styles.fieldLabel}>{t.language}</Text>
-            <Pressable style={styles.combo} onPress={() => setSheet('language')}>
-              <Text style={styles.comboText}>{localeOptions.find((item) => item.code === locale)?.label ?? locale}</Text>
-              <Text style={styles.chevron}>{'>'}</Text>
-            </Pressable>
-          </View>
-
           {savedMessage ? <Text style={styles.savedText}>{savedMessage}</Text> : null}
           <Button label={t.saveChanges} onPress={() => void onSave()} />
         </View>
@@ -168,27 +158,6 @@ export function ProfileScreen({ locale, onLocaleChange, onBack }: ProfileScreenP
       <Modal transparent visible={sheet !== 'none'} animationType="slide" onRequestClose={() => setSheet('none')}>
         <Pressable style={styles.overlay} onPress={() => setSheet('none')}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            {sheet === 'language' ? (
-              <>
-                <Text style={styles.sheetTitle}>{t.selectLanguage}</Text>
-                {localeOptions.map((option) => {
-                  const selected = option.code === locale;
-                  return (
-                    <Pressable
-                      key={option.code}
-                      style={[styles.optionRow, selected && styles.optionRowActive]}
-                      onPress={() => {
-                        onLocaleChange(option.code);
-                        setSheet('none');
-                      }}
-                    >
-                      <Text style={[styles.optionText, selected && styles.optionTextActive]}>{option.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </>
-            ) : null}
-
             {sheet === 'gender' ? (
               <>
                 <Text style={styles.sheetTitle}>{t.gender}</Text>
