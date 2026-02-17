@@ -4,6 +4,8 @@ import { BottomNav } from '../components/ui/bottom-nav';
 import type { AppIconName } from '../components/ui/app-icon';
 import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
+import { resolveInitialPhase } from '../features/auth/auth-flow';
+import { loadAuthSession, markAuthenticated, setOnboardingCompleted } from '../features/auth/auth-session-store';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { useMedicationStore } from '../features/medications/use-medication-store';
@@ -79,7 +81,12 @@ export function AppNavigator() {
       return;
     }
 
-    const timer = setTimeout(() => setPhase('onboarding'), 1600);
+    const timer = setTimeout(() => {
+      void (async () => {
+        const session = await loadAuthSession();
+        setPhase(resolveInitialPhase(session));
+      })();
+    }, 1600);
 
     return () => clearTimeout(timer);
   }, [phase]);
@@ -164,14 +171,21 @@ export function AppNavigator() {
           <OnboardingScreen
             locale={locale}
             stepIndex={onboardingStep}
-            onSkip={() => setPhase('signup')}
-            onOpenSignIn={() => setPhase('signin')}
+            onSkip={() => {
+              void setOnboardingCompleted(true);
+              setPhase('signup');
+            }}
+            onOpenSignIn={() => {
+              void setOnboardingCompleted(true);
+              setPhase('signin');
+            }}
             onNextStep={() => {
               const lastStepIndex = steps.length - 1;
 
               if (onboardingStep < lastStepIndex) {
                 setOnboardingStep((prev) => prev + 1);
               } else {
+                void setOnboardingCompleted(true);
                 setPhase('signup');
               }
             }}
@@ -187,7 +201,10 @@ export function AppNavigator() {
         <View style={styles.content}>
           <SignUpScreen
             locale={locale}
-            onSuccess={() => setPhase('app')}
+            onSuccess={() => {
+              void markAuthenticated();
+              setPhase('app');
+            }}
             onOpenSignIn={() => setPhase('signin')}
             onBack={() => {
               setOnboardingStep(Math.max(steps.length - 1, 0));
@@ -203,7 +220,14 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <SignInScreen locale={locale} onSuccess={() => setPhase('app')} onOpenSignUp={() => setPhase('signup')} />
+          <SignInScreen
+            locale={locale}
+            onSuccess={() => {
+              void markAuthenticated();
+              setPhase('app');
+            }}
+            onOpenSignUp={() => setPhase('signup')}
+          />
         </View>
       </View>
     );
