@@ -67,7 +67,7 @@ export function AppNavigator() {
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [medicationRemindersEnabled, setMedicationRemindersEnabled] = useState(true);
-  const [snoozeMinutes, setSnoozeMinutes] = useState(15);
+  const [snoozeMinutes, setSnoozeMinutes] = useState(10);
   const [activeTab, setActiveTab] = useState<TabKey>('today');
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [overlayScreen, setOverlayScreen] = useState<OverlayScreen>('none');
@@ -425,6 +425,7 @@ export function AppNavigator() {
       <ReminderPromptModal
         visible={Boolean(reminderPrompt)}
         locale={locale}
+        snoozeMinutes={snoozeMinutes}
         reminder={reminderPrompt}
         onTakeNow={() => {
           if (!reminderPrompt) {
@@ -436,7 +437,7 @@ export function AppNavigator() {
           if (!reminderPrompt) {
             return;
           }
-          void handleReminderSnooze(reminderPrompt);
+          void handleReminderSnooze(reminderPrompt, snoozeMinutes, locale);
         }}
         onSkip={() => {
           if (!reminderPrompt) {

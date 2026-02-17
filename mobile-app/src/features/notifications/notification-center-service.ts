@@ -1,4 +1,5 @@
 import { setDoseStatus } from '../medications/medication-store';
+import { type Locale } from '../localization/localization';
 import { recordNotificationHistory } from './notification-history';
 import { dismissReminderPrompt, scheduleDoseFollowUpReminder, type ReminderPrompt } from './local-notifications';
 
@@ -44,7 +45,7 @@ export async function handleReminderSkip(reminder: ReminderPrompt): Promise<void
   dismissReminderPrompt();
 }
 
-export async function handleReminderSnooze(reminder: ReminderPrompt): Promise<void> {
-  await scheduleDoseFollowUpReminder(reminder, 5);
+export async function handleReminderSnooze(reminder: ReminderPrompt, snoozeMinutes: number, locale: Locale): Promise<void> {
+  await scheduleDoseFollowUpReminder(reminder, snoozeMinutes, locale);
   dismissReminderPrompt();
 }

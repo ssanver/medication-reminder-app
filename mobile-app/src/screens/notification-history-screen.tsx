@@ -15,7 +15,8 @@ type NotificationHistoryScreenProps = {
   onBack: () => void;
 };
 
-function actionLabel(action: NotificationHistoryItem['lastAction'], locale: Locale): string {
+function actionLabel(item: NotificationHistoryItem, locale: Locale): string {
+  const action = item.lastAction;
   if (locale === 'tr') {
     if (action === 'take-now') {
       return 'Alındı';
@@ -23,8 +24,8 @@ function actionLabel(action: NotificationHistoryItem['lastAction'], locale: Loca
     if (action === 'skip') {
       return 'Atlandı';
     }
-    if (action === 'snooze-5min') {
-      return '5 dk ertelendi';
+    if (action === 'snooze') {
+      return `${item.snoozeMinutes ?? 5} dk ertelendi`;
     }
     if (action === 'open') {
       return 'Açıldı';
@@ -38,8 +39,8 @@ function actionLabel(action: NotificationHistoryItem['lastAction'], locale: Loca
   if (action === 'skip') {
     return 'Skipped';
   }
-  if (action === 'snooze-5min') {
-    return 'Snoozed 5 min';
+  if (action === 'snooze') {
+    return `Snoozed ${item.snoozeMinutes ?? 5} min`;
   }
   if (action === 'open') {
     return 'Opened';
@@ -78,7 +79,7 @@ export function NotificationHistoryScreen({ locale, onBack }: NotificationHistor
                 <Text style={styles.subtitle}>{`${item.scheduledTime} • ${item.medicationDetails}`}</Text>
               </View>
               <View style={styles.rowMeta}>
-                <Text style={styles.action}>{actionLabel(item.lastAction, locale)}</Text>
+                <Text style={styles.action}>{actionLabel(item, locale)}</Text>
                 <Text style={styles.time}>{new Date(item.updatedAt).toLocaleString()}</Text>
               </View>
             </View>

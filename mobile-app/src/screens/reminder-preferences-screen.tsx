@@ -10,7 +10,7 @@ type ReminderPreferencesScreenProps = {
   onBack: () => void;
 };
 
-const snoozeOptions = [5, 10, 15, 20];
+const snoozeOptions = [5, 10, 15, 30, 60];
 
 export function ReminderPreferencesScreen({ locale, snoozeMinutes, onSnoozeMinutesChange, onBack }: ReminderPreferencesScreenProps) {
   const t = getTranslations(locale);
@@ -103,4 +103,3 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-

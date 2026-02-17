@@ -27,7 +27,7 @@ const defaultPreferences: AppPreferences = {
   fontScale: 1,
   notificationsEnabled: true,
   medicationRemindersEnabled: true,
-  snoozeMinutes: 15,
+  snoozeMinutes: 10,
 };
 
 export async function loadAppPreferences(): Promise<AppPreferences> {

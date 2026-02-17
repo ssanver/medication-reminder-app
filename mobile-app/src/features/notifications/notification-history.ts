@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type NotificationActionType = 'shown' | 'open' | 'take-now' | 'skip' | 'snooze-5min';
+export type NotificationActionType = 'shown' | 'open' | 'take-now' | 'skip' | 'snooze';
 
 export type NotificationHistoryItem = {
   id: string;
@@ -10,6 +10,7 @@ export type NotificationHistoryItem = {
   medicationName: string;
   medicationDetails: string;
   lastAction: NotificationActionType;
+  snoozeMinutes?: number;
   lastActionAt: string;
   updatedAt: string;
 };
@@ -77,6 +78,7 @@ export async function recordNotificationHistory(payload: {
   medicationName: string;
   medicationDetails: string;
   action: NotificationActionType;
+  snoozeMinutes?: number;
 }): Promise<void> {
   const id = toKey(payload);
   const now = new Date().toISOString();
@@ -90,6 +92,7 @@ export async function recordNotificationHistory(payload: {
             medicationName: payload.medicationName,
             medicationDetails: payload.medicationDetails,
             lastAction: payload.action,
+            snoozeMinutes: payload.snoozeMinutes,
             lastActionAt: now,
             updatedAt: now,
           }
@@ -105,6 +108,7 @@ export async function recordNotificationHistory(payload: {
         medicationName: payload.medicationName,
         medicationDetails: payload.medicationDetails,
         lastAction: payload.action,
+        snoozeMinutes: payload.snoozeMinutes,
         lastActionAt: now,
         updatedAt: now,
       },

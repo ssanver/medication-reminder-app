@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { type Locale } from '../localization/localization';
 import { getScheduledDosesForDate, setDoseStatus } from '../medications/medication-store';
+import { loadAppPreferences } from '../settings/app-preferences';
 import { recordNotificationHistory } from './notification-history';
 
 Notifications.setNotificationHandler({
@@ -21,7 +22,6 @@ const MEDICATION_NOTIFICATION_IDS_KEY = 'scheduled-medication-notification-ids-v
 const REMINDER_CATEGORY_ID = 'medication-dose-actions';
 const TAKE_NOW_ACTION_ID = 'take-now';
 const SKIP_ACTION_ID = 'skip-dose';
-const SNOOZE_MINUTES = 5;
 const SCHEDULE_WINDOW_DAYS = 30;
 const MAX_SCHEDULED_REMINDERS = 60;
 const LATE_REMINDER_GRACE_MS = 15 * 60 * 1000;
@@ -69,6 +69,10 @@ function formatTime(date: Date): string {
 
 function toDosePromptKey(payload: Pick<ReminderPrompt, 'medicationId' | 'dateKey' | 'scheduledTime'>): string {
   return `${payload.medicationId}-${payload.dateKey}-${payload.scheduledTime}`;
+}
+
+function getReminderTitle(locale: Locale, time: string): string {
+  return locale === 'tr' ? `${time} İlaçları` : `${time} Medicines`;
 }
 
 function buildReminderPayload(
@@ -233,7 +237,10 @@ export function ensureMedicationNotificationResponseListener(): void {
         action: 'skip',
       });
       void setDoseStatus(payload.medicationId, date, 'missed', payload.scheduledTime);
-      void scheduleDoseFollowUpReminder(payload, SNOOZE_MINUTES);
+      void (async () => {
+        const preferences = await loadAppPreferences();
+        await scheduleDoseFollowUpReminder(payload, preferences.snoozeMinutes, preferences.locale);
+      })();
       return;
     }
 
@@ -439,7 +446,7 @@ export async function scheduleSnoozeReminder(payload: {
   });
 }
 
-export async function scheduleDoseFollowUpReminder(payload: ReminderPrompt, minutes = SNOOZE_MINUTES): Promise<void> {
+export async function scheduleDoseFollowUpReminder(payload: ReminderPrompt, minutes = 5, locale: Locale = 'en'): Promise<void> {
   const granted = await ensureNotificationPermissions();
   if (!granted) {
     return;
@@ -454,12 +461,13 @@ export async function scheduleDoseFollowUpReminder(payload: ReminderPrompt, minu
     scheduledTime: payload.scheduledTime,
     medicationName: payload.medicationName,
     medicationDetails: payload.medicationDetails,
-    action: 'snooze-5min',
+    action: 'snooze',
+    snoozeMinutes: Math.max(minutes, 1),
   });
 
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: `${nextTime} Medicines`,
+      title: getReminderTitle(locale, nextTime),
       body: `${payload.medicationName} • ${payload.medicationDetails}`,
       sound: 'default',
       categoryIdentifier: REMINDER_CATEGORY_ID,

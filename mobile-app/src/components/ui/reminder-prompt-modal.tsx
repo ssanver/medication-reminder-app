@@ -6,19 +6,20 @@ import { theme } from '../../theme';
 type ReminderPromptModalProps = {
   visible: boolean;
   locale: Locale;
+  snoozeMinutes: number;
   reminder: ReminderPrompt | null;
   onTakeNow: () => void;
   onSnooze: () => void;
   onSkip: () => void;
 };
 
-export function ReminderPromptModal({ visible, locale, reminder, onTakeNow, onSnooze, onSkip }: ReminderPromptModalProps) {
+export function ReminderPromptModal({ visible, locale, snoozeMinutes, reminder, onTakeNow, onSnooze, onSkip }: ReminderPromptModalProps) {
   if (!visible || !reminder) {
     return null;
   }
 
   const takeLabel = locale === 'tr' ? 'Şimdi Al' : 'Take Now';
-  const snoozeLabel = locale === 'tr' ? '5 dk Ertele' : 'Snooze 5 min';
+  const snoozeLabel = locale === 'tr' ? `${snoozeMinutes} dk Ertele` : `Snooze ${snoozeMinutes} min`;
   const skipLabel = locale === 'tr' ? 'Atla' : 'Skip';
   const header = locale === 'tr' ? `${reminder.scheduledTime} İlaçları` : `${reminder.scheduledTime} Medicines`;
 
