@@ -173,12 +173,16 @@ export function AppNavigator() {
             locale={locale}
             stepIndex={onboardingStep}
             onSkip={() => {
-              void setOnboardingCompleted(true);
-              setPhase('signup');
+              void (async () => {
+                await setOnboardingCompleted(true);
+                setPhase('signup');
+              })();
             }}
             onOpenSignIn={() => {
-              void setOnboardingCompleted(true);
-              setPhase('signin');
+              void (async () => {
+                await setOnboardingCompleted(true);
+                setPhase('signin');
+              })();
             }}
             onNextStep={() => {
               const lastStepIndex = steps.length - 1;
@@ -186,8 +190,10 @@ export function AppNavigator() {
               if (onboardingStep < lastStepIndex) {
                 setOnboardingStep((prev) => prev + 1);
               } else {
-                void setOnboardingCompleted(true);
-                setPhase('signup');
+                void (async () => {
+                  await setOnboardingCompleted(true);
+                  setPhase('signup');
+                })();
               }
             }}
           />
@@ -203,8 +209,10 @@ export function AppNavigator() {
           <SignUpScreen
             locale={locale}
             onSuccess={(session) => {
-              void markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
-              setPhase('app');
+              void (async () => {
+                await markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
+                setPhase('app');
+              })();
             }}
             onOpenSignIn={() => setPhase('signin')}
             onBack={() => {
@@ -224,8 +232,10 @@ export function AppNavigator() {
           <SignInScreen
             locale={locale}
             onSuccess={(session) => {
-              void markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
-              setPhase('app');
+              void (async () => {
+                await markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
+                setPhase('app');
+              })();
             }}
             onOpenSignUp={() => setPhase('signup')}
           />
@@ -406,10 +416,12 @@ export function AppNavigator() {
           () => setOverlayScreen('feedback'),
           () => setOverlayScreen('about-us'),
           () => {
-            void clearSessionForLogout();
-            setOverlayScreen('none');
-            setActiveTab('today');
-            setPhase('signin');
+            void (async () => {
+              await clearSessionForLogout();
+              setOverlayScreen('none');
+              setActiveTab('today');
+              setPhase('signin');
+            })();
           },
           () => {
             void shareApplication();
