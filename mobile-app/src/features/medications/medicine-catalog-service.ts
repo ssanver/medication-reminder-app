@@ -10,9 +10,6 @@ type MedicineCatalogSearchResponse = {
 
 export async function searchMedicineCatalog(query: string, take = 20): Promise<string[]> {
   const normalizedQuery = query.trim();
-  if (normalizedQuery.length === 0) {
-    return [];
-  }
 
   const encodedQuery = encodeURIComponent(normalizedQuery);
   const response = await apiRequestJson<MedicineCatalogSearchResponse[]>(

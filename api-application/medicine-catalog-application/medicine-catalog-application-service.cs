@@ -6,11 +6,6 @@ public sealed class MedicineCatalogApplicationService(IMedicineCatalogRepository
         MedicineCatalogSearchQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(query.Query))
-        {
-            return [];
-        }
-
         if (query.Take <= 0 || query.Take > 100)
         {
             throw new ArgumentException("Take must be between 1 and 100.");
@@ -18,7 +13,7 @@ public sealed class MedicineCatalogApplicationService(IMedicineCatalogRepository
 
         var normalized = query with
         {
-            Query = query.Query.Trim(),
+            Query = (query.Query ?? string.Empty).Trim(),
         };
 
         return await repository.SearchAsync(normalized, cancellationToken);

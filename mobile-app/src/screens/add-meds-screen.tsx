@@ -42,7 +42,7 @@ type AddMedsScreenProps = {
   onMedicationSaved: () => void;
 };
 
-type SheetType = 'none' | 'date' | 'time' | 'interval';
+type SheetType = 'none' | 'date' | 'time' | 'interval' | 'form';
 
 export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);
@@ -125,14 +125,9 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   useEffect(() => {
     const query = name.trim();
     const timer = setTimeout(() => {
-      if (query.length === 0) {
-        setCatalogSuggestions(fallbackMedicationSuggestions);
-        return;
-      }
-
       void (async () => {
         try {
-          const items = await searchMedicineCatalog(query);
+          const items = await searchMedicineCatalog(query, query.length === 0 ? 30 : 20);
           setCatalogSuggestions(items.length > 0 ? items : fallbackMedicationSuggestions);
         } catch {
           setCatalogSuggestions(fallbackMedicationSuggestions);
@@ -223,6 +218,10 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     setSheet('interval');
   }
 
+  function openFormSheet() {
+    setSheet('form');
+  }
+
   function openTimeSheet(index: number) {
     setEditingTimeIndex(index);
     const initialTime = doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00';
@@ -280,30 +279,22 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
             })}
           </View>
 
-          <View style={styles.formGrid}>
-            {formOptions.map((item) => {
-              const selected = form === item.key;
-              return (
-                <Pressable
-                  key={item.key}
-                  onPress={() => {
-                    setForm(item.key);
-                    setIconEmoji(resolveFormDefaultIcon(item.key));
-                  }}
-                  style={[styles.formCard, selected && styles.formCardSelected]}
-                >
-                  <Text style={styles.formIcon}>{item.emoji}</Text>
-                  <Text numberOfLines={1} style={[styles.formLabel, selected && styles.formLabelSelected]}>
-                    {localizeFormLabel(item.key, locale)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Pressable style={styles.selectionRow} onPress={openFormSheet}>
+            <View style={styles.selectionLeft}>
+              <Text style={styles.selectionIcon}>💊</Text>
+              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Form' : 'Form'}</Text>
+            </View>
+            <View style={styles.selectionRight}>
+              <Text style={styles.selectionValue}>
+                {form ? localizeFormLabel(form, locale) : locale === 'tr' ? 'Seçin' : 'Select'}
+              </Text>
+              <Text style={styles.selectionChevron}>›</Text>
+            </View>
+          </Pressable>
 
           <View style={styles.doseCountRow}>
             <Text style={styles.selectionLabel}>{locale === 'tr' ? 'İlaç simgesi' : 'Medication icon'}</Text>
-            <View style={styles.iconPickerRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iconPickerRow}>
               {medicationIconOptions.map((option) => {
                 const selected = iconEmoji === option;
                 return (
@@ -312,7 +303,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         </View>
       );
@@ -480,6 +471,10 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
                   ? t.selectDate
                   : sheet === 'time'
                     ? t.setTime
+                    : sheet === 'form'
+                      ? locale === 'tr'
+                        ? 'Form seçin'
+                        : 'Select form'
                     : locale === 'tr'
                       ? 'Interval türü seçin'
                       : 'Select interval type'}
@@ -515,6 +510,29 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
                     {locale === 'tr' ? 'Hafta' : 'Week'}
                   </Text>
                 </Pressable>
+              </View>
+            ) : null}
+
+            {sheet === 'form' ? (
+              <View style={styles.intervalWrap}>
+                {formOptions.map((item) => {
+                  const selected = form === item.key;
+                  return (
+                    <Pressable
+                      key={item.key}
+                      style={[styles.intervalOption, selected && styles.intervalOptionSelected]}
+                      onPress={() => {
+                        setForm(item.key);
+                        setIconEmoji(resolveFormDefaultIcon(item.key));
+                        setSheet('none');
+                      }}
+                    >
+                      <Text style={[styles.intervalOptionText, selected && styles.intervalOptionTextSelected]}>
+                        {`${item.emoji} ${localizeFormLabel(item.key, locale)}`}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             ) : null}
 
@@ -752,40 +770,10 @@ const styles = StyleSheet.create({
   dosageChipTextSelected: {
     color: theme.colors.primaryBlue[600],
   },
-  formGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing[8],
-  },
-  formCard: {
-    width: '31%',
-    minHeight: 62,
-    borderRadius: theme.radius[8],
-    borderWidth: 1,
-    borderColor: theme.colors.semantic.borderSoft,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  formCardSelected: {
-    borderColor: theme.colors.primaryBlue[500],
-    backgroundColor: theme.colors.primaryBlue[50],
-  },
-  formIcon: {
-    fontSize: 18,
-  },
-  formLabel: {
-    ...theme.typography.captionScale.mRegular,
-    color: theme.colors.semantic.textSecondary,
-  },
-  formLabelSelected: {
-    color: theme.colors.primaryBlue[600],
-  },
   iconPickerRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: theme.spacing[8],
+    paddingRight: theme.spacing[8],
   },
   iconChip: {
     width: 42,

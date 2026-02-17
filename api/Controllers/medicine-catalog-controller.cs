@@ -10,12 +10,12 @@ public sealed class MedicineCatalogController(MedicineCatalogApplicationService 
 {
     [HttpGet("search")]
     public async Task<ActionResult<IReadOnlyCollection<MedicineCatalogSearchResponse>>> Search(
-        [FromQuery] string query,
+        [FromQuery] string? query,
         [FromQuery] int take = 20)
     {
         try
         {
-            var items = await applicationService.SearchAsync(new MedicineCatalogSearchQuery(query, take));
+            var items = await applicationService.SearchAsync(new MedicineCatalogSearchQuery(query ?? string.Empty, take));
             return Ok(items.Select(item => new MedicineCatalogSearchResponse
             {
                 Id = item.Id,

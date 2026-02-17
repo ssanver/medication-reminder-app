@@ -79,12 +79,26 @@ export function EmailVerificationScreen({
         <ScreenHeader title={locale === 'tr' ? 'E-posta Doğrulama' : 'Email Verification'} leftAction={{ icon: '<', onPress: onBack }} />
 
         <View style={styles.card}>
-          <Text style={styles.emailText}>{email}</Text>
-          <Text style={styles.warningText}>
-            {locale === 'tr'
-              ? 'E-postanızı onaylamazsanız verilerinizi kalıcı olarak saklayamayız ve cihaz değişikliğinde kaybedebilirsiniz.'
-              : 'If you do not verify your email, your data may not be permanently stored and can be lost when changing devices.'}
-          </Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.badgeIconWrap}>
+              <Text style={styles.badgeIcon}>✉️</Text>
+            </View>
+            <View style={styles.badgeTextWrap}>
+              <Text style={styles.cardTitle}>
+                {locale === 'tr' ? 'Hesabınızı doğrulayın' : 'Verify your account'}
+              </Text>
+              <Text style={styles.emailText}>{email}</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoLabel}>{locale === 'tr' ? 'Neden gerekli?' : 'Why this is required?'}</Text>
+            <Text style={styles.warningText}>
+              {locale === 'tr'
+                ? 'E-postanızı doğruladığınızda verileriniz güvenli şekilde hesabınıza bağlanır ve cihaz değiştirseniz bile korunur.'
+                : 'When you verify your email, your data is securely linked to your account and stays available across devices.'}
+            </Text>
+          </View>
 
           <Button label={locale === 'tr' ? 'Onay kodunu gir' : 'Enter verification code'} onPress={() => setSheetOpen(true)} />
           <Button
@@ -101,7 +115,8 @@ export function EmailVerificationScreen({
             onPress={() => void handleResend()}
             disabled={cooldownSeconds > 0 || busy}
           />
-          <Button label={locale === 'tr' ? 'Kaydolmayı iptal et' : 'Cancel sign up'} variant="danger" onPress={onCancelSignUp} />
+          <View style={styles.separator} />
+          <Button label={locale === 'tr' ? 'Kaydı iptal et' : 'Cancel sign up'} variant="danger" onPress={onCancelSignUp} />
           {message ? <Text style={styles.message}>{message}</Text> : null}
         </View>
       </ScrollView>
@@ -116,10 +131,11 @@ export function EmailVerificationScreen({
             <TextInput
               value={code}
               onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, 6))}
-              placeholder="______"
+              placeholder="000000"
               keyboardType="number-pad"
               style={styles.codeInput}
               maxLength={6}
+              textAlign="center"
             />
             <Button label={locale === 'tr' ? 'Doğrula' : 'Verify'} onPress={() => void handleVerify()} disabled={busy} />
             <Pressable onPress={() => void handleResend()} disabled={cooldownSeconds > 0 || busy}>
@@ -155,15 +171,56 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.semantic.borderSoft,
     backgroundColor: theme.colors.semantic.cardBackground,
     padding: theme.spacing[16],
+    gap: theme.spacing[16],
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing[8],
   },
-  emailText: {
-    ...theme.typography.bodyScale.mMedium,
+  badgeIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.primaryBlue[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeIcon: {
+    fontSize: 20,
+  },
+  badgeTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  cardTitle: {
+    ...theme.typography.bodyScale.mBold,
     color: theme.colors.semantic.textPrimary,
+  },
+  infoBlock: {
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    padding: theme.spacing[16],
+    gap: theme.spacing[4],
+  },
+  infoLabel: {
+    ...theme.typography.captionScale.lRegular,
+    fontWeight: '700',
+    color: theme.colors.semantic.textPrimary,
+  },
+  emailText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
   },
   warningText: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: theme.colors.semantic.divider,
   },
   message: {
     ...theme.typography.captionScale.lRegular,

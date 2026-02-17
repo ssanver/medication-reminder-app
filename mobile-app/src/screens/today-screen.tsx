@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
@@ -41,6 +41,7 @@ export function TodayScreen({
   const [filter, setFilter] = useState<DoseStatus>('All');
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [actionWarning, setActionWarning] = useState<string | null>(null);
+  const [showFutureActionPopup, setShowFutureActionPopup] = useState(false);
   const shortDisplayName = toShortDisplayName(currentUser.fullName);
   const doses = useMemo(() => getScheduledDosesForDate(selectedDate, locale), [selectedDate, locale, store.medications, store.events]);
 
@@ -84,6 +85,7 @@ export function TodayScreen({
 
   useEffect(() => {
     setActionWarning(null);
+    setShowFutureActionPopup(false);
   }, [selectedDate, filter]);
 
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
@@ -191,7 +193,7 @@ export function TodayScreen({
               medEmoji={item.emoji}
               onActionPress={() => {
                 if (isFutureDate) {
-                  setActionWarning(t.forwardDateActionNotAllowed);
+                  setShowFutureActionPopup(true);
                   return;
                 }
 
@@ -218,6 +220,11 @@ export function TodayScreen({
                   return;
                 }
 
+                if (isFutureDate) {
+                  setShowFutureActionPopup(true);
+                  return;
+                }
+
                 void scheduleSnoozeReminder({
                   minutes: snoozeMinutes,
                   medicationName: item.name,
@@ -235,6 +242,21 @@ export function TodayScreen({
       {!remindersEnabled ? <Text style={styles.warning}>{t.notificationPermissionRequired}</Text> : null}
       <View style={styles.bottomSpacer} />
       <Text style={styles.hidden}>{`${t.today}-${selectedDate.getTime()}`}</Text>
+
+      <Modal transparent visible={showFutureActionPopup} animationType="fade" onRequestClose={() => setShowFutureActionPopup(false)}>
+        <Pressable style={styles.popupOverlay} onPress={() => setShowFutureActionPopup(false)}>
+          <Pressable style={styles.popupCard} onPress={() => undefined}>
+            <View style={styles.popupBadge}>
+              <Text style={styles.popupBadgeIcon}>!</Text>
+            </View>
+            <Text style={styles.popupTitle}>{locale === 'tr' ? 'İleri Tarihli İşlem' : 'Future Date Action'}</Text>
+            <Text style={styles.popupDescription}>
+              {locale === 'tr' ? 'Tarihi gelmeden ilacınızı alamazsınız' : 'You cannot take your medication before its date.'}
+            </Text>
+            <Button label={locale === 'tr' ? 'Tamam' : 'Okay'} onPress={() => setShowFutureActionPopup(false)} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -388,6 +410,45 @@ const styles = StyleSheet.create({
   warning: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.error[500],
+  },
+  popupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(14, 23, 37, 0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing[24],
+  },
+  popupCard: {
+    borderRadius: theme.radius[24],
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    padding: theme.spacing[24],
+    alignItems: 'center',
+    gap: theme.spacing[16],
+  },
+  popupBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.error[50],
+    borderWidth: 1,
+    borderColor: theme.colors.error[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popupBadgeIcon: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.error[500],
+  },
+  popupTitle: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+  },
+  popupDescription: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
   },
   hidden: {
     height: 0,
