@@ -4,13 +4,13 @@ import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { getTranslations, type Locale } from '../../features/localization/localization';
-import { loginWithSocial } from '../../features/auth/social-auth';
+import { loginWithSocial, type SocialLoginResult } from '../../features/auth/social-auth';
 import { isSignUpFormValid } from '../../features/auth/signup-validation';
 import { theme } from '../../theme';
 
 type SignUpScreenProps = {
   locale: Locale;
-  onSuccess: () => void;
+  onSuccess: (session?: SocialLoginResult) => void;
   onOpenSignIn: () => void;
   onBack: () => void;
 };
@@ -34,7 +34,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
       setErrorText('');
       const response = await loginWithSocial(provider);
       setSocialMessage(`${t.socialSignInSuccessPrefix} ${response.provider}.`);
-      setTimeout(() => onSuccess(), 400);
+      setTimeout(() => onSuccess(response), 400);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Social login failed.';
       setErrorText(`${t.socialSignInFailedPrefix} ${message}`);

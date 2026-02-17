@@ -19,6 +19,7 @@ type SettingsScreenProps = {
   onOpenChangePassword: () => void;
   onOpenFeedback: () => void;
   onOpenAboutUs: () => void;
+  onLogout: () => void;
   notificationsEnabled: boolean;
   medicationRemindersEnabled: boolean;
   snoozeMinutes: number;
@@ -38,6 +39,7 @@ export function SettingsScreen({
   onOpenChangePassword,
   onOpenFeedback,
   onOpenAboutUs,
+  onLogout,
   notificationsEnabled,
   medicationRemindersEnabled,
   snoozeMinutes,
@@ -49,6 +51,7 @@ export function SettingsScreen({
   const shortDisplayName = toShortDisplayName('Suleyman Şanver');
   const localeOptions = getLocaleOptions(locale);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
+  const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
 
@@ -159,6 +162,9 @@ export function SettingsScreen({
           <MenuRow label={t.reports} value={t.weeklyMonthly} onPress={onOpenReports} />
           <MenuRow label={t.changePassword} onPress={onOpenChangePassword} />
           <MenuRow label={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} onPress={onOpenFeedback} />
+          <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
+            <Text style={styles.logoutText}>{locale === 'tr' ? 'Çıkış Yap' : 'Log Out'}</Text>
+          </Pressable>
         </Section>
 
         <Section title={t.aboutUs}>
@@ -189,6 +195,25 @@ export function SettingsScreen({
             })}
           </Pressable>
         </Pressable>
+      </Modal>
+
+      <Modal transparent visible={logoutConfirmVisible} animationType="fade" onRequestClose={() => setLogoutConfirmVisible(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>{locale === 'tr' ? 'Çıkış yapmak istediğinize emin misiniz?' : 'Are you sure you want to log out?'}</Text>
+            <View style={styles.confirmActions}>
+              <Button label={locale === 'tr' ? 'İptal' : 'Cancel'} variant="outlined" onPress={() => setLogoutConfirmVisible(false)} />
+              <Button
+                label={locale === 'tr' ? 'Çıkış Yap' : 'Log Out'}
+                variant="danger"
+                onPress={() => {
+                  setLogoutConfirmVisible(false);
+                  onLogout();
+                }}
+              />
+            </View>
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -327,6 +352,40 @@ const styles = StyleSheet.create({
   zoomBlock: {
     gap: theme.spacing[8],
     padding: theme.spacing[16],
+  },
+  logoutRow: {
+    minHeight: 52,
+    paddingHorizontal: theme.spacing[16],
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  logoutText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.error[500],
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing[24],
+  },
+  confirmCard: {
+    width: '100%',
+    borderRadius: theme.radius[16],
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    padding: theme.spacing[16],
+    gap: theme.spacing[16],
+  },
+  confirmTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+  },
+  confirmActions: {
+    gap: theme.spacing[8],
   },
   rowTitle: {
     ...theme.typography.bodyScale.xmMedium,

@@ -5,7 +5,7 @@ import type { AppIconName } from '../components/ui/app-icon';
 import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { resolveInitialPhase } from '../features/auth/auth-flow';
-import { loadAuthSession, markAuthenticated, setOnboardingCompleted } from '../features/auth/auth-session-store';
+import { clearSessionForLogout, loadAuthSession, markAuthenticated, setOnboardingCompleted } from '../features/auth/auth-session-store';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { useMedicationStore } from '../features/medications/use-medication-store';
@@ -201,8 +201,8 @@ export function AppNavigator() {
         <View style={styles.content}>
           <SignUpScreen
             locale={locale}
-            onSuccess={() => {
-              void markAuthenticated();
+            onSuccess={(session) => {
+              void markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
               setPhase('app');
             }}
             onOpenSignIn={() => setPhase('signin')}
@@ -222,8 +222,8 @@ export function AppNavigator() {
         <View style={styles.content}>
           <SignInScreen
             locale={locale}
-            onSuccess={() => {
-              void markAuthenticated();
+            onSuccess={(session) => {
+              void markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
               setPhase('app');
             }}
             onOpenSignUp={() => setPhase('signup')}
@@ -404,6 +404,12 @@ export function AppNavigator() {
           () => setOverlayScreen('change-password'),
           () => setOverlayScreen('feedback'),
           () => setOverlayScreen('about-us'),
+          () => {
+            void clearSessionForLogout();
+            setOverlayScreen('none');
+            setActiveTab('today');
+            setPhase('signin');
+          },
         )}
       </View>
       <BottomNav
@@ -466,6 +472,7 @@ function renderTab(
   onOpenChangePassword: () => void,
   onOpenFeedback: () => void,
   onOpenAboutUs: () => void,
+  onLogout: () => void,
 ) {
   switch (tab) {
     case 'today':
@@ -501,6 +508,7 @@ function renderTab(
           onOpenChangePassword={onOpenChangePassword}
           onOpenFeedback={onOpenFeedback}
           onOpenAboutUs={onOpenAboutUs}
+          onLogout={onLogout}
           notificationsEnabled={notificationsEnabled}
           medicationRemindersEnabled={medicationRemindersEnabled}
           snoozeMinutes={snoozeMinutes}
