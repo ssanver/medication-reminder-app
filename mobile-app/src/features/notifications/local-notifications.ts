@@ -175,8 +175,20 @@ async function readTrackedNotificationIds(): Promise<string[]> {
       return [];
     }
 
-    const parsed = JSON.parse(raw) as string[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw) as string[] | Array<{ id: string; key: string }>;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    if (parsed.length === 0) {
+      return [];
+    }
+
+    if (typeof parsed[0] === 'string') {
+      return parsed as string[];
+    }
+
+    return (parsed as Array<{ id: string; key: string }>).map((item) => item.id);
   } catch {
     return [];
   }
@@ -184,6 +196,41 @@ async function readTrackedNotificationIds(): Promise<string[]> {
 
 async function writeTrackedNotificationIds(ids: string[]): Promise<void> {
   await AsyncStorage.setItem(MEDICATION_NOTIFICATION_IDS_KEY, JSON.stringify(ids));
+}
+
+type TrackedReminder = {
+  id: string;
+  key: string;
+};
+
+async function readTrackedReminders(): Promise<TrackedReminder[]> {
+  try {
+    const raw = await AsyncStorage.getItem(MEDICATION_NOTIFICATION_IDS_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as string[] | TrackedReminder[];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    if (parsed.length === 0) {
+      return [];
+    }
+
+    if (typeof parsed[0] === 'string') {
+      return (parsed as string[]).map((id) => ({ id, key: id }));
+    }
+
+    return (parsed as TrackedReminder[]).filter((item) => typeof item.id === 'string' && typeof item.key === 'string');
+  } catch {
+    return [];
+  }
+}
+
+async function writeTrackedReminders(reminders: TrackedReminder[]): Promise<void> {
+  await AsyncStorage.setItem(MEDICATION_NOTIFICATION_IDS_KEY, JSON.stringify(reminders));
 }
 
 export async function clearMedicationReminderNotifications(): Promise<void> {
@@ -305,8 +352,6 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
   ensureMedicationNotificationResponseListener();
   ensureMedicationNotificationReceivedListener();
 
-  await clearMedicationReminderNotifications();
-
   const now = new Date();
   const pendingReminders: Array<{ medicationId: string; dateKey: string; scheduledTime: string; name: string; details: string; triggerDate: Date }> = [];
 
@@ -345,9 +390,20 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
 
   pendingReminders.sort((a, b) => a.triggerDate.getTime() - b.triggerDate.getTime());
   const upcomingReminders = pendingReminders.slice(0, MAX_SCHEDULED_REMINDERS);
-  const scheduledIds: string[] = [];
+  const existing = await readTrackedReminders();
+  const existingByKey = new Map(existing.map((item) => [item.key, item.id]));
+  const nextTracked: TrackedReminder[] = [];
+  const desiredKeys = new Set<string>();
 
   for (const reminder of upcomingReminders) {
+    const key = `${reminder.medicationId}-${reminder.dateKey}-${reminder.scheduledTime}`;
+    desiredKeys.add(key);
+    const existingId = existingByKey.get(key);
+    if (existingId) {
+      nextTracked.push({ id: existingId, key });
+      continue;
+    }
+
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         title: locale === 'tr' ? `${reminder.scheduledTime} İlaçları` : `${reminder.scheduledTime} Medicines`,
@@ -369,10 +425,12 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
       },
     });
 
-    scheduledIds.push(identifier);
+    nextTracked.push({ id: identifier, key });
   }
 
-  await writeTrackedNotificationIds(scheduledIds);
+  const obsolete = existing.filter((item) => !desiredKeys.has(item.key));
+  await Promise.all(obsolete.map((item) => Notifications.cancelScheduledNotificationAsync(item.id).catch(() => undefined)));
+  await writeTrackedReminders(nextTracked);
 }
 
 export function emitDueReminderPrompt(locale: Locale, reference = new Date()): void {
