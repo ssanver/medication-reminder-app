@@ -43,6 +43,7 @@ const formOptions: FormOption[] = [
 ];
 
 const medicationSuggestions = ['Metformin', 'Metoprolol tartrate', 'Methotrexate', 'Methadone', 'Metolazone'];
+const medicationIconOptions = ['💊', '🧴', '💉', '🫙', '🩹', '🌿', '🟡', '🔵'];
 
 function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -127,6 +128,10 @@ function splitTime(value: string): { hour: string; minute: string } {
   return { hour, minute };
 }
 
+function resolveFormDefaultIcon(formKey: string): string {
+  return formOptions.find((item) => item.key === formKey)?.emoji ?? '🧴';
+}
+
 export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);
   const [step, setStep] = useState<WizardStep>('name');
@@ -134,6 +139,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
   const [name, setName] = useState('');
   const [form, setForm] = useState('');
+  const [iconEmoji, setIconEmoji] = useState('💊');
   const [dosage, setDosage] = useState('0.5');
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
   const [intervalCount, setIntervalCount] = useState<number>(1);
@@ -227,6 +233,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     await addMedication({
       name: normalizedName,
       form,
+      iconEmoji,
       dosage,
       frequencyLabel: toFrequencyLabel(dayInterval),
       note: shouldSkipNote ? '' : note.trim(),
@@ -238,6 +245,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
 
     setName('');
     setForm('');
+    setIconEmoji('💊');
     setDosage('0.5');
     setIntervalUnit('day');
     setIntervalCount(1);
@@ -342,7 +350,14 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
             {formOptions.map((item) => {
               const selected = form === item.key;
               return (
-                <Pressable key={item.key} onPress={() => setForm(item.key)} style={[styles.formCard, selected && styles.formCardSelected]}>
+                <Pressable
+                  key={item.key}
+                  onPress={() => {
+                    setForm(item.key);
+                    setIconEmoji(resolveFormDefaultIcon(item.key));
+                  }}
+                  style={[styles.formCard, selected && styles.formCardSelected]}
+                >
                   <Text style={styles.formIcon}>{item.emoji}</Text>
                   <Text numberOfLines={1} style={[styles.formLabel, selected && styles.formLabelSelected]}>
                     {localizeFormLabel(item.key, locale)}
@@ -350,6 +365,20 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
                 </Pressable>
               );
             })}
+          </View>
+
+          <View style={styles.doseCountRow}>
+            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'İlaç simgesi' : 'Medication icon'}</Text>
+            <View style={styles.iconPickerRow}>
+              {medicationIconOptions.map((option) => {
+                const selected = iconEmoji === option;
+                return (
+                  <Pressable key={option} onPress={() => setIconEmoji(option)} style={[styles.iconChip, selected && styles.iconChipSelected]}>
+                    <Text style={styles.iconChipText}>{option}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         </View>
       );
@@ -818,6 +847,28 @@ const styles = StyleSheet.create({
   },
   formLabelSelected: {
     color: theme.colors.primaryBlue[600],
+  },
+  iconPickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[8],
+  },
+  iconChip: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconChipSelected: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  iconChipText: {
+    fontSize: 20,
   },
   doseCountRow: {
     gap: theme.spacing[8],

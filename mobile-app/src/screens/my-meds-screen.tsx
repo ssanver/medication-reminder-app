@@ -4,7 +4,7 @@ import { MedicationCard } from '../components/ui/medication-card';
 import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
-import { setMedicationActive } from '../features/medications/medication-store';
+import { resolveMedicationIcon, setMedicationActive } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { theme } from '../theme';
 
@@ -24,15 +24,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyM
   const items = useMemo(
     () =>
       store.medications.map((item) => {
-        const normalizedForm = item.form.toLowerCase();
-        const icon =
-          normalizedForm === 'drop'
-            ? '🫙'
-            : normalizedForm === 'injection'
-              ? '💉'
-              : normalizedForm === 'pill' || normalizedForm === 'capsule'
-                ? '💊'
-                : '🧴';
+        const icon = resolveMedicationIcon(item.form, item.iconEmoji);
         const startedAt = new Date(`${item.startDate}T00:00:00`);
         const startedLabel = Number.isNaN(startedAt.getTime())
           ? item.startDate

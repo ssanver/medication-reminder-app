@@ -17,6 +17,7 @@ export type Medication = {
   id: string;
   name: string;
   form: string;
+  iconEmoji?: string;
   dosage: string;
   frequencyLabel: string;
   recurrence: MedicationRecurrence;
@@ -48,6 +49,7 @@ const defaultMedications: Medication[] = [
     id: 'metformin',
     name: 'Metformin',
     form: 'Capsule',
+    iconEmoji: '💊',
     dosage: '1',
     frequencyLabel: 'Every 1 Day',
     recurrence: 'daily',
@@ -60,6 +62,7 @@ const defaultMedications: Medication[] = [
     id: 'captopril',
     name: 'Captopril',
     form: 'Capsule',
+    iconEmoji: '💊',
     dosage: '2',
     frequencyLabel: 'Every 1 Day',
     recurrence: 'daily',
@@ -72,6 +75,7 @@ const defaultMedications: Medication[] = [
     id: 'b12',
     name: 'B 12',
     form: 'Injection',
+    iconEmoji: '💉',
     dosage: '1',
     frequencyLabel: 'Every 3 Days',
     recurrence: 'every-3-days',
@@ -162,6 +166,7 @@ function normalizeMedication(payload: Medication): Medication {
   const normalizedTimes = getMedicationTimes(payload);
   return {
     ...payload,
+    iconEmoji: payload.iconEmoji || iconForForm(payload.form),
     time: normalizedTimes[0] ?? '09:00',
     times: normalizedTimes,
   };
@@ -231,6 +236,7 @@ export function getMedicationStoreSnapshot(): MedicationStoreState {
 export async function addMedication(payload: {
   name: string;
   form: string;
+  iconEmoji?: string;
   frequencyLabel: string;
   dosage: string;
   note: string;
@@ -246,6 +252,7 @@ export async function addMedication(payload: {
     id,
     name: payload.name.trim(),
     form: payload.form,
+    iconEmoji: payload.iconEmoji || iconForForm(payload.form),
     dosage: payload.dosage.trim().split(' - ')[0] ?? payload.dosage.trim(),
     frequencyLabel: payload.frequencyLabel,
     recurrence: recurrenceFromLabel(payload.frequencyLabel),
@@ -270,7 +277,7 @@ export function getMedicationById(medicationId: string): Medication | undefined 
 
 export async function updateMedication(
   medicationId: string,
-  patch: Partial<Pick<Medication, 'name' | 'form' | 'dosage' | 'frequencyLabel' | 'note' | 'startDate' | 'time' | 'times' | 'active'>>,
+  patch: Partial<Pick<Medication, 'name' | 'form' | 'iconEmoji' | 'dosage' | 'frequencyLabel' | 'note' | 'startDate' | 'time' | 'times' | 'active'>>,
 ): Promise<void> {
   state = {
     ...state,
@@ -417,6 +424,10 @@ function iconForForm(form: string): string {
   return '🧴';
 }
 
+export function resolveMedicationIcon(form: string, iconEmoji?: string): string {
+  return iconEmoji || iconForForm(form);
+}
+
 export function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): ScheduledDoseItem[] {
   const today = new Date();
   const dayCompare = compareDay(date, today);
@@ -441,7 +452,7 @@ export function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): Sch
           details: `${medication.dosage} ${detailsUnit}`,
           schedule: `${scheduledTime} | ${localizeFrequencyLabel(medication.frequencyLabel, locale)}`,
           status,
-          emoji: iconForForm(medication.form),
+          emoji: resolveMedicationIcon(medication.form, medication.iconEmoji),
         };
       });
     })
