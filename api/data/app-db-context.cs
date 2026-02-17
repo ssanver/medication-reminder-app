@@ -15,6 +15,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
     public DbSet<NotificationAction> NotificationActions => Set<NotificationAction>();
     public DbSet<SystemErrorReport> SystemErrorReports => Set<SystemErrorReport>();
+    public DbSet<FeedbackRecord> FeedbackRecords => Set<FeedbackRecord>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CaregiverInvite> CaregiverInvites => Set<CaregiverInvite>();
@@ -168,6 +169,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.CorrelationId).HasMaxLength(120);
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.HasIndex(x => new { x.AppVersion, x.Platform, x.OccurredAt });
+        });
+
+        modelBuilder.Entity<FeedbackRecord>(entity =>
+        {
+            entity.ToTable("feedback");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).HasMaxLength(100);
+            entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Message).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.AppVersion).HasMaxLength(20);
+            entity.Property(x => x.OsVersion).HasMaxLength(50);
+            entity.Property(x => x.DeviceModel).HasMaxLength(100);
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.HasIndex(x => x.CreatedAt);
+            entity.HasIndex(x => x.Status);
         });
 
         modelBuilder.Entity<ConsentRecord>(entity =>

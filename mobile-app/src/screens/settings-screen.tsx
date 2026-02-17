@@ -17,6 +17,7 @@ type SettingsScreenProps = {
   onOpenNotificationSettings: () => void;
   onOpenReminderPreferences: () => void;
   onOpenChangePassword: () => void;
+  onOpenFeedback: () => void;
   onOpenAboutUs: () => void;
   notificationsEnabled: boolean;
   medicationRemindersEnabled: boolean;
@@ -35,6 +36,7 @@ export function SettingsScreen({
   onOpenNotificationSettings,
   onOpenReminderPreferences,
   onOpenChangePassword,
+  onOpenFeedback,
   onOpenAboutUs,
   notificationsEnabled,
   medicationRemindersEnabled,
@@ -156,6 +158,7 @@ export function SettingsScreen({
         <Section title={t.reporting}>
           <MenuRow label={t.reports} value={t.weeklyMonthly} onPress={onOpenReports} />
           <MenuRow label={t.changePassword} onPress={onOpenChangePassword} />
+          <MenuRow label={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} onPress={onOpenFeedback} />
         </Section>
 
         <Section title={t.aboutUs}>

@@ -22,6 +22,7 @@ import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
 import { ChangePasswordScreen } from '../screens/change-password-screen';
+import { FeedbackScreen } from '../screens/feedback-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
 import { MedicationDetailsScreen } from '../screens/medication-details-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
@@ -45,6 +46,7 @@ type OverlayScreen =
   | 'notification-settings'
   | 'reminder-preferences'
   | 'change-password'
+  | 'feedback'
   | 'about-us';
 type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
 
@@ -316,6 +318,16 @@ export function AppNavigator() {
     );
   }
 
+  if (overlayScreen === 'feedback') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <FeedbackScreen locale={locale} onBack={() => setOverlayScreen('none')} />
+        </View>
+      </View>
+    );
+  }
+
   if (overlayScreen === 'about-us') {
     return (
       <View style={styles.container}>
@@ -366,6 +378,7 @@ export function AppNavigator() {
           () => setOverlayScreen('notification-history'),
           () => setOverlayScreen('reminder-preferences'),
           () => setOverlayScreen('change-password'),
+          () => setOverlayScreen('feedback'),
           () => setOverlayScreen('about-us'),
         )}
       </View>
@@ -427,6 +440,7 @@ function renderTab(
   onOpenNotificationHistory: () => void,
   onOpenReminderPreferences: () => void,
   onOpenChangePassword: () => void,
+  onOpenFeedback: () => void,
   onOpenAboutUs: () => void,
 ) {
   switch (tab) {
@@ -461,6 +475,7 @@ function renderTab(
           onOpenNotificationSettings={onOpenNotificationSettings}
           onOpenReminderPreferences={onOpenReminderPreferences}
           onOpenChangePassword={onOpenChangePassword}
+          onOpenFeedback={onOpenFeedback}
           onOpenAboutUs={onOpenAboutUs}
           notificationsEnabled={notificationsEnabled}
           medicationRemindersEnabled={medicationRemindersEnabled}
