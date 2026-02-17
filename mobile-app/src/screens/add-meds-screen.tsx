@@ -18,7 +18,7 @@ import {
   getWeekdayLabel,
   hourOptions,
   medicationIconOptions,
-  medicationSuggestions,
+  fallbackMedicationSuggestions,
   minuteOptions,
   parseDateKey,
   resolveDayInterval,
@@ -32,6 +32,7 @@ import {
   weekdayOptions,
   weekIntervalOptions,
 } from '../features/medications/add-medication-use-case';
+import { searchMedicineCatalog } from '../features/medications/medicine-catalog-service';
 import { addMedication } from '../features/medications/medication-store';
 import { theme } from '../theme';
 
@@ -59,6 +60,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const [startDate, setStartDate] = useState(formatDate(new Date()));
   const [doseTimes, setDoseTimes] = useState<string[]>(defaultDoseTimes);
   const [note, setNote] = useState('');
+  const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>(fallbackMedicationSuggestions);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
@@ -72,11 +74,11 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const filteredSuggestions = useMemo(() => {
     const query = name.trim().toLowerCase();
     if (!query) {
-      return medicationSuggestions;
+      return catalogSuggestions;
     }
 
-    return medicationSuggestions.filter((item) => item.toLowerCase().includes(query));
-  }, [name]);
+    return catalogSuggestions.filter((item) => item.toLowerCase().includes(query));
+  }, [catalogSuggestions, name]);
 
   const localizedDate = useMemo(() => {
     const parsed = parseDateKey(startDate);
@@ -119,6 +121,27 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       setStartDate(aligned);
     }
   }, [intervalUnit, selectedWeekday, startDate]);
+
+  useEffect(() => {
+    const query = name.trim();
+    const timer = setTimeout(() => {
+      if (query.length === 0) {
+        setCatalogSuggestions(fallbackMedicationSuggestions);
+        return;
+      }
+
+      void (async () => {
+        try {
+          const items = await searchMedicineCatalog(query);
+          setCatalogSuggestions(items.length > 0 ? items : fallbackMedicationSuggestions);
+        } catch {
+          setCatalogSuggestions(fallbackMedicationSuggestions);
+        }
+      })();
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [name]);
 
   const canProceed =
     (step === 'name' && name.trim().length > 1) ||

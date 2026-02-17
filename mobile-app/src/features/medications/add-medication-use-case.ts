@@ -29,7 +29,7 @@ export const formOptions: FormOption[] = [
   { key: 'Other', emoji: '•••' },
 ];
 
-export const medicationSuggestions = ['Metformin', 'Metoprolol tartrate', 'Methotrexate', 'Methadone', 'Metolazone'];
+export const fallbackMedicationSuggestions = ['Metformin', 'Metoprolol tartrate', 'Methotrexate', 'Methadone', 'Metolazone'];
 
 export function formatDate(date: Date): string {
   const year = date.getFullYear();

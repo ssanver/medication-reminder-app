@@ -6,6 +6,7 @@ namespace api.data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Medication> Medications => Set<Medication>();
+    public DbSet<MedicineCatalogItem> MedicineCatalogItems => Set<MedicineCatalogItem>();
     public DbSet<MedicationSchedule> MedicationSchedules => Set<MedicationSchedule>();
     public DbSet<DoseEvent> DoseEvents => Set<DoseEvent>();
     public DbSet<InventoryRecord> InventoryRecords => Set<InventoryRecord>();
@@ -33,6 +34,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Dosage).HasMaxLength(60).IsRequired();
             entity.Property(x => x.UsageType).HasMaxLength(60);
             entity.Property(x => x.UpdatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<MedicineCatalogItem>(entity =>
+        {
+            entity.ToTable("medicine-catalog");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MedicineName).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Barcode).HasMaxLength(40);
+            entity.Property(x => x.Origin).HasMaxLength(80);
+            entity.Property(x => x.Unit).HasMaxLength(80);
+            entity.Property(x => x.PackingAmount).HasMaxLength(40);
+            entity.Property(x => x.ActiveIngredient).HasMaxLength(180);
+            entity.Property(x => x.TherapeuticClass).HasMaxLength(180);
+            entity.Property(x => x.Manufacturer).HasMaxLength(180);
+            entity.Property(x => x.SourceUrl).HasMaxLength(500);
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => x.MedicineName);
+            entity.HasIndex(x => x.Barcode);
         });
 
         modelBuilder.Entity<MedicationSchedule>(entity =>

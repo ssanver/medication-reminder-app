@@ -2,8 +2,10 @@ using api.data;
 using api.services.medication_persistence;
 using api.middleware;
 using api.services.notification_persistence;
+using api.services.medicine_catalog_persistence;
 using api.services.security;
 using api_application.medication_application;
+using api_application.medicine_catalog_application;
 using api_application.notification_application;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,10 +21,13 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(conn
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
 builder.Services.AddScoped<IMedicationRepository, EfMedicationRepository>();
 builder.Services.AddScoped<MedicationApplicationService>();
+builder.Services.AddScoped<IMedicineCatalogRepository, EfMedicineCatalogRepository>();
+builder.Services.AddScoped<MedicineCatalogApplicationService>();
 builder.Services.AddScoped<INotificationDeliveryRepository, EfNotificationDeliveryRepository>();
 builder.Services.AddScoped<INotificationActionRepository, EfNotificationActionRepository>();
 builder.Services.AddScoped<NotificationDeliveryApplicationService>();
 builder.Services.AddScoped<NotificationActionApplicationService>();
+builder.Services.AddHostedService<MedicineCatalogSeeder>();
 builder.Logging.AddJsonConsole();
 
 var app = builder.Build();
