@@ -5,7 +5,13 @@ import type { AppIconName } from '../components/ui/app-icon';
 import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { resolveInitialPhase } from '../features/auth/auth-flow';
-import { clearSessionForLogout, loadAuthSession, markAuthenticated, setOnboardingCompleted } from '../features/auth/auth-session-store';
+import { clearSessionForLogout, loadAuthSession, markAuthenticated, setEmailVerified, setOnboardingCompleted } from '../features/auth/auth-session-store';
+import {
+  getEmailVerificationStatus,
+  requestEmailVerification,
+  resendEmailVerification,
+  verifyEmailCode,
+} from '../features/auth/email-verification-service';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { useMedicationStore } from '../features/medications/use-medication-store';
@@ -26,6 +32,7 @@ import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
 import { ChangePasswordScreen } from '../screens/change-password-screen';
 import { FeedbackScreen } from '../screens/feedback-screen';
+import { EmailVerificationScreen } from '../screens/email-verification-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
 import { MedicationDetailsScreen } from '../screens/medication-details-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
@@ -50,6 +57,7 @@ type OverlayScreen =
   | 'reminder-preferences'
   | 'change-password'
   | 'feedback'
+  | 'email-verification'
   | 'about-us';
 type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
 
@@ -73,6 +81,9 @@ export function AppNavigator() {
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [overlayScreen, setOverlayScreen] = useState<OverlayScreen>('none');
   const [selectedMedicationId, setSelectedMedicationId] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [emailVerified, setEmailVerifiedState] = useState(true);
+  const [emailResendCooldown, setEmailResendCooldown] = useState(0);
 
   const t = getTranslations(locale);
   const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
@@ -85,6 +96,20 @@ export function AppNavigator() {
     const timer = setTimeout(() => {
       void (async () => {
         const session = await loadAuthSession();
+        setAccountEmail(session.email);
+        setEmailVerifiedState(session.emailVerified || session.email.length === 0);
+        if (session.email) {
+          try {
+            const status = await getEmailVerificationStatus(session.email);
+            setEmailVerifiedState(status.isVerified);
+            setEmailResendCooldown(status.resendAvailableInSeconds ?? 0);
+            if (status.isVerified) {
+              await setEmailVerified(true);
+            }
+          } catch {
+            // Keep local session fallback when API is not reachable.
+          }
+        }
         setPhase(resolveInitialPhase(session));
       })();
     }, 1600);
@@ -208,9 +233,26 @@ export function AppNavigator() {
         <View style={styles.content}>
           <SignUpScreen
             locale={locale}
-            onSuccess={(session) => {
+            onSuccess={(payload) => {
               void (async () => {
-                await markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
+                await markAuthenticated({
+                  accessToken: payload.session?.accessToken,
+                  refreshToken: payload.session?.refreshToken,
+                  email: payload.email,
+                  emailVerified: payload.emailVerified,
+                });
+                setAccountEmail(payload.email);
+                setEmailVerifiedState(payload.emailVerified);
+                if (!payload.emailVerified) {
+                  try {
+                    const response = await requestEmailVerification(payload.email);
+                    setEmailResendCooldown(response.resendAvailableInSeconds ?? 60);
+                  } catch {
+                    setEmailResendCooldown(60);
+                  }
+                } else {
+                  setEmailResendCooldown(0);
+                }
                 setPhase('app');
               })();
             }}
@@ -231,9 +273,16 @@ export function AppNavigator() {
         <View style={styles.content}>
           <SignInScreen
             locale={locale}
-            onSuccess={(session) => {
+            onSuccess={(payload) => {
               void (async () => {
-                await markAuthenticated(session ? { accessToken: session.accessToken, refreshToken: session.refreshToken } : undefined);
+                await markAuthenticated({
+                  accessToken: payload.session?.accessToken,
+                  refreshToken: payload.session?.refreshToken,
+                  email: payload.email,
+                  emailVerified: payload.emailVerified,
+                });
+                setAccountEmail(payload.email);
+                setEmailVerifiedState(payload.emailVerified);
                 setPhase('app');
               })();
             }}
@@ -363,6 +412,63 @@ export function AppNavigator() {
     );
   }
 
+  if (overlayScreen === 'email-verification') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <EmailVerificationScreen
+            locale={locale}
+            email={accountEmail}
+            initialCooldownSeconds={emailResendCooldown}
+            onBack={() => setOverlayScreen('none')}
+            onVerify={async (code) => {
+              try {
+                const response = await verifyEmailCode(accountEmail, code);
+                if (response.isVerified) {
+                  await setEmailVerified(true);
+                  setEmailVerifiedState(true);
+                  return { ok: true, message: locale === 'tr' ? 'E-posta doğrulandı.' : 'Email verified.' };
+                }
+
+                return { ok: false, message: locale === 'tr' ? 'Kod doğrulanamadı.' : 'Code could not be verified.' };
+              } catch (error) {
+                const message = error instanceof Error ? error.message : locale === 'tr' ? 'Doğrulama başarısız.' : 'Verification failed.';
+                return { ok: false, message };
+              }
+            }}
+            onResend={async () => {
+              try {
+                const response = await resendEmailVerification(accountEmail);
+                const nextCooldown = response.resendAvailableInSeconds ?? 60;
+                return {
+                  ok: true,
+                  message: locale === 'tr' ? 'Onay e-postası yeniden gönderildi.' : 'Verification email sent again.',
+                  cooldownSeconds: nextCooldown,
+                };
+              } catch (error) {
+                const message = error instanceof Error ? error.message : locale === 'tr' ? 'Yeniden gönderim başarısız.' : 'Resend failed.';
+                return {
+                  ok: false,
+                  message,
+                  cooldownSeconds: 60,
+                };
+              }
+            }}
+            onCancelSignUp={() => {
+              void (async () => {
+                await clearSessionForLogout();
+                setAccountEmail('');
+                setEmailVerifiedState(true);
+                setOverlayScreen('none');
+                setPhase('signin');
+              })();
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
+
   if (overlayScreen === 'about-us') {
     return (
       <View style={styles.container}>
@@ -418,6 +524,8 @@ export function AppNavigator() {
           () => {
             void (async () => {
               await clearSessionForLogout();
+              setAccountEmail('');
+              setEmailVerifiedState(true);
               setOverlayScreen('none');
               setActiveTab('today');
               setPhase('signin');
@@ -426,6 +534,8 @@ export function AppNavigator() {
           () => {
             void shareApplication();
           },
+          () => setOverlayScreen('email-verification'),
+          Boolean(accountEmail) && !emailVerified,
         )}
       </View>
       <BottomNav
@@ -491,6 +601,8 @@ function renderTab(
   onOpenAboutUs: () => void,
   onLogout: () => void,
   onShareApp: () => void,
+  onOpenEmailVerification: () => void,
+  showEmailVerificationAlert: boolean,
 ) {
   switch (tab) {
     case 'today':
@@ -502,6 +614,8 @@ function renderTab(
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
           onOpenNotificationHistory={onOpenNotificationHistory}
+          onOpenEmailVerification={onOpenEmailVerification}
+          showEmailVerificationAlert={showEmailVerificationAlert}
         />
       );
     case 'my-meds':
@@ -545,6 +659,8 @@ function renderTab(
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
           onOpenNotificationHistory={onOpenNotificationHistory}
+          onOpenEmailVerification={onOpenEmailVerification}
+          showEmailVerificationAlert={showEmailVerificationAlert}
         />
       );
   }

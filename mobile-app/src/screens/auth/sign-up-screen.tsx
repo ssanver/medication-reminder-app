@@ -10,7 +10,7 @@ import { theme } from '../../theme';
 
 type SignUpScreenProps = {
   locale: Locale;
-  onSuccess: (session?: SocialLoginResult) => void;
+  onSuccess: (payload: { session?: SocialLoginResult; email: string; emailVerified: boolean }) => void;
   onOpenSignIn: () => void;
   onBack: () => void;
 };
@@ -34,7 +34,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
       setErrorText('');
       const response = await loginWithSocial(provider);
       setSocialMessage(`${t.socialSignInSuccessPrefix} ${response.provider}.`);
-      setTimeout(() => onSuccess(response), 400);
+      setTimeout(() => onSuccess({ session: response, email: response.email, emailVerified: true }), 400);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Social login failed.';
       setErrorText(`${t.socialSignInFailedPrefix} ${message}`);
@@ -83,7 +83,8 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
           }
           setErrorText('');
           setShowSuccess(true);
-          setTimeout(() => onSuccess(), 800);
+          const normalizedEmail = email.trim().toLowerCase();
+          setTimeout(() => onSuccess({ email: normalizedEmail, emailVerified: false }), 800);
         }}
       />
 

@@ -18,13 +18,24 @@ type TodayScreenProps = {
   fontScale: number;
   remindersEnabled: boolean;
   snoozeMinutes: number;
+  showEmailVerificationAlert: boolean;
   onOpenAddMedication: () => void;
   onOpenNotificationHistory: () => void;
+  onOpenEmailVerification: () => void;
 };
 
 type DoseStatus = 'All' | 'Taken' | 'Missed';
 
-export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes, onOpenAddMedication, onOpenNotificationHistory }: TodayScreenProps) {
+export function TodayScreen({
+  locale,
+  fontScale,
+  remindersEnabled,
+  snoozeMinutes,
+  showEmailVerificationAlert,
+  onOpenAddMedication,
+  onOpenNotificationHistory,
+  onOpenEmailVerification,
+}: TodayScreenProps) {
   const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<DoseStatus>('All');
@@ -93,9 +104,16 @@ export function TodayScreen({ locale, fontScale, remindersEnabled, snoozeMinutes
             <Text style={styles.welcome}>{t.welcome}</Text>
           </View>
         </View>
-        <Pressable style={styles.bellButton} onPress={onOpenNotificationHistory}>
-          <AppIcon name="alarm" size={18} color={theme.colors.semantic.textSecondary} />
-        </Pressable>
+        <View style={styles.rightIcons}>
+          {showEmailVerificationAlert ? (
+            <Pressable style={styles.warnButton} onPress={onOpenEmailVerification}>
+              <Text style={styles.warnIcon}>!</Text>
+            </Pressable>
+          ) : null}
+          <Pressable style={styles.bellButton} onPress={onOpenNotificationHistory}>
+            <AppIcon name="alarm" size={18} color={theme.colors.semantic.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
       <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{dateTitle}</Text>
@@ -250,6 +268,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  rightIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+  },
+  warnButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: theme.colors.error[500],
+    backgroundColor: theme.colors.error[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  warnIcon: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.error[500],
   },
   avatar: {
     width: 38,

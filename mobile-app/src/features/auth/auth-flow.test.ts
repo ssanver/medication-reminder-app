@@ -7,6 +7,8 @@ describe('resolveInitialPhase', () => {
       isLoggedIn: true,
       hasCompletedOnboarding: false,
       hasSeenPermissionScreen: false,
+      email: 'test@example.com',
+      emailVerified: true,
     });
 
     expect(phase).toBe('app');
@@ -17,6 +19,8 @@ describe('resolveInitialPhase', () => {
       isLoggedIn: false,
       hasCompletedOnboarding: true,
       hasSeenPermissionScreen: true,
+      email: '',
+      emailVerified: false,
     });
 
     expect(phase).toBe('signin');
@@ -27,6 +31,8 @@ describe('resolveInitialPhase', () => {
       isLoggedIn: false,
       hasCompletedOnboarding: false,
       hasSeenPermissionScreen: false,
+      email: '',
+      emailVerified: false,
     });
 
     expect(phase).toBe('onboarding');

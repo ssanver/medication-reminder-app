@@ -16,6 +16,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<NotificationAction> NotificationActions => Set<NotificationAction>();
     public DbSet<SystemErrorReport> SystemErrorReports => Set<SystemErrorReport>();
     public DbSet<FeedbackRecord> FeedbackRecords => Set<FeedbackRecord>();
+    public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CaregiverInvite> CaregiverInvites => Set<CaregiverInvite>();
@@ -185,6 +186,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.HasIndex(x => x.CreatedAt);
             entity.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<EmailVerificationToken>(entity =>
+        {
+            entity.ToTable("email-verification-tokens");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Email).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.CodeHash).HasMaxLength(128).IsRequired();
+            entity.Property(x => x.ExpiresAt).IsRequired();
+            entity.Property(x => x.AttemptCount).IsRequired();
+            entity.Property(x => x.LastSentAt).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => new { x.Email, x.CreatedAt });
+            entity.HasIndex(x => new { x.Email, x.VerifiedAt });
         });
 
         modelBuilder.Entity<ConsentRecord>(entity =>
