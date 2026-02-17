@@ -19,6 +19,7 @@ import {
   syncMedicationReminderNotifications,
 } from '../features/notifications/local-notifications';
 import { loadAppPreferences, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
+import { shareApplication } from '../features/share/app-share';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
@@ -410,6 +411,9 @@ export function AppNavigator() {
             setActiveTab('today');
             setPhase('signin');
           },
+          () => {
+            void shareApplication();
+          },
         )}
       </View>
       <BottomNav
@@ -474,6 +478,7 @@ function renderTab(
   onOpenFeedback: () => void,
   onOpenAboutUs: () => void,
   onLogout: () => void,
+  onShareApp: () => void,
 ) {
   switch (tab) {
     case 'today':
@@ -510,6 +515,7 @@ function renderTab(
           onOpenFeedback={onOpenFeedback}
           onOpenAboutUs={onOpenAboutUs}
           onLogout={onLogout}
+          onShareApp={onShareApp}
           notificationsEnabled={notificationsEnabled}
           medicationRemindersEnabled={medicationRemindersEnabled}
           snoozeMinutes={snoozeMinutes}

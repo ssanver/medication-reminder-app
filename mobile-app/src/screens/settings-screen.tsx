@@ -21,6 +21,7 @@ type SettingsScreenProps = {
   onOpenFeedback: () => void;
   onOpenAboutUs: () => void;
   onLogout: () => void;
+  onShareApp: () => void;
   notificationsEnabled: boolean;
   medicationRemindersEnabled: boolean;
   snoozeMinutes: number;
@@ -41,6 +42,7 @@ export function SettingsScreen({
   onOpenFeedback,
   onOpenAboutUs,
   onLogout,
+  onShareApp,
   notificationsEnabled,
   medicationRemindersEnabled,
   snoozeMinutes,
@@ -177,6 +179,7 @@ export function SettingsScreen({
         </Section>
 
         <Section title={t.aboutUs}>
+          <MenuRow label={locale === 'tr' ? 'Uygulamayı Paylaş' : 'Share App'} onPress={onShareApp} />
           <MenuRow label={t.appInfo} value={version} onPress={onOpenAboutUs} />
         </Section>
 
