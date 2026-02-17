@@ -5,6 +5,7 @@ export type ProfileState = {
   email: string;
   birthDate: string;
   gender: string;
+  photoUri: string;
 };
 
 const STORAGE_KEY = 'profile-state-v1';
@@ -14,6 +15,7 @@ const defaultProfile: ProfileState = {
   email: 'suleymansanver@gmail.com',
   birthDate: '',
   gender: '',
+  photoUri: '',
 };
 
 export async function loadProfile(): Promise<ProfileState> {
@@ -29,6 +31,7 @@ export async function loadProfile(): Promise<ProfileState> {
       email: typeof parsed.email === 'string' ? parsed.email : defaultProfile.email,
       birthDate: typeof parsed.birthDate === 'string' ? parsed.birthDate : defaultProfile.birthDate,
       gender: typeof parsed.gender === 'string' ? parsed.gender : defaultProfile.gender,
+      photoUri: typeof parsed.photoUri === 'string' ? parsed.photoUri : defaultProfile.photoUri,
     };
   } catch {
     return defaultProfile;

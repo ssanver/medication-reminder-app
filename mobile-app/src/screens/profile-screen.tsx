@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { TextField } from '../components/ui/text-field';
+import { pickProfilePhoto } from '../features/profile/profile-photo-service';
 import { loadProfile, saveProfile } from '../features/profile/profile-store';
 import { theme } from '../theme';
 
@@ -12,7 +13,7 @@ type ProfileScreenProps = {
   onBack: () => void;
 };
 
-type SheetType = 'none' | 'birth-date' | 'gender';
+type SheetType = 'none' | 'birth-date' | 'gender' | 'photo-actions';
 
 function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -66,8 +67,10 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
   const [email, setEmail] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
+  const [photoUri, setPhotoUri] = useState('');
   const [sheet, setSheet] = useState<SheetType>('none');
   const [savedMessage, setSavedMessage] = useState('');
+  const [isPhotoLoading, setIsPhotoLoading] = useState(false);
   const [draftBirthDate, setDraftBirthDate] = useState(formatDate(new Date()));
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
@@ -78,6 +81,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
       setEmail(profile.email);
       setBirthDate(profile.birthDate);
       setGender(profile.gender);
+      setPhotoUri(profile.photoUri);
     })();
   }, []);
 
@@ -103,9 +107,34 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
       email,
       birthDate,
       gender,
+      photoUri,
     });
     setSavedMessage(t.profileUpdated);
     setTimeout(() => setSavedMessage(''), 2000);
+  }
+
+  async function onChangePhoto(source: 'library' | 'camera') {
+    setSheet('none');
+    setIsPhotoLoading(true);
+
+    try {
+      const nextUri = await pickProfilePhoto(source);
+      if (!nextUri) {
+        return;
+      }
+
+      setPhotoUri(nextUri);
+      setSavedMessage(locale === 'tr' ? 'Profil fotoğrafı güncellendi.' : 'Profile photo updated.');
+      setTimeout(() => setSavedMessage(''), 2000);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'permission-denied') {
+        setSavedMessage(locale === 'tr' ? 'İzin verilmedi. Lütfen ayarlardan izin verin.' : 'Permission denied. Please allow access in settings.');
+      } else {
+        setSavedMessage(locale === 'tr' ? 'Profil fotoğrafı güncellenemedi.' : 'Profile photo could not be updated.');
+      }
+    } finally {
+      setIsPhotoLoading(false);
+    }
   }
 
   function openDateSheet() {
@@ -121,13 +150,17 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
         <ScreenHeader title={t.editProfile} leftAction={{ icon: '<', onPress: onBack }} />
 
         <View style={styles.avatarWrap}>
-          <View style={styles.avatar}><Text style={styles.avatarIcon}>👤</Text></View>
+          <View style={styles.avatar}>
+            {photoUri ? <Image source={{ uri: photoUri }} style={styles.avatarImage} /> : <Text style={styles.avatarIcon}>👤</Text>}
+          </View>
           <Pressable
             style={styles.avatarEditButton}
-            onPress={() => setSavedMessage(locale === 'tr' ? 'Profil fotoğrafı güncelleme yakında aktif olacak.' : 'Profile photo update will be available soon.')}
+            onPress={() => setSheet('photo-actions')}
+            disabled={isPhotoLoading}
           >
             <Text style={styles.avatarEditIcon}>📷</Text>
           </Pressable>
+          {isPhotoLoading ? <Text style={styles.photoLoadingText}>{locale === 'tr' ? 'Yükleniyor...' : 'Uploading...'}</Text> : null}
         </View>
 
         <View style={styles.card}>
@@ -176,6 +209,29 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
                     </Pressable>
                   );
                 })}
+              </>
+            ) : null}
+
+            {sheet === 'photo-actions' ? (
+              <>
+                <Text style={styles.sheetTitle}>{locale === 'tr' ? 'Profil Fotoğrafı' : 'Profile Photo'}</Text>
+                <Pressable style={styles.optionRow} onPress={() => void onChangePhoto('library')}>
+                  <Text style={styles.optionText}>{locale === 'tr' ? 'Galeriden Seç' : 'Choose from Library'}</Text>
+                </Pressable>
+                <Pressable style={styles.optionRow} onPress={() => void onChangePhoto('camera')}>
+                  <Text style={styles.optionText}>{locale === 'tr' ? 'Kamera ile Çek' : 'Take a Photo'}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.optionRow}
+                  onPress={() => {
+                    setPhotoUri('');
+                    setSheet('none');
+                    setSavedMessage(locale === 'tr' ? 'Profil fotoğrafı kaldırıldı.' : 'Profile photo removed.');
+                    setTimeout(() => setSavedMessage(''), 2000);
+                  }}
+                >
+                  <Text style={styles.removePhotoText}>{locale === 'tr' ? 'Fotoğrafı Kaldır' : 'Remove Photo'}</Text>
+                </Pressable>
               </>
             ) : null}
 
@@ -259,6 +315,11 @@ const styles = StyleSheet.create({
   avatarIcon: {
     fontSize: 30,
   },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
   avatarEditButton: {
     width: 30,
     height: 30,
@@ -275,6 +336,11 @@ const styles = StyleSheet.create({
   avatarEditIcon: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[500],
+  },
+  photoLoadingText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+    marginTop: theme.spacing[4],
   },
   card: {
     borderRadius: theme.radius[16],
@@ -349,6 +415,10 @@ const styles = StyleSheet.create({
   optionText: {
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.semantic.textSecondary,
+  },
+  removePhotoText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.error[500],
   },
   optionTextActive: {
     color: theme.colors.primaryBlue[500],

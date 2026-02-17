@@ -26,7 +26,14 @@
     },
     "plugins": [
       "expo-apple-authentication",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Profil fotoğrafı seçmek için galeri erişimi gerekir.",
+          "cameraPermission": "Profil fotoğrafı çekmek için kamera erişimi gerekir."
+        }
+      ]
     ]
   }
 }

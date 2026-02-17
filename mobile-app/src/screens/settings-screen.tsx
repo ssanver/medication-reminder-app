@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
 import { toShortDisplayName } from '../features/profile/display-name';
+import { loadProfile } from '../features/profile/profile-store';
 import { theme } from '../theme';
 
 type SettingsScreenProps = {
@@ -52,6 +53,7 @@ export function SettingsScreen({
   const localeOptions = getLocaleOptions(locale);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
+  const [profilePhotoUri, setProfilePhotoUri] = useState('');
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
 
@@ -62,6 +64,13 @@ export function SettingsScreen({
   useEffect(() => {
     setDraftFontScale(fontScale);
   }, [fontScale]);
+
+  useEffect(() => {
+    void (async () => {
+      const profile = await loadProfile();
+      setProfilePhotoUri(profile.photoUri);
+    })();
+  }, []);
 
   const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale;
 
@@ -79,7 +88,7 @@ export function SettingsScreen({
         <ScreenHeader title={t.settings} />
 
         <View style={styles.profileCard}>
-          <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩</Text></View>
+          <View style={styles.avatar}>{profilePhotoUri ? <Image source={{ uri: profilePhotoUri }} style={styles.avatarImage} /> : <Text style={styles.avatarEmoji}>👩</Text>}</View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
             <Pressable onPress={onOpenProfile}>
@@ -278,6 +287,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryBlue[100],
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   avatarEmoji: {
     fontSize: 20,
