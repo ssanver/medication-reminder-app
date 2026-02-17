@@ -1,168 +1,84 @@
 using api.contracts;
-using api.data;
 using api.models;
 using api.services;
+using api_application.medication_application;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using AppMedicationScheduleInput = api_application.medication_application.MedicationScheduleInput;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/medications")]
-public sealed class MedicationsController(AppDbContext dbContext) : ControllerBase
+public sealed class MedicationsController(MedicationApplicationService applicationService) : ControllerBase
 {
-    private static readonly HashSet<string> AllowedRepeatTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "daily",
-        "weekly",
-    };
-
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<MedicationResponse>>> GetAll()
     {
-        var medications = await dbContext
-            .Medications
-            .AsNoTracking()
-            .Include(medication => medication.Schedules)
-            .OrderByDescending(medication => medication.UpdatedAt)
-            .ToListAsync();
-
+        var medications = await applicationService.ListAsync();
         return Ok(medications.Select(ToResponse).ToArray());
     }
 
     [HttpPost]
     public async Task<ActionResult<MedicationResponse>> Create([FromBody] SaveMedicationRequest request)
     {
-        var validationError = ValidateRequest(request);
-        if (validationError is not null)
+        try
         {
-            return BadRequest(validationError);
+            var created = await applicationService.CreateAsync(ToSaveCommand(request));
+            return CreatedAtAction(nameof(GetAll), new { id = created.Id }, ToResponse(created));
         }
-
-        var medication = new Medication
+        catch (ArgumentException ex)
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Dosage = request.Dosage.Trim(),
-            UsageType = request.UsageType?.Trim(),
-            IsBeforeMeal = request.IsBeforeMeal,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
-            UpdatedAt = DateTimeOffset.UtcNow,
-            Schedules = request
-                .Schedules
-                .Select(schedule => new MedicationSchedule
-                {
-                    Id = Guid.NewGuid(),
-                    RepeatType = schedule.RepeatType,
-                    ReminderTime = schedule.ReminderTime,
-                    DaysOfWeek = schedule.DaysOfWeek,
-                    UpdatedAt = DateTimeOffset.UtcNow,
-                })
-                .ToList(),
-        };
-
-        dbContext.Medications.Add(medication);
-        await dbContext.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetAll), new { id = medication.Id }, ToResponse(medication));
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<MedicationResponse>> Update([FromRoute] Guid id, [FromBody] SaveMedicationRequest request)
     {
-        var validationError = ValidateRequest(request);
-        if (validationError is not null)
+        try
         {
-            return BadRequest(validationError);
+            var updated = await applicationService.UpdateAsync(id, ToSaveCommand(request));
+            return Ok(ToResponse(updated));
         }
-
-        var medication = await dbContext.Medications.Include(x => x.Schedules).FirstOrDefaultAsync(x => x.Id == id);
-        if (medication is null)
+        catch (KeyNotFoundException)
         {
             return NotFound();
         }
-
-        medication.Name = request.Name.Trim();
-        medication.Dosage = request.Dosage.Trim();
-        medication.UsageType = request.UsageType?.Trim();
-        medication.IsBeforeMeal = request.IsBeforeMeal;
-        medication.StartDate = request.StartDate;
-        medication.EndDate = request.EndDate;
-        medication.UpdatedAt = DateTimeOffset.UtcNow;
-
-        dbContext.MedicationSchedules.RemoveRange(medication.Schedules);
-        medication.Schedules = request
-            .Schedules
-            .Select(schedule => new MedicationSchedule
-            {
-                Id = Guid.NewGuid(),
-                MedicationId = medication.Id,
-                RepeatType = schedule.RepeatType,
-                ReminderTime = schedule.ReminderTime,
-                DaysOfWeek = schedule.DaysOfWeek,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            })
-            .ToList();
-
-        await dbContext.SaveChangesAsync();
-
-        return Ok(ToResponse(medication));
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPost("{id:guid}/schedules")]
-    public async Task<ActionResult<MedicationResponse>> AddSchedule(
-        [FromRoute] Guid id,
-        [FromBody] MedicationScheduleInput request)
+    public async Task<ActionResult<MedicationResponse>> AddSchedule([FromRoute] Guid id, [FromBody] api.contracts.MedicationScheduleInput request)
     {
-        var scheduleValidationError = ValidateScheduleInput(request);
-        if (scheduleValidationError is not null)
+        try
         {
-            return BadRequest(scheduleValidationError);
+            var updated = await applicationService.AddScheduleAsync(id, ToScheduleInput(request));
+            return Ok(ToResponse(updated));
         }
-
-        var medication = await dbContext.Medications.Include(x => x.Schedules).FirstOrDefaultAsync(x => x.Id == id);
-        if (medication is null)
+        catch (KeyNotFoundException)
         {
             return NotFound();
         }
-
-        var reminderTimeAlreadyExists = medication
-            .Schedules
-            .Any(x => x.ReminderTime == request.ReminderTime);
-
-        if (reminderTimeAlreadyExists)
+        catch (ArgumentException ex)
         {
-            return BadRequest("Duplicate reminder times are not allowed for the same medication.");
+            return BadRequest(ex.Message);
         }
-
-        var newSchedule = new MedicationSchedule
-        {
-            Id = Guid.NewGuid(),
-            MedicationId = medication.Id,
-            RepeatType = request.RepeatType.Trim().ToLowerInvariant(),
-            ReminderTime = request.ReminderTime,
-            DaysOfWeek = NormalizeDaysOfWeek(request.DaysOfWeek),
-            UpdatedAt = DateTimeOffset.UtcNow,
-        };
-        dbContext.MedicationSchedules.Add(newSchedule);
-
-        await dbContext.SaveChangesAsync();
-
-        return Ok(ToResponse(medication));
     }
 
     [HttpGet("{id:guid}/schedule-preview")]
     public async Task<ActionResult<SchedulePreviewResponse>> GetSchedulePreview([FromRoute] Guid id, [FromQuery] int days = 30)
     {
-        var medication = await dbContext.Medications.Include(x => x.Schedules).FirstOrDefaultAsync(x => x.Id == id);
+        var medication = await applicationService.GetByIdAsync(id);
         if (medication is null)
         {
             return NotFound();
         }
 
         var planned = SchedulePlanner.BuildOccurrences(
-            medication.Schedules.ToArray(),
+            medication.Schedules.Select(ToModelSchedule).ToArray(),
             DateOnly.FromDateTime(DateTime.UtcNow.Date),
             days);
 
@@ -172,95 +88,38 @@ public sealed class MedicationsController(AppDbContext dbContext) : ControllerBa
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
-        var medication = await dbContext.Medications.FirstOrDefaultAsync(x => x.Id == id);
-        if (medication is null)
+        try
+        {
+            await applicationService.DeleteAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return NotFound();
         }
-
-        dbContext.Medications.Remove(medication);
-        await dbContext.SaveChangesAsync();
-
-        return NoContent();
     }
 
-    private static string? ValidateRequest(SaveMedicationRequest request)
+    private static SaveMedicationCommand ToSaveCommand(SaveMedicationRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return "Medication name is required.";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Dosage))
-        {
-            return "Dosage is required.";
-        }
-
-        if (request.Schedules.Count == 0)
-        {
-            return "At least one reminder time is required.";
-        }
-
-        if (request.EndDate.HasValue && request.EndDate.Value < request.StartDate)
-        {
-            return "End date cannot be earlier than start date.";
-        }
-
-        var invalidScheduleError = request.Schedules.Select(ValidateScheduleInput).FirstOrDefault(x => x is not null);
-        if (invalidScheduleError is not null)
-        {
-            return invalidScheduleError;
-        }
-
-        var duplicatedReminderTimes = request.Schedules.GroupBy(x => x.ReminderTime).Any(group => group.Count() > 1);
-        if (duplicatedReminderTimes)
-        {
-            return "Duplicate reminder times are not allowed for the same medication.";
-        }
-
-        return null;
+        return new SaveMedicationCommand(
+            request.Name,
+            request.Dosage,
+            request.UsageType,
+            request.IsBeforeMeal,
+            request.StartDate,
+            request.EndDate,
+            request.Schedules.Select(ToScheduleInput).ToArray());
     }
 
-    private static string? ValidateScheduleInput(MedicationScheduleInput schedule)
+    private static AppMedicationScheduleInput ToScheduleInput(api.contracts.MedicationScheduleInput input)
     {
-        if (string.IsNullOrWhiteSpace(schedule.RepeatType))
-        {
-            return "Repeat type is required.";
-        }
-
-        if (!AllowedRepeatTypes.Contains(schedule.RepeatType.Trim()))
-        {
-            return "Repeat type must be one of: daily, weekly.";
-        }
-
-        if (schedule.RepeatType.Equals("weekly", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(schedule.DaysOfWeek))
-        {
-            return "At least one weekday is required for weekly repeat type.";
-        }
-
-        if (schedule.RepeatType.Equals("daily", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(schedule.DaysOfWeek))
-        {
-            return "DaysOfWeek is only supported for weekly repeat type.";
-        }
-
-        return null;
+        return new AppMedicationScheduleInput(
+            input.RepeatType,
+            input.ReminderTime,
+            input.DaysOfWeek);
     }
 
-    private static string? NormalizeDaysOfWeek(string? daysOfWeek)
-    {
-        if (string.IsNullOrWhiteSpace(daysOfWeek))
-        {
-            return null;
-        }
-
-        return string.Join(
-            ",",
-            daysOfWeek
-                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.ToLowerInvariant()));
-    }
-
-    private static MedicationResponse ToResponse(Medication medication)
+    private static MedicationResponse ToResponse(MedicationRecord medication)
     {
         return new MedicationResponse
         {
@@ -272,16 +131,27 @@ public sealed class MedicationsController(AppDbContext dbContext) : ControllerBa
             StartDate = medication.StartDate,
             EndDate = medication.EndDate,
             IsActive = medication.IsActive,
-            Schedules = medication
-                .Schedules
-                .OrderBy(x => x.ReminderTime)
-                .Select(schedule => new MedicationScheduleInput
+            Schedules = medication.Schedules
+                .OrderBy(schedule => schedule.ReminderTime)
+                .Select(schedule => new api.contracts.MedicationScheduleInput
                 {
                     RepeatType = schedule.RepeatType,
                     ReminderTime = schedule.ReminderTime,
                     DaysOfWeek = schedule.DaysOfWeek,
                 })
                 .ToArray(),
+        };
+    }
+
+    private static MedicationSchedule ToModelSchedule(MedicationScheduleRecord schedule)
+    {
+        return new MedicationSchedule
+        {
+            Id = schedule.Id,
+            RepeatType = schedule.RepeatType,
+            ReminderTime = schedule.ReminderTime,
+            DaysOfWeek = schedule.DaysOfWeek,
+            UpdatedAt = schedule.UpdatedAt,
         };
     }
 }

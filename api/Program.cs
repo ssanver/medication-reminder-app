@@ -1,7 +1,9 @@
 using api.data;
+using api.services.medication_persistence;
 using api.middleware;
 using api.services.notification_persistence;
 using api.services.security;
+using api_application.medication_application;
 using api_application.notification_application;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +17,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+builder.Services.AddScoped<IMedicationRepository, EfMedicationRepository>();
+builder.Services.AddScoped<MedicationApplicationService>();
 builder.Services.AddScoped<INotificationDeliveryRepository, EfNotificationDeliveryRepository>();
 builder.Services.AddScoped<INotificationActionRepository, EfNotificationActionRepository>();
 builder.Services.AddScoped<NotificationDeliveryApplicationService>();

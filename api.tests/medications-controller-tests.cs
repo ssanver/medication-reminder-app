@@ -1,6 +1,7 @@
 using api.Controllers;
 using api.contracts;
 using api.data;
+using api.services.medication_persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,7 @@ public sealed class MedicationsControllerTests
     public async Task Create_ShouldReturnBadRequest_WhenNoScheduleProvided()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
 
         var result = await controller.Create(new SaveMedicationRequest
         {
@@ -31,7 +32,7 @@ public sealed class MedicationsControllerTests
     public async Task Create_ShouldReturnBadRequest_WhenEndDateIsEarlierThanStartDate()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
 
         var result = await controller.Create(new SaveMedicationRequest
         {
@@ -58,7 +59,7 @@ public sealed class MedicationsControllerTests
     public async Task Create_ShouldCreateMedication_WhenRequestIsValid()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
 
         var result = await controller.Create(new SaveMedicationRequest
         {
@@ -88,7 +89,7 @@ public sealed class MedicationsControllerTests
     public async Task Create_ShouldReturnBadRequest_WhenWeeklyRuleDoesNotContainDay()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
 
         var result = await controller.Create(new SaveMedicationRequest
         {
@@ -114,7 +115,7 @@ public sealed class MedicationsControllerTests
     public async Task Delete_ShouldReturnNoContent_WhenEntityExists()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
 
         var medication = new api.models.Medication
         {
@@ -138,7 +139,7 @@ public sealed class MedicationsControllerTests
     public async Task AddSchedule_ShouldAppendSchedule_WhenRequestIsValid()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
         var medicationId = Guid.NewGuid();
 
         var medication = new api.models.Medication
@@ -181,7 +182,7 @@ public sealed class MedicationsControllerTests
     public async Task AddSchedule_ShouldReturnBadRequest_WhenReminderTimeAlreadyExists()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
         var medicationId = Guid.NewGuid();
 
         var medication = new api.models.Medication
@@ -221,7 +222,7 @@ public sealed class MedicationsControllerTests
     public async Task Create_ShouldReturnBadRequest_WhenRepeatTypeIsInvalid()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new MedicationsController(dbContext);
+        var controller = CreateController(dbContext);
 
         var result = await controller.Create(new SaveMedicationRequest
         {
@@ -250,5 +251,12 @@ public sealed class MedicationsControllerTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    private static MedicationsController CreateController(AppDbContext dbContext)
+    {
+        return new MedicationsController(
+            new api_application.medication_application.MedicationApplicationService(
+                new EfMedicationRepository(dbContext)));
     }
 }
