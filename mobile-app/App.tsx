@@ -30,8 +30,16 @@ export default function App() {
       });
     }
 
-    if (typeof window !== 'undefined') {
-      const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+    const browserWindow = globalThis as unknown as {
+      addEventListener?: (type: string, listener: (event: { reason?: unknown }) => void) => void;
+      removeEventListener?: (type: string, listener: (event: { reason?: unknown }) => void) => void;
+    };
+
+    if (typeof browserWindow.addEventListener === 'function' && typeof browserWindow.removeEventListener === 'function') {
+      const addListener = browserWindow.addEventListener;
+      const removeListener = browserWindow.removeEventListener;
+
+      const onUnhandledRejection = (event: { reason?: unknown }) => {
         const reason = event.reason as { message?: string; stack?: string } | undefined;
         void reportSystemError({
           errorType: 'promise-unhandled-rejection',
@@ -40,8 +48,8 @@ export default function App() {
         });
       };
 
-      window.addEventListener('unhandledrejection', onUnhandledRejection);
-      return () => window.removeEventListener('unhandledrejection', onUnhandledRejection);
+      addListener('unhandledrejection', onUnhandledRejection);
+      return () => removeListener('unhandledrejection', onUnhandledRejection);
     }
 
     return undefined;
