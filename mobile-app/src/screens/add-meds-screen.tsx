@@ -4,7 +4,34 @@ import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
 import { Button } from '../components/ui/button';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
-import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
+import { localizeFormLabel } from '../features/localization/medication-localization';
+import {
+  alignDateToWeekday,
+  buildCalendarCells,
+  dayIntervalOptions,
+  defaultDoseTimes,
+  dosageOptions,
+  dosesPerDayOptions,
+  formOptions,
+  formatDate,
+  getDayIntervalLabel,
+  getWeekdayLabel,
+  hourOptions,
+  medicationIconOptions,
+  medicationSuggestions,
+  minuteOptions,
+  parseDateKey,
+  resolveDayInterval,
+  resolveFormDefaultIcon,
+  shiftMonth,
+  splitTime,
+  steps,
+  toFrequencyLabel,
+  type IntervalUnit,
+  type WizardStep,
+  weekdayOptions,
+  weekIntervalOptions,
+} from '../features/medications/add-medication-use-case';
 import { addMedication } from '../features/medications/medication-store';
 import { theme } from '../theme';
 
@@ -14,123 +41,7 @@ type AddMedsScreenProps = {
   onMedicationSaved: () => void;
 };
 
-type WizardStep = 'name' | 'form-dose' | 'frequency' | 'note';
 type SheetType = 'none' | 'date' | 'time' | 'interval';
-type IntervalUnit = 'day' | 'week';
-
-type FormOption = {
-  key: string;
-  emoji: string;
-};
-
-const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
-const dosageOptions = ['0.5', '1', '2', '3'];
-const defaultDoseTimes = ['09:00', '14:00', '20:00'];
-const dayIntervalOptions = [1, 2, 3] as const;
-const weekIntervalOptions = [1, 2] as const;
-const dosesPerDayOptions = [1, 2, 3] as const;
-const weekdayOptions = [1, 2, 3, 4, 5, 6, 0] as const;
-const hourOptions = Array.from({ length: 24 }, (_, hour) => `${hour}`.padStart(2, '0'));
-const minuteOptions = Array.from({ length: 12 }, (_, index) => `${index * 5}`.padStart(2, '0'));
-
-const formOptions: FormOption[] = [
-  { key: 'Capsule', emoji: '💊' },
-  { key: 'Pill', emoji: '💊' },
-  { key: 'Drop', emoji: '🫙' },
-  { key: 'Syrup', emoji: '🧴' },
-  { key: 'Injection', emoji: '💉' },
-  { key: 'Other', emoji: '•••' },
-];
-
-const medicationSuggestions = ['Metformin', 'Metoprolol tartrate', 'Methotrexate', 'Methadone', 'Metolazone'];
-const medicationIconOptions = ['💊', '🧴', '💉', '🫙', '🩹', '🌿', '🟡', '🔵'];
-
-function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function parseDateKey(value: string): Date {
-  return new Date(`${value}T00:00:00`);
-}
-
-function shiftMonth(base: Date, delta: number): Date {
-  return new Date(base.getFullYear(), base.getMonth() + delta, 1);
-}
-
-function buildCalendarCells(month: Date): Array<Date | null> {
-  const year = month.getFullYear();
-  const monthIndex = month.getMonth();
-  const firstDay = new Date(year, monthIndex, 1);
-  const mondayStartOffset = (firstDay.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const cells: Array<Date | null> = Array.from({ length: mondayStartOffset }, () => null);
-
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    cells.push(new Date(year, monthIndex, day));
-  }
-
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
-
-  return cells;
-}
-
-function toFrequencyLabel(dayInterval: number): string {
-  if (dayInterval === 2) {
-    return 'Every 2 Days';
-  }
-
-  if (dayInterval === 3) {
-    return 'Every 3 Days';
-  }
-
-  if (dayInterval === 7) {
-    return 'Every 7 Days';
-  }
-
-  if (dayInterval === 14) {
-    return 'Every 14 Days';
-  }
-
-  return 'Every 1 Day';
-}
-
-function getDayIntervalLabel(dayInterval: number, locale: Locale): string {
-  return localizeFrequencyLabel(toFrequencyLabel(dayInterval), locale);
-}
-
-function resolveDayInterval(intervalUnit: IntervalUnit, intervalCount: number): number {
-  return intervalUnit === 'week' ? intervalCount * 7 : intervalCount;
-}
-
-function getWeekdayLabel(weekday: number, locale: Locale): string {
-  const anchor = new Date(2026, 0, 5 + weekday); // 2026-01-05 is Monday.
-  return anchor.toLocaleDateString(getLocaleTag(locale), { weekday: 'short' });
-}
-
-function alignDateToWeekday(baseDate: string, weekday: number): string {
-  const date = parseDateKey(baseDate);
-  const current = date.getDay();
-  const offset = (weekday - current + 7) % 7;
-  const aligned = new Date(date);
-  aligned.setDate(date.getDate() + offset);
-  return formatDate(aligned);
-}
-
-function splitTime(value: string): { hour: string; minute: string } {
-  const [rawHour = '09', rawMinute = '00'] = value.split(':');
-  const hour = `${Math.min(23, Math.max(0, Number(rawHour)))}`.padStart(2, '0');
-  const minute = `${Math.min(59, Math.max(0, Number(rawMinute)))}`.padStart(2, '0');
-  return { hour, minute };
-}
-
-function resolveFormDefaultIcon(formKey: string): string {
-  return formOptions.find((item) => item.key === formKey)?.emoji ?? '🧴';
-}
 
 export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
   const t = getTranslations(locale);

@@ -1,7 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { createCorrelationId } from '../network/correlation-id';
+import { apiRequestJson } from '../network/api-client';
 
 export type SocialProvider = 'Apple' | 'Google';
 
@@ -16,10 +16,6 @@ export type SocialLoginResult = {
 
 if (typeof window !== 'undefined') {
   WebBrowser.maybeCompleteAuthSession();
-}
-
-function getApiBaseUrl(): string {
-  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:5047';
 }
 
 function getPlatformOs(): string {
@@ -57,25 +53,14 @@ function getGoogleRedirectUri(clientId: string): string {
 }
 
 async function exchangeSocialToken(provider: SocialProvider, providerToken: string): Promise<SocialLoginResult> {
-  const correlationId = createCorrelationId('social-login');
-  const response = await fetch(`${getApiBaseUrl()}/api/auth/social-login`, {
+  return apiRequestJson<SocialLoginResult>('/api/auth/social-login', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Correlation-ID': correlationId,
-    },
-    body: JSON.stringify({
+    correlationPrefix: 'social-login',
+    body: {
       provider: provider.toLowerCase(),
       providerToken,
-    }),
+    },
   });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || 'Social login failed.');
-  }
-
-  return (await response.json()) as SocialLoginResult;
 }
 
 async function getGoogleIdToken(): Promise<string> {
