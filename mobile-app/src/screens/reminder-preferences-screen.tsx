@@ -67,11 +67,13 @@ const styles = StyleSheet.create({
   },
   optionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing[8],
   },
   option: {
     minHeight: 36,
-    minWidth: 66,
+    minWidth: 72,
+    paddingHorizontal: theme.spacing[8],
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,

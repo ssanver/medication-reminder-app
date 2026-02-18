@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { submitFeedback, type FeedbackCategory } from '../features/feedback/feedback-service';
@@ -16,6 +16,7 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
   const [message, setMessage] = useState('');
   const [statusText, setStatusText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
 
   const categories = useMemo(
     () => [
@@ -28,6 +29,7 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
   );
 
   const canSubmit = message.trim().length >= 10 && !submitting;
+  const selectedCategoryLabel = categories.find((item) => item.key === category)?.label ?? '';
 
   async function onSubmit() {
     if (!canSubmit) {
@@ -53,16 +55,10 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
 
       <View style={styles.card}>
         <Text style={styles.label}>{locale === 'tr' ? 'Konu' : 'Subject'}</Text>
-        <View style={styles.categoryWrap}>
-          {categories.map((item) => {
-            const selected = item.key === category;
-            return (
-              <Pressable key={item.key} onPress={() => setCategory(item.key)} style={[styles.categoryChip, selected && styles.categoryChipActive]}>
-                <Text style={[styles.categoryText, selected && styles.categoryTextActive]}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Pressable style={styles.combo} onPress={() => setCategoryPickerOpen(true)}>
+          <Text style={styles.comboText}>{selectedCategoryLabel}</Text>
+          <Text style={styles.chevron}>{'>'}</Text>
+        </Pressable>
 
         <Text style={styles.label}>{locale === 'tr' ? 'Mesaj' : 'Message'}</Text>
         <TextInput
@@ -79,6 +75,29 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
         {statusText.length > 0 ? <Text style={styles.status}>{statusText}</Text> : null}
         <Button label={locale === 'tr' ? 'Gönder' : 'Submit'} onPress={() => void onSubmit()} disabled={!canSubmit} />
       </View>
+
+      <Modal transparent visible={categoryPickerOpen} animationType="slide" onRequestClose={() => setCategoryPickerOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setCategoryPickerOpen(false)}>
+          <Pressable style={styles.sheet} onPress={() => undefined}>
+            <Text style={styles.sheetTitle}>{locale === 'tr' ? 'Konu seçin' : 'Select subject'}</Text>
+            {categories.map((item) => {
+              const selected = item.key === category;
+              return (
+                <Pressable
+                  key={item.key}
+                  style={[styles.optionRow, selected && styles.optionRowActive]}
+                  onPress={() => {
+                    setCategory(item.key);
+                    setCategoryPickerOpen(false);
+                  }}
+                >
+                  <Text style={[styles.optionText, selected && styles.optionTextActive]}>{item.label}</Text>
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -104,31 +123,24 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  categoryWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing[8],
-  },
-  categoryChip: {
-    minHeight: 32,
-    paddingHorizontal: theme.spacing[8],
-    borderRadius: theme.radius[16],
+  combo: {
+    minHeight: 44,
+    borderRadius: theme.radius[8],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
     backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[16],
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
-  categoryChipActive: {
-    borderColor: theme.colors.primaryBlue[500],
-    backgroundColor: theme.colors.primaryBlue[50],
+  comboText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textPrimary,
   },
-  categoryText: {
-    ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.textSecondary,
-  },
-  categoryTextActive: {
-    color: theme.colors.primaryBlue[600],
+  chevron: {
+    ...theme.typography.bodyScale.mRegular,
+    color: theme.colors.semantic.textMuted,
   },
   textArea: {
     minHeight: 140,
@@ -144,5 +156,43 @@ const styles = StyleSheet.create({
   status: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[600],
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: theme.colors.semantic.overlay,
+  },
+  sheet: {
+    borderTopLeftRadius: theme.radius[24],
+    borderTopRightRadius: theme.radius[24],
+    backgroundColor: theme.colors.semantic.cardBackground,
+    paddingHorizontal: theme.spacing[16],
+    paddingVertical: theme.spacing[16],
+    gap: theme.spacing[8],
+  },
+  sheetTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
+  },
+  optionRow: {
+    minHeight: 44,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[16],
+    justifyContent: 'center',
+  },
+  optionRowActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  optionText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textSecondary,
+  },
+  optionTextActive: {
+    color: theme.colors.primaryBlue[500],
+    fontWeight: '700',
   },
 });
