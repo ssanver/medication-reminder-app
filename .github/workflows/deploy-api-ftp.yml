@@ -32,7 +32,7 @@ jobs:
         run: dotnet restore medication-reminder-app.slnx
 
       - name: Test
-        run: dotnet test medication-reminder-app.slnx --no-build --verbosity normal
+        run: dotnet test api.tests/api.tests.csproj --verbosity normal
 
       - name: Build
         run: dotnet build medication-reminder-app.slnx --configuration Release --no-restore
