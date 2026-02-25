@@ -1,0 +1,50 @@
+name: Deploy API to FTP
+
+on:
+  push:
+    branches:
+      - main
+      - codex/pbi-001-foundation
+    paths:
+      - "api/**"
+      - "api-application/**"
+      - "api-domain/**"
+      - "api.tests/**"
+      - "medication-reminder-app.slnx"
+      - "dotnet-tools.json"
+      - ".github/workflows/deploy-api-ftp.yml"
+  workflow_dispatch:
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore medication-reminder-app.slnx
+
+      - name: Test
+        run: dotnet test medication-reminder-app.slnx --no-build --verbosity normal
+
+      - name: Build
+        run: dotnet build medication-reminder-app.slnx --configuration Release --no-restore
+
+      - name: Publish API
+        run: dotnet publish api/api.csproj --configuration Release --no-build --output ./api/publish
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./api/publish/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
