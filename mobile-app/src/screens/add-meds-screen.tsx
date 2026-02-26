@@ -18,7 +18,6 @@ import {
   getWeekdayLabel,
   hourOptions,
   medicationIconOptions,
-  fallbackMedicationSuggestions,
   minuteOptions,
   parseDateKey,
   resolveDayInterval,
@@ -60,7 +59,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const [startDate, setStartDate] = useState(formatDate(new Date()));
   const [doseTimes, setDoseTimes] = useState<string[]>(defaultDoseTimes);
   const [note, setNote] = useState('');
-  const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>(fallbackMedicationSuggestions);
+  const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>([]);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
@@ -128,9 +127,9 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       void (async () => {
         try {
           const items = await searchMedicineCatalog(query, query.length === 0 ? 30 : 20);
-          setCatalogSuggestions(items.length > 0 ? items : fallbackMedicationSuggestions);
+          setCatalogSuggestions(items);
         } catch {
-          setCatalogSuggestions(fallbackMedicationSuggestions);
+          setCatalogSuggestions([]);
         }
       })();
     }, 250);

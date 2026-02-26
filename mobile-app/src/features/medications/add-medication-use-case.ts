@@ -29,8 +29,6 @@ export const formOptions: FormOption[] = [
   { key: 'Other', emoji: '•••' },
 ];
 
-export const fallbackMedicationSuggestions = ['Metformin', 'Metoprolol tartrate', 'Methotrexate', 'Methadone', 'Metolazone'];
-
 export function formatDate(date: Date): string {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiRequestJson } from '../network/api-client';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { getLocaleTag, type Locale } from '../localization/localization';
 
@@ -44,50 +45,8 @@ type MedicationStoreState = {
 const STORAGE_KEY = 'medication-reminder-store-v1';
 const listeners = new Set<() => void>();
 
-const defaultMedications: Medication[] = [
-  {
-    id: 'metformin',
-    name: 'Metformin',
-    form: 'Capsule',
-    iconEmoji: '💊',
-    dosage: '1',
-    frequencyLabel: 'Every 1 Day',
-    recurrence: 'daily',
-    note: '',
-    startDate: '2026-01-01',
-    time: '09:00',
-    active: true,
-  },
-  {
-    id: 'captopril',
-    name: 'Captopril',
-    form: 'Capsule',
-    iconEmoji: '💊',
-    dosage: '2',
-    frequencyLabel: 'Every 1 Day',
-    recurrence: 'daily',
-    note: '',
-    startDate: '2026-01-01',
-    time: '20:00',
-    active: true,
-  },
-  {
-    id: 'b12',
-    name: 'B 12',
-    form: 'Injection',
-    iconEmoji: '💉',
-    dosage: '1',
-    frequencyLabel: 'Every 3 Days',
-    recurrence: 'every-3-days',
-    note: '',
-    startDate: '2026-01-03',
-    time: '22:00',
-    active: true,
-  },
-];
-
 let state: MedicationStoreState = {
-  medications: defaultMedications,
+  medications: [],
   events: [],
   isHydrated: false,
 };
@@ -174,7 +133,6 @@ function normalizeMedication(payload: Medication): Medication {
 
 function toPersistableState() {
   return {
-    medications: state.medications,
     events: state.events,
   };
 }
@@ -183,42 +141,156 @@ async function persist() {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toPersistableState()));
 }
 
+type ApiMedicationSchedule = {
+  repeatType: string;
+  reminderTime: string;
+  daysOfWeek?: string | null;
+};
+
+type ApiMedication = {
+  id: string;
+  name: string;
+  dosage: string;
+  usageType?: string | null;
+  isBeforeMeal: boolean;
+  startDate: string;
+  endDate?: string | null;
+  isActive: boolean;
+  schedules: ApiMedicationSchedule[];
+};
+
+type ApiSaveMedicationRequest = {
+  name: string;
+  dosage: string;
+  usageType?: string;
+  isBeforeMeal: boolean;
+  startDate: string;
+  endDate?: string | null;
+  schedules: Array<{
+    repeatType: string;
+    reminderTime: string;
+    daysOfWeek?: string | null;
+  }>;
+};
+
+function formatReminderTime(time: string): string {
+  const normalized = normalizeTime(time);
+  return `${normalized}:00`;
+}
+
+function parseReminderTime(time: string): string {
+  const [hour = '00', minute = '00'] = time.split(':');
+  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+}
+
+function getWeekdayName(dateKey: string): string {
+  const date = parseDateKey(dateKey);
+  const dayNames: Array<'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'> = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+  ];
+  return dayNames[date.getDay()] ?? 'monday';
+}
+
+function toApiSchedules(medication: Medication): ApiSaveMedicationRequest['schedules'] {
+  const times = getMedicationTimes(medication);
+  const isWeekly = medication.recurrence === 'every-7-days' || medication.recurrence === 'every-14-days';
+  const daysOfWeek = isWeekly ? getWeekdayName(medication.startDate) : undefined;
+  const repeatType = isWeekly ? 'weekly' : 'daily';
+  return times.map((time) => ({
+    repeatType,
+    reminderTime: formatReminderTime(time),
+    daysOfWeek,
+  }));
+}
+
+function toApiSaveMedicationRequest(medication: Medication): ApiSaveMedicationRequest {
+  return {
+    name: medication.name.trim(),
+    dosage: medication.dosage.trim(),
+    usageType: medication.form,
+    isBeforeMeal: false,
+    startDate: medication.startDate,
+    endDate: null,
+    schedules: toApiSchedules(medication),
+  };
+}
+
+function fromApiMedication(item: ApiMedication): Medication {
+  const schedules = Array.isArray(item.schedules) ? item.schedules : [];
+  const times = schedules.map((schedule) => parseReminderTime(schedule.reminderTime));
+  const hasWeeklySchedule = schedules.some((schedule) => schedule.repeatType?.toLowerCase() === 'weekly');
+  const recurrence: MedicationRecurrence = hasWeeklySchedule ? 'every-7-days' : 'daily';
+  const frequencyLabel = hasWeeklySchedule ? 'Every 7 Days' : 'Every 1 Day';
+  const form = item.usageType?.trim() ? item.usageType.trim() : 'Capsule';
+
+  return normalizeMedication({
+    id: item.id,
+    name: item.name,
+    form,
+    iconEmoji: iconForForm(form),
+    dosage: item.dosage,
+    frequencyLabel,
+    recurrence,
+    note: '',
+    startDate: item.startDate,
+    time: times[0] ?? '09:00',
+    times,
+    active: item.isActive,
+  });
+}
+
 export async function hydrateMedicationStore(): Promise<void> {
   if (state.isHydrated) {
     return;
   }
+
+  let localEvents: DoseEvent[] = [];
 
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
 
     if (raw) {
       const parsed = JSON.parse(raw) as {
-        medications?: Medication[];
         events?: Array<Omit<DoseEvent, 'scheduledTime'> & Partial<Pick<DoseEvent, 'scheduledTime'>>>;
       };
-      state = {
-        medications:
-          parsed.medications && parsed.medications.length > 0
-            ? parsed.medications.map((item) => normalizeMedication(item))
-            : defaultMedications.map((item) => normalizeMedication(item)),
-        events:
-          parsed.events?.map((item) => ({
-            medicationId: item.medicationId,
-            dateKey: item.dateKey,
-            scheduledTime: typeof item.scheduledTime === 'string' ? normalizeTime(item.scheduledTime) : '',
-            status: item.status,
-          })) ?? [],
-        isHydrated: true,
-      };
-      emit();
-      return;
+      localEvents =
+        parsed.events?.map((item) => ({
+          medicationId: item.medicationId,
+          dateKey: item.dateKey,
+          scheduledTime: typeof item.scheduledTime === 'string' ? normalizeTime(item.scheduledTime) : '',
+          status: item.status,
+        })) ?? [];
     }
   } catch {
-    // Fallback to in-memory defaults when persisted payload is unavailable/corrupt.
+    // Keep empty local cache when persisted payload is unavailable/corrupt.
+  }
+
+  try {
+    const remote = await apiRequestJson<ApiMedication[]>('/api/medications', {
+      correlationPrefix: 'medication-list',
+    });
+    const remoteMedications = remote.map(fromApiMedication);
+    state = {
+      medications: remoteMedications,
+      events: localEvents,
+      isHydrated: true,
+    };
+    emit();
+    await persist();
+    return;
+  } catch {
+    // Keep medication list empty when API is unreachable to avoid local seed/fallback usage.
   }
 
   state = {
-    ...state,
+    medications: [],
+    events: localEvents,
     isHydrated: true,
   };
   emit();
@@ -245,11 +317,10 @@ export async function addMedication(payload: {
   times?: string[];
   active?: boolean;
 }): Promise<void> {
-  const id = `med-${Date.now()}`;
   const today = toDateKey(new Date());
   const normalizedTimes = (payload.times && payload.times.length > 0 ? payload.times : [payload.time ?? '09:00']).map((item) => normalizeTime(item));
-  const medication: Medication = {
-    id,
+  const medicationDraft: Medication = {
+    id: 'draft-id',
     name: payload.name.trim(),
     form: payload.form,
     iconEmoji: payload.iconEmoji || iconForForm(payload.form),
@@ -262,6 +333,12 @@ export async function addMedication(payload: {
     times: normalizedTimes,
     active: payload.active ?? true,
   };
+  const created = await apiRequestJson<ApiMedication>('/api/medications', {
+    method: 'POST',
+    body: toApiSaveMedicationRequest(medicationDraft),
+    correlationPrefix: 'medication-create',
+  });
+  const medication = fromApiMedication(created);
 
   state = {
     ...state,
@@ -279,28 +356,53 @@ export async function updateMedication(
   medicationId: string,
   patch: Partial<Pick<Medication, 'name' | 'form' | 'iconEmoji' | 'dosage' | 'frequencyLabel' | 'note' | 'startDate' | 'time' | 'times' | 'active'>>,
 ): Promise<void> {
+  const current = state.medications.find((item) => item.id === medicationId);
+  if (!current) {
+    return;
+  }
+
+  const next = normalizeMedication({
+    ...current,
+    ...patch,
+  });
+  const nextWithRecurrence: Medication = {
+    ...next,
+    recurrence: patch.frequencyLabel ? recurrenceFromLabel(patch.frequencyLabel) : next.recurrence,
+  };
+  const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
+    method: 'PUT',
+    body: toApiSaveMedicationRequest(nextWithRecurrence),
+    correlationPrefix: 'medication-update',
+  });
+  const updatedMedication = fromApiMedication(updated);
+
   state = {
     ...state,
-    medications: state.medications.map((item) =>
-      item.id === medicationId
-        ? {
-            ...normalizeMedication({
-              ...item,
-              ...patch,
-            }),
-            recurrence: patch.frequencyLabel ? recurrenceFromLabel(patch.frequencyLabel) : item.recurrence,
-          }
-        : item,
-    ),
+    medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
   };
   emit();
   await persist();
 }
 
 export async function setMedicationActive(medicationId: string, active: boolean): Promise<void> {
+  const current = state.medications.find((item) => item.id === medicationId);
+  if (!current) {
+    return;
+  }
+
+  const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
+    method: 'PUT',
+    body: toApiSaveMedicationRequest({
+      ...current,
+      active,
+    }),
+    correlationPrefix: 'medication-update-active',
+  });
+  const updatedMedication = fromApiMedication(updated);
+
   state = {
     ...state,
-    medications: state.medications.map((item) => (item.id === medicationId ? { ...item, active } : item)),
+    medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
   };
   emit();
   await persist();

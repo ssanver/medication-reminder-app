@@ -43,7 +43,6 @@ builder.Services.AddScoped<INotificationDeliveryRepository, EfNotificationDelive
 builder.Services.AddScoped<INotificationActionRepository, EfNotificationActionRepository>();
 builder.Services.AddScoped<NotificationDeliveryApplicationService>();
 builder.Services.AddScoped<NotificationActionApplicationService>();
-builder.Services.AddHostedService<MedicineCatalogSeeder>();
 builder.Logging.AddJsonConsole();
 
 var app = builder.Build();
