@@ -20,7 +20,8 @@ export class ApiRequestError extends Error {
 }
 
 export function getApiBaseUrl(): string {
-  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:5047';
+  const raw = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://suleymansanver-001-site1.stempurl.com/pillreminder';
+  return raw.replace(/\/+$/, '');
 }
 
 export async function apiRequestJson<TResponse>(path: string, options: ApiRequestOptions = {}): Promise<TResponse> {

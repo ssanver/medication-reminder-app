@@ -73,7 +73,7 @@ describe('loginWithSocial', () => {
 
     expect(result.provider).toBe('Google');
     expect(fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:5047/api/auth/social-login',
+      'http://suleymansanver-001-site1.stempurl.com/pillreminder/api/auth/social-login',
       expect.objectContaining({
         method: 'POST',
       }),
