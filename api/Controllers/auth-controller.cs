@@ -3,6 +3,7 @@ using System.Text;
 using api.contracts;
 using api.data;
 using api.models;
+using api.services.auth;
 using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,12 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment hostEnvironment, IConfiguration configuration) : ControllerBase
+public sealed class AuthController(
+    AppDbContext dbContext,
+    IWebHostEnvironment hostEnvironment,
+    IConfiguration configuration,
+    IEmailDispatchService emailDispatchService,
+    ILogger<AuthController> logger) : ControllerBase
 {
     private const int ResendCooldownSeconds = 60;
     private const int MinPasswordLength = 6;
@@ -144,6 +150,52 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
         return NoContent();
     }
 
+    [HttpPost("email/cancel-account")]
+    public async Task<ActionResult> CancelAccount([FromBody] CancelAccountRequest request)
+    {
+        var normalizedEmail = NormalizeEmail(request.Email);
+        if (normalizedEmail is null || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest("Email and password are required.");
+        }
+
+        var user = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+        if (user is null || !VerifyPassword(request.Password, user.PasswordHash))
+        {
+            return Unauthorized("Email or password is invalid.");
+        }
+
+        dbContext.UserAccounts.Remove(user);
+        var verificationTokens = dbContext.EmailVerificationTokens.Where(x => x.Email == normalizedEmail);
+        dbContext.EmailVerificationTokens.RemoveRange(verificationTokens);
+
+        var deliveries = await dbContext.NotificationDeliveries.Where(x => x.UserReference == normalizedEmail).ToListAsync();
+        if (deliveries.Count > 0)
+        {
+            var deliveryIds = deliveries.Select(x => x.Id).ToArray();
+            var actions = dbContext.NotificationActions.Where(x => deliveryIds.Contains(x.DeliveryId));
+            dbContext.NotificationActions.RemoveRange(actions);
+            dbContext.NotificationDeliveries.RemoveRange(deliveries);
+        }
+
+        var standaloneActions = dbContext.NotificationActions.Where(x => x.UserReference == normalizedEmail);
+        dbContext.NotificationActions.RemoveRange(standaloneActions);
+
+        dbContext.Medications.RemoveRange(dbContext.Medications);
+        dbContext.SyncEvents.RemoveRange(dbContext.SyncEvents);
+        dbContext.HealthEvents.RemoveRange(dbContext.HealthEvents);
+        dbContext.SystemErrorReports.RemoveRange(dbContext.SystemErrorReports);
+        dbContext.FeedbackRecords.RemoveRange(dbContext.FeedbackRecords);
+        dbContext.ConsentRecords.RemoveRange(dbContext.ConsentRecords);
+        dbContext.AuditLogs.RemoveRange(dbContext.AuditLogs);
+        dbContext.CaregiverPermissions.RemoveRange(dbContext.CaregiverPermissions);
+        dbContext.CaregiverInvites.RemoveRange(dbContext.CaregiverInvites);
+        dbContext.EmergencyShareTokens.RemoveRange(dbContext.EmergencyShareTokens);
+
+        await dbContext.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("email/request-verification")]
     public async Task<ActionResult<EmailVerificationRequestResponse>> RequestVerificationCode([FromBody] EmailVerificationRequest request)
     {
@@ -181,6 +233,21 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
         }
 
         var code = GenerateCode();
+        try
+        {
+            await emailDispatchService.SendVerificationCodeAsync(normalizedEmail, code);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "email-verification-dispatch-failed email={Email}", normalizedEmail);
+            return StatusCode(StatusCodes.Status502BadGateway, new EmailVerificationRequestResponse
+            {
+                Email = normalizedEmail,
+                Sent = false,
+                ExpiresAt = now.Add(VerificationValidity),
+            });
+        }
+
         var token = new EmailVerificationToken
         {
             Id = Guid.NewGuid(),

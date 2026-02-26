@@ -1,11 +1,14 @@
 using api.Controllers;
 using api.contracts;
 using api.data;
+using api.services.auth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace api.tests;
 
@@ -83,6 +86,24 @@ public sealed class AuthControllerTests
         Assert.True(payload.Sent);
         Assert.NotNull(payload.DebugCode);
         Assert.Equal(1, await dbContext.EmailVerificationTokens.CountAsync());
+    }
+
+    [Fact]
+    public async Task RequestVerificationCode_ShouldReturnBadGateway_WhenEmailDispatchFails()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext, new FakeEmailDispatchService(shouldThrow: true));
+
+        var result = await controller.RequestVerificationCode(new EmailVerificationRequest
+        {
+            Email = "test@example.com",
+        });
+
+        var badGateway = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status502BadGateway, badGateway.StatusCode);
+        var payload = Assert.IsType<EmailVerificationRequestResponse>(badGateway.Value);
+        Assert.False(payload.Sent);
+        Assert.Equal(0, await dbContext.EmailVerificationTokens.CountAsync());
     }
 
     [Fact]
@@ -209,6 +230,30 @@ public sealed class AuthControllerTests
         Assert.IsType<OkObjectResult>(signInResult.Result);
     }
 
+    [Fact]
+    public async Task CancelAccount_ShouldRemoveUser_WhenCredentialsAreValid()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext);
+
+        _ = await controller.SignUpWithEmail(new EmailSignUpRequest
+        {
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            Password = "strong-pass-123",
+        });
+
+        var cancelResult = await controller.CancelAccount(new CancelAccountRequest
+        {
+            Email = "suleyman@example.com",
+            Password = "strong-pass-123",
+        });
+
+        Assert.IsType<NoContentResult>(cancelResult);
+        Assert.Equal(0, await dbContext.UserAccounts.CountAsync());
+    }
+
     private static AppDbContext CreateInMemoryContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -218,9 +263,14 @@ public sealed class AuthControllerTests
         return new AppDbContext(options);
     }
 
-    private static AuthController CreateController(AppDbContext dbContext)
+    private static AuthController CreateController(AppDbContext dbContext, IEmailDispatchService? dispatchService = null)
     {
-        return new AuthController(dbContext, new FakeHostEnvironment(), CreateConfiguration());
+        return new AuthController(
+            dbContext,
+            new FakeHostEnvironment(),
+            CreateConfiguration(),
+            dispatchService ?? new FakeEmailDispatchService(),
+            NullLogger<AuthController>.Instance);
     }
 
     private static IConfiguration CreateConfiguration()
@@ -241,5 +291,18 @@ public sealed class AuthControllerTests
         public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
         public string ContentRootPath { get; set; } = string.Empty;
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+    private sealed class FakeEmailDispatchService(bool shouldThrow = false) : IEmailDispatchService
+    {
+        public Task SendVerificationCodeAsync(string recipientEmail, string verificationCode, CancellationToken cancellationToken = default)
+        {
+            if (shouldThrow)
+            {
+                throw new InvalidOperationException("SMTP unavailable.");
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

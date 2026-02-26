@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
+import { SponsoredBanner } from '../components/ui/sponsored-banner';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getDateTitle, getWeekStrip } from '../features/date/week-strip';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
+import { getSponsoredAd } from '../features/monetization/monetization-service';
 import { clearDoseStatus, getScheduledDosesForDate, setDoseStatus } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { scheduleSnoozeReminder } from '../features/notifications/local-notifications';
@@ -102,6 +104,7 @@ export function TodayScreen({
 
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
+  const sponsoredAd = useMemo(() => getSponsoredAd(locale === 'tr' ? 'tr' : 'en'), [locale]);
   const sectionTitle = useMemo(() => {
     const localeTag = getLocaleTag(locale);
     const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
@@ -138,6 +141,25 @@ export function TodayScreen({
       </View>
 
       <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{dateTitle}</Text>
+      <SponsoredBanner
+        title={sponsoredAd.title}
+        body={sponsoredAd.body}
+        ctaLabel={sponsoredAd.ctaLabel}
+        onPress={() => {
+          // Non-blocking ad action. Failures must not block the user flow.
+          void (async () => {
+            try {
+              const supported = await Linking.canOpenURL(sponsoredAd.ctaUrl);
+              if (!supported) {
+                return;
+              }
+              await Linking.openURL(sponsoredAd.ctaUrl);
+            } catch {
+              // Swallow ad CTA failures.
+            }
+          })();
+        }}
+      />
       <View style={styles.calendarStrip}>
         <Pressable onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 7))}>
           <Text style={styles.arrow}>{'<'}</Text>

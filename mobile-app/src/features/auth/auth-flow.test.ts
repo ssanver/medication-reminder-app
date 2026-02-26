@@ -7,6 +7,7 @@ describe('resolveInitialPhase', () => {
       isLoggedIn: true,
       hasCompletedOnboarding: false,
       hasSeenPermissionScreen: false,
+      hasSeenSplashOnce: true,
       email: 'test@example.com',
       emailVerified: true,
     });
@@ -19,6 +20,7 @@ describe('resolveInitialPhase', () => {
       isLoggedIn: false,
       hasCompletedOnboarding: true,
       hasSeenPermissionScreen: true,
+      hasSeenSplashOnce: true,
       email: '',
       emailVerified: false,
     });
@@ -31,6 +33,7 @@ describe('resolveInitialPhase', () => {
       isLoggedIn: false,
       hasCompletedOnboarding: false,
       hasSeenPermissionScreen: false,
+      hasSeenSplashOnce: false,
       email: '',
       emailVerified: false,
     });

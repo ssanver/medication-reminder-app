@@ -72,6 +72,12 @@ public sealed class ChangePasswordRequest
     public required string NewPassword { get; set; }
 }
 
+public sealed class CancelAccountRequest
+{
+    public required string Email { get; set; }
+    public required string Password { get; set; }
+}
+
 public sealed class EmailAuthResponse
 {
     public required Guid UserId { get; set; }

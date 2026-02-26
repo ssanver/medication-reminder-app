@@ -4,6 +4,7 @@ using api.middleware;
 using api.services.notification_persistence;
 using api.services.medicine_catalog_persistence;
 using api.services.security;
+using api.services.auth;
 using api_application.medication_application;
 using api_application.medicine_catalog_application;
 using api_application.notification_application;
@@ -36,6 +37,7 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+builder.Services.AddScoped<IEmailDispatchService, SmtpEmailDispatchService>();
 builder.Services.AddHostedService<MedicineCatalogSeeder>();
 builder.Services.AddScoped<IMedicationRepository, EfMedicationRepository>();
 builder.Services.AddScoped<MedicationApplicationService>();

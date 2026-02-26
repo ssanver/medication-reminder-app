@@ -5,7 +5,15 @@ import type { AppIconName } from '../components/ui/app-icon';
 import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
 import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibility/accessibility-settings';
 import { resolveInitialPhase } from '../features/auth/auth-flow';
-import { clearSessionForLogout, loadAuthSession, markAuthenticated, setEmailVerified, setOnboardingCompleted } from '../features/auth/auth-session-store';
+import {
+  clearSessionForLogout,
+  loadAuthSession,
+  markAuthenticated,
+  setEmailVerified,
+  setOnboardingCompleted,
+  setSplashSeen,
+} from '../features/auth/auth-session-store';
+import { cancelAccount } from '../features/auth/email-auth-service';
 import {
   getEmailVerificationStatus,
   requestEmailVerification,
@@ -14,6 +22,8 @@ import {
 } from '../features/auth/email-verification-service';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { openDonationPage } from '../features/monetization/monetization-service';
+import { clearMedicationStore } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { handleReminderSkip, handleReminderSnooze, handleReminderTakeNow } from '../features/notifications/notification-center-service';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
@@ -25,6 +35,7 @@ import {
   syncMedicationReminderNotifications,
 } from '../features/notifications/local-notifications';
 import { loadAppPreferences, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
+import { clearProfile } from '../features/profile/profile-store';
 import { shareApplication } from '../features/share/app-share';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { OnboardingScreen } from '../screens/auth/onboarding-screen';
@@ -91,9 +102,11 @@ export function AppNavigator() {
       return;
     }
 
-    const timer = setTimeout(() => {
-      void (async () => {
-        const session = await loadAuthSession();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    void (async () => {
+      const session = await loadAuthSession();
+      timer = setTimeout(() => {
+        void (async () => {
         setAccountEmail(session.email);
         setEmailVerifiedState(session.emailVerified || session.email.length === 0);
         if (session.email) {
@@ -108,11 +121,17 @@ export function AppNavigator() {
             // Keep local session fallback when API is not reachable.
           }
         }
+        await setSplashSeen(true);
         setPhase(resolveInitialPhase(session));
-      })();
-    }, 1600);
+        })();
+      }, session.hasSeenSplashOnce ? 500 : 1600);
+    })();
 
-    return () => clearTimeout(timer);
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [phase]);
 
   useEffect(() => {
@@ -530,6 +549,34 @@ export function AppNavigator() {
           () => {
             void shareApplication();
           },
+          () => {
+            void openDonationPage();
+          },
+          async (password) => {
+            try {
+              await cancelAccount({
+                email: accountEmail,
+                password,
+              });
+              await clearMedicationStore();
+              await clearProfile();
+              await clearSessionForLogout();
+              setAccountEmail('');
+              setEmailVerifiedState(true);
+              setOverlayScreen('none');
+              setActiveTab('today');
+              setPhase('signin');
+              return {
+                ok: true,
+                message: locale === 'tr' ? 'Hesap silindi.' : 'Account deleted.',
+              };
+            } catch (error) {
+              return {
+                ok: false,
+                message: error instanceof Error ? error.message : locale === 'tr' ? 'Hesap silme başarısız.' : 'Account cancellation failed.',
+              };
+            }
+          },
           () => setOverlayScreen('email-verification'),
           Boolean(accountEmail) && !emailVerified,
         )}
@@ -595,6 +642,8 @@ function renderTab(
   onOpenFeedback: () => void,
   onLogout: () => void,
   onShareApp: () => void,
+  onOpenDonate: () => void,
+  onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>,
   onOpenEmailVerification: () => void,
   showEmailVerificationAlert: boolean,
 ) {
@@ -641,6 +690,8 @@ function renderTab(
           onOpenFeedback={onOpenFeedback}
           onLogout={onLogout}
           onShareApp={onShareApp}
+          onOpenDonate={onOpenDonate}
+          onCancelAccount={onCancelAccount}
           notificationsEnabled={notificationsEnabled}
           medicationRemindersEnabled={medicationRemindersEnabled}
           snoozeMinutes={snoozeMinutes}

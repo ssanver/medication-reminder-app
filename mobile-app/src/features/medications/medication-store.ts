@@ -141,6 +141,16 @@ async function persist() {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toPersistableState()));
 }
 
+export async function clearMedicationStore(): Promise<void> {
+  state = {
+    medications: [],
+    events: [],
+    isHydrated: true,
+  };
+  await AsyncStorage.removeItem(STORAGE_KEY);
+  emit();
+}
+
 type ApiMedicationSchedule = {
   repeatType: string;
   reminderTime: string;

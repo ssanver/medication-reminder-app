@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 're
 import Constants from 'expo-constants';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
+import { TextField } from '../components/ui/text-field';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
 import { resolveProfileAvatarEmoji } from '../features/profile/profile-avatar';
@@ -21,6 +22,8 @@ type SettingsScreenProps = {
   onOpenFeedback: () => void;
   onLogout: () => void;
   onShareApp: () => void;
+  onOpenDonate: () => void;
+  onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>;
   notificationsEnabled: boolean;
   medicationRemindersEnabled: boolean;
   snoozeMinutes: number;
@@ -40,6 +43,8 @@ export function SettingsScreen({
   onOpenFeedback,
   onLogout,
   onShareApp,
+  onOpenDonate,
+  onCancelAccount,
   notificationsEnabled,
   medicationRemindersEnabled,
   snoozeMinutes,
@@ -52,6 +57,10 @@ export function SettingsScreen({
   const localeOptions = getLocaleOptions(locale);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
+  const [cancelAccountVisible, setCancelAccountVisible] = useState(false);
+  const [cancelPassword, setCancelPassword] = useState('');
+  const [cancelErrorText, setCancelErrorText] = useState('');
+  const [isCancelLoading, setIsCancelLoading] = useState(false);
   const [profileGender, setProfileGender] = useState('');
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
@@ -177,11 +186,18 @@ export function SettingsScreen({
         </Section>
 
         <Section title={t.aboutUs}>
+          <MenuRow label={locale === 'tr' ? 'Bağış Yap' : 'Donate'} onPress={onOpenDonate} />
           <MenuRow label={locale === 'tr' ? 'Uygulamayı Paylaş' : 'Share App'} onPress={onShareApp} />
           <View style={styles.versionRow}>
             <Text style={styles.rowTitle}>{locale === 'tr' ? 'Sürüm' : 'Version'}</Text>
             <Text style={styles.rowSubtitle}>{version}</Text>
           </View>
+        </Section>
+
+        <Section title={locale === 'tr' ? 'Hesap' : 'Account'}>
+          <Pressable style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
+            <Text style={styles.dangerText}>{locale === 'tr' ? 'Kaydı İptal Et' : 'Cancel Account'}</Text>
+          </Pressable>
         </Section>
 
         <View style={styles.bottomSpacer} />
@@ -222,6 +238,62 @@ export function SettingsScreen({
                 onPress={() => {
                   setLogoutConfirmVisible(false);
                   onLogout();
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent visible={cancelAccountVisible} animationType="fade" onRequestClose={() => setCancelAccountVisible(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>
+              {locale === 'tr' ? 'Bilgileriniz silinecektir, geri dönüşü yoktur.' : 'Your data will be permanently deleted and cannot be recovered.'}
+            </Text>
+            <TextField
+              label={locale === 'tr' ? 'Şifre' : 'Password'}
+              value={cancelPassword}
+              secureTextEntry
+              onChangeText={(value) => {
+                setCancelPassword(value);
+                setCancelErrorText('');
+              }}
+            />
+            {cancelErrorText ? <Text style={styles.cancelErrorText}>{cancelErrorText}</Text> : null}
+            <View style={styles.confirmActions}>
+              <Button
+                label={locale === 'tr' ? 'Vazgeç' : 'Cancel'}
+                variant="outlined"
+                onPress={() => {
+                  setCancelAccountVisible(false);
+                  setCancelPassword('');
+                  setCancelErrorText('');
+                }}
+              />
+              <Button
+                label={locale === 'tr' ? 'Onayla' : 'Confirm'}
+                variant="danger"
+                disabled={isCancelLoading}
+                onPress={() => {
+                  void (async () => {
+                    if (cancelPassword.trim().length < 6) {
+                      setCancelErrorText(locale === 'tr' ? 'Şifre zorunludur.' : 'Password is required.');
+                      return;
+                    }
+
+                    setIsCancelLoading(true);
+                    const result = await onCancelAccount(cancelPassword);
+                    setIsCancelLoading(false);
+                    if (!result.ok) {
+                      setCancelErrorText(result.message);
+                      return;
+                    }
+
+                    setCancelAccountVisible(false);
+                    setCancelPassword('');
+                    setCancelErrorText('');
+                  })();
                 }}
               />
             </View>
@@ -335,6 +407,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[16],
     justifyContent: 'center',
   },
+  dangerRow: {
+    minHeight: 52,
+    paddingHorizontal: theme.spacing[16],
+    justifyContent: 'center',
+  },
+  dangerText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.error[500],
+    fontWeight: '700',
+  },
   switchRow: {
     minHeight: 52,
     paddingHorizontal: theme.spacing[16],
@@ -404,6 +486,10 @@ const styles = StyleSheet.create({
   },
   confirmActions: {
     gap: theme.spacing[8],
+  },
+  cancelErrorText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.error[500],
   },
   rowTitle: {
     ...theme.typography.bodyScale.xmMedium,

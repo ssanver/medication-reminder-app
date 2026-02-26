@@ -8,11 +8,13 @@ const KEY_REFRESH_TOKEN = 'auth:refreshToken';
 const KEY_CACHED_USER = 'auth:cachedUser';
 const KEY_EMAIL = 'auth:email';
 const KEY_EMAIL_VERIFIED = 'auth:emailVerified';
+const KEY_HAS_SEEN_SPLASH_ONCE = 'auth:hasSeenSplashOnce';
 
 export type AuthSession = {
   isLoggedIn: boolean;
   hasCompletedOnboarding: boolean;
   hasSeenPermissionScreen: boolean;
+  hasSeenSplashOnce: boolean;
   email: string;
   emailVerified: boolean;
 };
@@ -22,10 +24,11 @@ function parseFlag(value: string | null): boolean {
 }
 
 export async function loadAuthSession(): Promise<AuthSession> {
-  const [isLoggedInRaw, hasCompletedOnboardingRaw, hasSeenPermissionScreenRaw, emailRaw, emailVerifiedRaw] = await Promise.all([
+  const [isLoggedInRaw, hasCompletedOnboardingRaw, hasSeenPermissionScreenRaw, hasSeenSplashOnceRaw, emailRaw, emailVerifiedRaw] = await Promise.all([
     AsyncStorage.getItem(KEY_IS_LOGGED_IN),
     AsyncStorage.getItem(KEY_HAS_COMPLETED_ONBOARDING),
     AsyncStorage.getItem(KEY_HAS_SEEN_PERMISSION_SCREEN),
+    AsyncStorage.getItem(KEY_HAS_SEEN_SPLASH_ONCE),
     AsyncStorage.getItem(KEY_EMAIL),
     AsyncStorage.getItem(KEY_EMAIL_VERIFIED),
   ]);
@@ -34,6 +37,7 @@ export async function loadAuthSession(): Promise<AuthSession> {
     isLoggedIn: parseFlag(isLoggedInRaw),
     hasCompletedOnboarding: parseFlag(hasCompletedOnboardingRaw),
     hasSeenPermissionScreen: parseFlag(hasSeenPermissionScreenRaw),
+    hasSeenSplashOnce: parseFlag(hasSeenSplashOnceRaw),
     email: emailRaw ?? '',
     emailVerified: parseFlag(emailVerifiedRaw),
   };
@@ -84,6 +88,10 @@ export async function markAuthenticated(payload: {
 
 export async function setEmailVerified(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_EMAIL_VERIFIED, value ? 'true' : 'false');
+}
+
+export async function setSplashSeen(value: boolean): Promise<void> {
+  await AsyncStorage.setItem(KEY_HAS_SEEN_SPLASH_ONCE, value ? 'true' : 'false');
 }
 
 export async function clearSessionForLogout(): Promise<void> {

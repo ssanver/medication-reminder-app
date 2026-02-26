@@ -43,3 +43,11 @@ export async function changePassword(payload: {
     body: payload,
   });
 }
+
+export async function cancelAccount(payload: { email: string; password: string }): Promise<void> {
+  await apiRequestVoid('/api/auth/email/cancel-account', {
+    method: 'POST',
+    correlationPrefix: 'email-cancel-account',
+    body: payload,
+  });
+}

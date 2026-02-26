@@ -41,3 +41,7 @@ export async function loadProfile(): Promise<ProfileState> {
 export async function saveProfile(nextProfile: ProfileState): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
 }
+
+export async function clearProfile(): Promise<void> {
+  await AsyncStorage.removeItem(STORAGE_KEY);
+}
