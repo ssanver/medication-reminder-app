@@ -9,16 +9,21 @@ namespace api.Controllers;
 [Route("api/notification-actions")]
 public sealed class NotificationActionsController(
     NotificationActionApplicationService applicationService,
-    ILogger<NotificationActionsController> logger) : ControllerBase
+    ILogger<NotificationActionsController> logger,
+    IConfiguration configuration) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<NotificationActionResponse>> Create([FromBody] CreateNotificationActionRequest request)
     {
+        var userReference = string.IsNullOrWhiteSpace(request.UserReference)
+            ? DefaultUserReference.Resolve(configuration)
+            : request.UserReference.Trim();
+
         try
         {
             var created = await applicationService.CreateAsync(new CreateNotificationActionCommand(
                 request.DeliveryId,
-                request.UserReference,
+                userReference,
                 request.ActionType,
                 request.ActionAt,
                 request.ClientPlatform,

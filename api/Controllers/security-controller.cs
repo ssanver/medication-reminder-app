@@ -9,25 +9,29 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/security")]
-public sealed class SecurityController(AppDbContext dbContext, IAuditLogger auditLogger) : ControllerBase
+public sealed class SecurityController(AppDbContext dbContext, IAuditLogger auditLogger, IConfiguration configuration) : ControllerBase
 {
     [HttpPost("consent")]
     public async Task<ActionResult<ConsentResponse>> SaveConsent([FromBody] SaveConsentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.UserReference) || string.IsNullOrWhiteSpace(request.PrivacyVersion))
+        if (string.IsNullOrWhiteSpace(request.PrivacyVersion))
         {
-            return BadRequest("UserReference and PrivacyVersion are required.");
+            return BadRequest("PrivacyVersion is required.");
         }
 
+        var userReference = string.IsNullOrWhiteSpace(request.UserReference)
+            ? DefaultUserReference.Resolve(configuration)
+            : request.UserReference.Trim();
+
         var consent = await dbContext.ConsentRecords.FirstOrDefaultAsync(
-            x => x.UserReference == request.UserReference && x.PrivacyVersion == request.PrivacyVersion);
+            x => x.UserReference == userReference && x.PrivacyVersion == request.PrivacyVersion);
 
         if (consent is null)
         {
             consent = new ConsentRecord
             {
                 Id = Guid.NewGuid(),
-                UserReference = request.UserReference.Trim(),
+                UserReference = userReference,
                 PrivacyVersion = request.PrivacyVersion.Trim(),
                 AcceptedAt = DateTimeOffset.UtcNow,
             };
@@ -35,7 +39,7 @@ public sealed class SecurityController(AppDbContext dbContext, IAuditLogger audi
             await dbContext.SaveChangesAsync();
         }
 
-        await auditLogger.LogAsync("consent-accepted", $"user={request.UserReference},version={request.PrivacyVersion}");
+        await auditLogger.LogAsync("consent-accepted", $"user={userReference},version={request.PrivacyVersion}");
 
         return Ok(new ConsentResponse
         {

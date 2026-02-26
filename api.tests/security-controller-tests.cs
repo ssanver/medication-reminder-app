@@ -4,6 +4,7 @@ using api.data;
 using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace api.tests;
 
@@ -13,7 +14,7 @@ public sealed class SecurityControllerTests
     public async Task SaveConsent_ShouldPersistConsentAndAuditLog()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new SecurityController(dbContext, new AuditLogger(dbContext));
+        var controller = new SecurityController(dbContext, new AuditLogger(dbContext), CreateConfiguration());
 
         var result = await controller.SaveConsent(new SaveConsentRequest
         {
@@ -46,5 +47,15 @@ public sealed class SecurityControllerTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    private static IConfiguration CreateConfiguration()
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Defaults:UserReference"] = "suleymansanver@gmail.com",
+            })
+            .Build();
     }
 }

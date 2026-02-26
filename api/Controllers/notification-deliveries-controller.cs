@@ -9,15 +9,20 @@ namespace api.Controllers;
 [Route("api/notification-deliveries")]
 public sealed class NotificationDeliveriesController(
     NotificationDeliveryApplicationService applicationService,
-    ILogger<NotificationDeliveriesController> logger) : ControllerBase
+    ILogger<NotificationDeliveriesController> logger,
+    IConfiguration configuration) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<NotificationDeliveryResponse>> Create([FromBody] CreateNotificationDeliveryRequest request)
     {
+        var userReference = string.IsNullOrWhiteSpace(request.UserReference)
+            ? DefaultUserReference.Resolve(configuration)
+            : request.UserReference.Trim();
+
         try
         {
             var created = await applicationService.CreateAsync(new CreateNotificationDeliveryCommand(
-                request.UserReference,
+                userReference,
                 request.MedicationId,
                 request.ScheduledAt,
                 request.SentAt,

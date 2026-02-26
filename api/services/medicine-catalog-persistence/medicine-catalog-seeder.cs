@@ -17,11 +17,7 @@ public sealed class MedicineCatalogSeeder(
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         try
         {
-            var exists = await dbContext.MedicineCatalogItems.AnyAsync(cancellationToken);
-            if (exists)
-            {
-                return;
-            }
+            _ = await dbContext.MedicineCatalogItems.CountAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -81,12 +77,63 @@ public sealed class MedicineCatalogSeeder(
             return;
         }
 
-        dbContext.MedicineCatalogItems.AddRange(records);
+        var sourceMap = records
+            .GroupBy(BuildKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+        var existing = await dbContext.MedicineCatalogItems.ToListAsync(cancellationToken);
+        var existingMap = existing
+            .GroupBy(BuildKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+        var deleted = 0;
+        var updated = 0;
+        var inserted = 0;
+
+        foreach (var item in existing)
+        {
+            var key = BuildKey(item);
+            if (!sourceMap.ContainsKey(key))
+            {
+                dbContext.MedicineCatalogItems.Remove(item);
+                deleted += 1;
+                continue;
+            }
+
+            var source = sourceMap[key];
+            item.MedicineName = source.MedicineName;
+            item.Barcode = source.Barcode;
+            item.Origin = source.Origin;
+            item.Unit = source.Unit;
+            item.PackingAmount = source.PackingAmount;
+            item.ActiveIngredient = source.ActiveIngredient;
+            item.TherapeuticClass = source.TherapeuticClass;
+            item.Manufacturer = source.Manufacturer;
+            item.SourcePage = source.SourcePage;
+            item.SourceUrl = source.SourceUrl;
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            updated += 1;
+        }
+
+        foreach (var entry in sourceMap)
+        {
+            if (existingMap.ContainsKey(entry.Key))
+            {
+                continue;
+            }
+
+            dbContext.MedicineCatalogItems.Add(entry.Value);
+            inserted += 1;
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "medicine-catalog-seeded count={Count} path={Path}",
-            records.Count,
+            "medicine-catalog-synced sourceCount={SourceCount} inserted={Inserted} updated={Updated} deleted={Deleted} path={Path}",
+            sourceMap.Count,
+            inserted,
+            updated,
+            deleted,
             csvPath);
     }
 
@@ -116,6 +163,16 @@ public sealed class MedicineCatalogSeeder(
     private static int? ParseNullableInt(string value)
     {
         return int.TryParse(value.Trim(), out var number) ? number : null;
+    }
+
+    private static string BuildKey(MedicineCatalogItem item)
+    {
+        return string.Join(
+            "|",
+            item.MedicineName.Trim().ToUpperInvariant(),
+            (item.Barcode ?? string.Empty).Trim().ToUpperInvariant(),
+            (item.SourcePage?.ToString() ?? string.Empty).Trim(),
+            (item.SourceUrl ?? string.Empty).Trim().ToUpperInvariant());
     }
 
     private static List<string> ParseCsvLine(string line)

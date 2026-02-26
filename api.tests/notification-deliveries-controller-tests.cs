@@ -6,6 +6,7 @@ using api.services.notification_persistence;
 using api_application.notification_application;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace api.tests;
@@ -18,7 +19,8 @@ public sealed class NotificationDeliveriesControllerTests
         await using var dbContext = CreateInMemoryContext();
         var controller = new NotificationDeliveriesController(
             new NotificationDeliveryApplicationService(new EfNotificationDeliveryRepository(dbContext)),
-            NullLogger<NotificationDeliveriesController>.Instance);
+            NullLogger<NotificationDeliveriesController>.Instance,
+            CreateConfiguration());
 
         var result = await controller.Create(new CreateNotificationDeliveryRequest
         {
@@ -43,7 +45,8 @@ public sealed class NotificationDeliveriesControllerTests
         await using var dbContext = CreateInMemoryContext();
         var controller = new NotificationDeliveriesController(
             new NotificationDeliveryApplicationService(new EfNotificationDeliveryRepository(dbContext)),
-            NullLogger<NotificationDeliveriesController>.Instance);
+            NullLogger<NotificationDeliveriesController>.Instance,
+            CreateConfiguration());
 
         var result = await controller.Create(new CreateNotificationDeliveryRequest
         {
@@ -82,7 +85,8 @@ public sealed class NotificationDeliveriesControllerTests
 
         var controller = new NotificationDeliveriesController(
             new NotificationDeliveryApplicationService(new EfNotificationDeliveryRepository(dbContext)),
-            NullLogger<NotificationDeliveriesController>.Instance);
+            NullLogger<NotificationDeliveriesController>.Instance,
+            CreateConfiguration());
         var result = await controller.List("u-1", null, 100);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -98,5 +102,15 @@ public sealed class NotificationDeliveriesControllerTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    private static IConfiguration CreateConfiguration()
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Defaults:UserReference"] = "suleymansanver@gmail.com",
+            })
+            .Build();
     }
 }

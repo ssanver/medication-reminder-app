@@ -3,6 +3,7 @@ using System.Text;
 using api.contracts;
 using api.data;
 using api.models;
+using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +11,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment hostEnvironment) : ControllerBase
+public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment hostEnvironment, IConfiguration configuration) : ControllerBase
 {
     private const int ResendCooldownSeconds = 60;
     private static readonly TimeSpan VerificationValidity = TimeSpan.FromDays(3);
@@ -34,6 +35,7 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
 
         var now = DateTimeOffset.UtcNow;
         var providerName = provider == "apple" ? "Apple" : "Google";
+        var defaultUserEmail = DefaultUserReference.Resolve(configuration);
 
         return Ok(new SocialLoginResponse
         {
@@ -42,7 +44,7 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
             RefreshToken = $"{provider}-rt-{Guid.NewGuid():N}",
             ExpiresAt = now.AddHours(1),
             DisplayName = providerName == "Apple" ? "Apple User" : "Google User",
-            Email = providerName == "Apple" ? "apple.user@pillmind.app" : "google.user@pillmind.app",
+            Email = defaultUserEmail,
         });
     }
 

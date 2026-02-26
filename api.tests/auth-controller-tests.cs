@@ -4,6 +4,7 @@ using api.data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 
 namespace api.tests;
@@ -143,7 +144,17 @@ public sealed class AuthControllerTests
 
     private static AuthController CreateController(AppDbContext dbContext)
     {
-        return new AuthController(dbContext, new FakeHostEnvironment());
+        return new AuthController(dbContext, new FakeHostEnvironment(), CreateConfiguration());
+    }
+
+    private static IConfiguration CreateConfiguration()
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Defaults:UserReference"] = "suleymansanver@gmail.com",
+            })
+            .Build();
     }
 
     private sealed class FakeHostEnvironment : IWebHostEnvironment

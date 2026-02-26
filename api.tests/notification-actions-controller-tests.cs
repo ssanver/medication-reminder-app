@@ -6,6 +6,7 @@ using api.services.notification_persistence;
 using api_application.notification_application;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace api.tests;
@@ -21,7 +22,8 @@ public sealed class NotificationActionsControllerTests
             new NotificationActionApplicationService(
                 new EfNotificationActionRepository(dbContext),
                 new EfNotificationDeliveryRepository(dbContext)),
-            NullLogger<NotificationActionsController>.Instance);
+            NullLogger<NotificationActionsController>.Instance,
+            CreateConfiguration());
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {
@@ -48,7 +50,8 @@ public sealed class NotificationActionsControllerTests
             new NotificationActionApplicationService(
                 new EfNotificationActionRepository(dbContext),
                 new EfNotificationDeliveryRepository(dbContext)),
-            NullLogger<NotificationActionsController>.Instance);
+            NullLogger<NotificationActionsController>.Instance,
+            CreateConfiguration());
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {
@@ -72,7 +75,8 @@ public sealed class NotificationActionsControllerTests
             new NotificationActionApplicationService(
                 new EfNotificationActionRepository(dbContext),
                 new EfNotificationDeliveryRepository(dbContext)),
-            NullLogger<NotificationActionsController>.Instance);
+            NullLogger<NotificationActionsController>.Instance,
+            CreateConfiguration());
 
         var result = await controller.Create(new CreateNotificationActionRequest
         {
@@ -111,5 +115,15 @@ public sealed class NotificationActionsControllerTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    private static IConfiguration CreateConfiguration()
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Defaults:UserReference"] = "suleymansanver@gmail.com",
+            })
+            .Build();
     }
 }
