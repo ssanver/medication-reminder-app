@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
+import { resolveProfileAvatarEmoji } from '../features/profile/profile-avatar';
 import { toShortDisplayName } from '../features/profile/display-name';
 import { loadProfile } from '../features/profile/profile-store';
 import { theme } from '../theme';
@@ -13,13 +14,11 @@ type SettingsScreenProps = {
   locale: Locale;
   fontScale: number;
   onSaveAppearance: (locale: Locale, fontScale: number) => void;
-  onOpenReports: () => void;
   onOpenProfile: () => void;
   onOpenNotificationSettings: () => void;
   onOpenReminderPreferences: () => void;
   onOpenChangePassword: () => void;
   onOpenFeedback: () => void;
-  onOpenAboutUs: () => void;
   onLogout: () => void;
   onShareApp: () => void;
   notificationsEnabled: boolean;
@@ -34,13 +33,11 @@ export function SettingsScreen({
   locale,
   fontScale,
   onSaveAppearance,
-  onOpenReports,
   onOpenProfile,
   onOpenNotificationSettings,
   onOpenReminderPreferences,
   onOpenChangePassword,
   onOpenFeedback,
-  onOpenAboutUs,
   onLogout,
   onShareApp,
   notificationsEnabled,
@@ -55,7 +52,7 @@ export function SettingsScreen({
   const localeOptions = getLocaleOptions(locale);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
-  const [profilePhotoUri, setProfilePhotoUri] = useState('');
+  const [profileGender, setProfileGender] = useState('');
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
 
@@ -70,9 +67,11 @@ export function SettingsScreen({
   useEffect(() => {
     void (async () => {
       const profile = await loadProfile();
-      setProfilePhotoUri(profile.photoUri);
+      setProfileGender(profile.gender);
     })();
   }, []);
+
+  const profileAvatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
 
   const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale;
 
@@ -90,7 +89,7 @@ export function SettingsScreen({
         <ScreenHeader title={t.settings} />
 
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>{profilePhotoUri ? <Image source={{ uri: profilePhotoUri }} style={styles.avatarImage} /> : <Text style={styles.avatarEmoji}>👩</Text>}</View>
+          <View style={styles.avatar}><Text style={styles.avatarEmoji}>{profileAvatarEmoji}</Text></View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
             <Pressable onPress={onOpenProfile}>
@@ -170,7 +169,6 @@ export function SettingsScreen({
         </Section>
 
         <Section title={t.reporting}>
-          <MenuRow label={t.reports} value={t.weeklyMonthly} onPress={onOpenReports} />
           <MenuRow label={t.changePassword} onPress={onOpenChangePassword} />
           <MenuRow label={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} onPress={onOpenFeedback} />
           <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
@@ -180,7 +178,10 @@ export function SettingsScreen({
 
         <Section title={t.aboutUs}>
           <MenuRow label={locale === 'tr' ? 'Uygulamayı Paylaş' : 'Share App'} onPress={onShareApp} />
-          <MenuRow label={t.appInfo} value={version} onPress={onOpenAboutUs} />
+          <View style={styles.versionRow}>
+            <Text style={styles.rowTitle}>{locale === 'tr' ? 'Sürüm' : 'Version'}</Text>
+            <Text style={styles.rowSubtitle}>{version}</Text>
+          </View>
         </Section>
 
         <View style={styles.bottomSpacer} />
@@ -291,11 +292,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarImage: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-  },
   avatarEmoji: {
     fontSize: 20,
   },
@@ -333,6 +329,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  versionRow: {
+    minHeight: 52,
+    paddingHorizontal: theme.spacing[16],
+    justifyContent: 'center',
   },
   switchRow: {
     minHeight: 52,

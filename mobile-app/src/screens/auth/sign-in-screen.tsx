@@ -39,7 +39,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
         email: email.trim().toLowerCase(),
         password,
       });
-      onSuccess({ email: response.email, emailVerified: true });
+      onSuccess({ email: response.email, emailVerified: response.isEmailVerified });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sign-in failed.';
       setErrorText(message);

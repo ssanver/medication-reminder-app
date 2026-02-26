@@ -5,6 +5,7 @@ type EmailAuthResponse = {
   firstName: string;
   lastName: string;
   email: string;
+  isEmailVerified: boolean;
   accessToken: string;
   refreshToken: string;
   expiresAt: string;

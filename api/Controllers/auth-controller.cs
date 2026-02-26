@@ -90,7 +90,7 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
         dbContext.UserAccounts.Add(user);
         await dbContext.SaveChangesAsync();
 
-        return Ok(CreateEmailAuthResponse(user, now));
+        return Ok(CreateEmailAuthResponse(user, now, false));
     }
 
     [HttpPost("email/sign-in")]
@@ -113,7 +113,9 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
         user.UpdatedAt = now;
         await dbContext.SaveChangesAsync();
 
-        return Ok(CreateEmailAuthResponse(user, now));
+        var latestToken = await GetLatestToken(normalizedEmail);
+        var isEmailVerified = latestToken?.VerifiedAt.HasValue == true;
+        return Ok(CreateEmailAuthResponse(user, now, isEmailVerified));
     }
 
     [HttpPost("email/change-password")]
@@ -400,7 +402,7 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
         return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
     }
 
-    private static EmailAuthResponse CreateEmailAuthResponse(UserAccount user, DateTimeOffset now)
+    private static EmailAuthResponse CreateEmailAuthResponse(UserAccount user, DateTimeOffset now, bool isEmailVerified)
     {
         return new EmailAuthResponse
         {
@@ -408,6 +410,7 @@ public sealed class AuthController(AppDbContext dbContext, IWebHostEnvironment h
             FirstName = user.FirstName,
             LastName = user.LastName,
             Email = user.Email,
+            IsEmailVerified = isEmailVerified,
             AccessToken = $"email-at-{Guid.NewGuid():N}",
             RefreshToken = $"email-rt-{Guid.NewGuid():N}",
             ExpiresAt = now.AddHours(1),

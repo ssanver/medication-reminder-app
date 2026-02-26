@@ -41,7 +41,6 @@ import { NotificationSettingsScreen } from '../screens/notification-settings-scr
 import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
 import { ReminderPreferencesScreen } from '../screens/reminder-preferences-screen';
-import { ReportsScreen } from '../screens/reports-screen';
 import { SettingsScreen } from '../screens/settings-screen';
 import { TodayScreen } from '../screens/today-screen';
 import { theme } from '../theme';
@@ -49,7 +48,6 @@ import { theme } from '../theme';
 type TabKey = 'today' | 'my-meds' | 'add-meds' | 'settings';
 type OverlayScreen =
   | 'none'
-  | 'reports'
   | 'profile'
   | 'medication-details'
   | 'notification-history'
@@ -275,29 +273,29 @@ export function AppNavigator() {
             locale={locale}
             onSuccess={(payload) => {
               void (async () => {
+                let isEmailVerified = payload.emailVerified;
+                if (!payload.session && payload.email) {
+                  try {
+                    const status = await getEmailVerificationStatus(payload.email);
+                    isEmailVerified = status.isVerified;
+                  } catch {
+                    // Fallback to the incoming payload value when status is unavailable.
+                  }
+                }
+
                 await markAuthenticated({
                   accessToken: payload.session?.accessToken,
                   refreshToken: payload.session?.refreshToken,
                   email: payload.email,
-                  emailVerified: payload.emailVerified,
+                  emailVerified: isEmailVerified,
                 });
                 setAccountEmail(payload.email);
-                setEmailVerifiedState(payload.emailVerified);
+                setEmailVerifiedState(isEmailVerified);
                 setPhase('app');
               })();
             }}
             onOpenSignUp={() => setPhase('signup')}
           />
-        </View>
-      </View>
-    );
-  }
-
-  if (overlayScreen === 'reports') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <ReportsScreen locale={locale} onBack={() => setOverlayScreen('none')} />
         </View>
       </View>
     );
@@ -513,14 +511,12 @@ export function AppNavigator() {
             setSelectedMedicationId(medicationId);
             setOverlayScreen('medication-details');
           },
-          () => setOverlayScreen('reports'),
           () => setOverlayScreen('profile'),
           () => setOverlayScreen('notification-settings'),
           () => setOverlayScreen('notification-history'),
           () => setOverlayScreen('reminder-preferences'),
           () => setOverlayScreen('change-password'),
           () => setOverlayScreen('feedback'),
-          () => setOverlayScreen('about-us'),
           () => {
             void (async () => {
               await clearSessionForLogout();
@@ -591,14 +587,12 @@ function renderTab(
   onOpenAddMeds: () => void,
   onMedicationSaved: () => void,
   onOpenMedicationDetails: (medicationId: string) => void,
-  onOpenReports: () => void,
   onOpenProfile: () => void,
   onOpenNotificationSettings: () => void,
   onOpenNotificationHistory: () => void,
   onOpenReminderPreferences: () => void,
   onOpenChangePassword: () => void,
   onOpenFeedback: () => void,
-  onOpenAboutUs: () => void,
   onLogout: () => void,
   onShareApp: () => void,
   onOpenEmailVerification: () => void,
@@ -619,7 +613,14 @@ function renderTab(
         />
       );
     case 'my-meds':
-      return <MyMedsScreen locale={locale} fontScale={fontScale} onOpenMedicationDetails={onOpenMedicationDetails} />;
+      return (
+        <MyMedsScreen
+          locale={locale}
+          fontScale={fontScale}
+          onOpenMedicationDetails={onOpenMedicationDetails}
+          onOpenAddMedication={onOpenAddMeds}
+        />
+      );
     case 'add-meds':
       return <AddMedsScreen locale={locale} fontScale={fontScale} onMedicationSaved={onMedicationSaved} />;
     case 'settings':
@@ -633,13 +634,11 @@ function renderTab(
               onFontScaleChange(nextFontScale);
             }
           }}
-          onOpenReports={onOpenReports}
           onOpenProfile={onOpenProfile}
           onOpenNotificationSettings={onOpenNotificationSettings}
           onOpenReminderPreferences={onOpenReminderPreferences}
           onOpenChangePassword={onOpenChangePassword}
           onOpenFeedback={onOpenFeedback}
-          onOpenAboutUs={onOpenAboutUs}
           onLogout={onLogout}
           onShareApp={onShareApp}
           notificationsEnabled={notificationsEnabled}

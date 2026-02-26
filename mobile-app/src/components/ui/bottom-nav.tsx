@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 import { AppIcon } from './app-icon';
@@ -18,6 +18,7 @@ type BottomNavProps = {
 
 export function BottomNav({ items, activeKey, onChange }: BottomNavProps) {
   const fontScale = useAppFontScale();
+
   return (
     <View style={styles.container}>
       {items.map((item) => {
@@ -46,7 +47,8 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.neutral[200],
     backgroundColor: '#FFFFFF',
     paddingHorizontal: theme.grid.marginWidth,
-    paddingVertical: theme.spacing[8],
+    paddingTop: theme.spacing[8],
+    paddingBottom: Platform.OS === 'ios' ? theme.spacing[24] : theme.spacing[8],
     gap: theme.spacing[8],
   },
   item: {

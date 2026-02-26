@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
 import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { SegmentedControl } from '../components/ui/segmented-control';
@@ -12,11 +12,12 @@ type MyMedsScreenProps = {
   locale: Locale;
   fontScale: number;
   onOpenMedicationDetails: (medicationId: string) => void;
+  onOpenAddMedication: () => void;
 };
 
 type MedStatus = 'All' | 'Active' | 'Inactive';
 
-export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyMedsScreenProps) {
+export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
   const store = useMedicationStore();
   const t = getTranslations(locale);
   const [filter, setFilter] = useState<MedStatus>('All');
@@ -82,22 +83,32 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails }: MyM
         onChange={(next) => setFilter(next as MedStatus)}
       />
 
-      <View style={styles.list}>
-        {filtered.map((item) => (
-          <MedicationCard
-            key={item.id}
-            name={item.name}
-            details={item.details}
-            schedule={item.schedule}
-            active={item.active}
-            showToggle
-            compact
-            medEmoji={item.emoji}
-            onToggle={(value) => void setMedicationActive(item.id, value)}
-            onPress={() => onOpenMedicationDetails(item.id)}
-          />
-        ))}
-      </View>
+      {filtered.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyIcon}>💊</Text>
+          <Text style={styles.emptyTitle}>{locale === 'tr' ? 'İlacınız bulunmamaktadır.' : 'No medications found.'}</Text>
+          <Pressable style={styles.emptyButton} onPress={onOpenAddMedication}>
+            <Text style={styles.emptyButtonText}>{t.addMedication}</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.list}>
+          {filtered.map((item) => (
+            <MedicationCard
+              key={item.id}
+              name={item.name}
+              details={item.details}
+              schedule={item.schedule}
+              active={item.active}
+              showToggle
+              compact
+              medEmoji={item.emoji}
+              onToggle={(value) => void setMedicationActive(item.id, value)}
+              onPress={() => onOpenMedicationDetails(item.id)}
+            />
+          ))}
+        </View>
+      )}
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
@@ -122,6 +133,36 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: theme.spacing[16],
+  },
+  emptyCard: {
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.semantic.cardBackground,
+    padding: theme.spacing[16],
+    alignItems: 'center',
+    gap: theme.spacing[8],
+    ...theme.elevation.card,
+  },
+  emptyIcon: {
+    fontSize: 20,
+  },
+  emptyTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    minHeight: 36,
+    paddingHorizontal: theme.spacing[16],
+    borderRadius: theme.radius[16],
+    backgroundColor: theme.colors.primaryBlue[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyButtonText: {
+    ...theme.typography.bodyScale.mMedium,
+    color: '#FFFFFF',
   },
   bottomSpacer: {
     height: theme.spacing[8],

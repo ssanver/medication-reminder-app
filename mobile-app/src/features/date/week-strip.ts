@@ -24,8 +24,15 @@ export function getDateTitle(selectedDate: Date, locale: Locale): string {
   const localeTag = getLocaleTag(locale);
   const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
   const t = getTranslations(locale);
+  const normalizedSelectedDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
+  const normalizedToday = new Date();
+  normalizedToday.setHours(0, 0, 0, 0);
 
-  return `${t.today}, ${dateText}`;
+  if (normalizedSelectedDate === normalizedToday.getTime()) {
+    return `${t.today}, ${dateText}`;
+  }
+
+  return dateText;
 }
 
 function getWeekDayLabel(date: Date, locale: Locale): string {

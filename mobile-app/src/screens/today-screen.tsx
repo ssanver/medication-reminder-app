@@ -9,8 +9,9 @@ import { getLocaleTag, getTranslations, type Locale } from '../features/localiza
 import { clearDoseStatus, getScheduledDosesForDate, setDoseStatus } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { scheduleSnoozeReminder } from '../features/notifications/local-notifications';
+import { resolveProfileAvatarEmoji } from '../features/profile/profile-avatar';
+import { loadProfile } from '../features/profile/profile-store';
 import { toShortDisplayName } from '../features/profile/display-name';
-import { currentUser } from '../features/profile/current-user';
 import { theme } from '../theme';
 
 type TodayScreenProps = {
@@ -42,7 +43,10 @@ export function TodayScreen({
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [actionWarning, setActionWarning] = useState<string | null>(null);
   const [showFutureActionPopup, setShowFutureActionPopup] = useState(false);
-  const shortDisplayName = toShortDisplayName(currentUser.fullName);
+  const [profileName, setProfileName] = useState('Suleyman Şanver');
+  const [profileGender, setProfileGender] = useState('');
+  const shortDisplayName = toShortDisplayName(profileName);
+  const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
   const doses = useMemo(() => getScheduledDosesForDate(selectedDate, locale), [selectedDate, locale, store.medications, store.events]);
 
   const filtered = useMemo(() => {
@@ -88,6 +92,14 @@ export function TodayScreen({
     setShowFutureActionPopup(false);
   }, [selectedDate, filter]);
 
+  useEffect(() => {
+    void (async () => {
+      const profile = await loadProfile();
+      setProfileName(profile.fullName);
+      setProfileGender(profile.gender);
+    })();
+  }, []);
+
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
   const sectionTitle = useMemo(() => {
@@ -98,9 +110,16 @@ export function TodayScreen({
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.brandRow}>
+        <View style={styles.brandLogo}>
+          <Text style={styles.brandLogoText}>💊</Text>
+        </View>
+        <Text style={styles.brandTitle}>Pill Mind</Text>
+      </View>
+
       <View style={styles.profileRow}>
         <View style={styles.profileLeft}>
-          <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩</Text></View>
+          <View style={styles.avatar}><Text style={styles.avatarEmoji}>{avatarEmoji}</Text></View>
           <View>
             <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
             <Text style={styles.welcome}>{t.welcome}</Text>
@@ -269,6 +288,29 @@ const styles = StyleSheet.create({
   content: {
     gap: theme.spacing[16],
     paddingBottom: theme.spacing[16],
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: theme.spacing[8],
+    paddingTop: theme.spacing[4],
+  },
+  brandLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.primaryBlue[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandLogoText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  brandTitle: {
+    ...theme.typography.heading.h5Semibold,
+    color: theme.colors.semantic.textPrimary,
   },
   profileRow: {
     flexDirection: 'row',
