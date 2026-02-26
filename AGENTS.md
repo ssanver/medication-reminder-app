@@ -13,12 +13,14 @@
 - Bir adım başarısızsa bir sonraki adıma geçilmez; hata düzeltilip aynı adım tekrar çalıştırılır.
 - Tamamlanan her iş kalemi için kanıt niteliğinde komut çıktısı veya test sonucu üretilmelidir.
 - Kod geliştirme/doğrulama akışında zorunlu sıra: `kodu yaz` -> `build` -> `test` -> `tekrar build` -> `çalıştır`.
+- Veritabanı bağımlı işlerde `çalıştır` adımından önce zorunlu doğrulama: `db bağlantısını doğrula` (başarılı SQL sorgu çıktısı veya uygulama başlangıç logu kanıtı olmadan işlem tamamlandı sayılmaz).
 - Push adımından önce remote'a gönderilmemiş commit varsa kullanıcıdan açık onay alınmalıdır (`pushlayayım mı?`).
 
 ## Global Definition of Done
 - İlgili kapsam maddesi için kod veya çıktı tamamlanmış olmalıdır.
 - İlgili testler yazılmış ve başarılı geçmiş olmalıdır.
 - Build doğrulaması başarılı olmalıdır.
+- Veritabanı bağımlı kapsamda DB bağlantısı canlı ortam/servis üzerinde doğrulanmış ve kanıtı kaydedilmiş olmalıdır.
 - İş kalemi izlenebilir şekilde dokümante edilmiş olmalıdır.
 - İş kalemi issue kaydı `Done/Closed` durumuna çekilmiş olmalıdır.
 
@@ -193,6 +195,7 @@ Onaylı gereksinim ve tasarıma göre sürdürülebilir, testlenebilir yazılım
 - Temiz kod prensipleri uygula.
 - Küçük, anlamlı commit'ler üret.
 - Kritik iş kuralları için birim testleri ekle.
+- DB kullanan akışlarda SQL bağlantısını canlı doğrula (ör. `SELECT 1` veya hedef tabloya sorgu) ve çıktı kanıtını paylaş.
 
 ### Do Not
 - Gereksinim dışı kapsam genişletme.

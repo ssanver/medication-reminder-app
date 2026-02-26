@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
+import { signUpWithEmail } from '../../features/auth/email-auth-service';
 import { getTranslations, type Locale } from '../../features/localization/localization';
 import { loginWithSocial, type SocialLoginResult } from '../../features/auth/social-auth';
 import { isSignUpFormValid } from '../../features/auth/signup-validation';
@@ -25,8 +26,44 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
   const [errorText, setErrorText] = useState('');
   const [socialMessage, setSocialMessage] = useState('');
   const [isSocialLoading, setIsSocialLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const canSubmit = useMemo(() => isSignUpFormValid({ name, email, password }), [name, email, password]);
+
+  async function handleSignUp() {
+    if (!canSubmit) {
+      setErrorText(t.pleaseFillAllFields);
+      return;
+    }
+
+    const fullName = name.trim();
+    const nameParts = fullName.split(/\s+/).filter((item) => item.length > 0);
+    const firstName = nameParts[0] ?? '';
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'User';
+
+    if (!firstName) {
+      setErrorText(t.pleaseFillAllFields);
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorText('');
+    try {
+      const response = await signUpWithEmail({
+        firstName,
+        lastName,
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      setShowSuccess(true);
+      setTimeout(() => onSuccess({ email: response.email, emailVerified: false }), 800);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Sign-up failed.';
+      setErrorText(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   async function handleSocialAuth(provider: 'Apple' | 'Google') {
     try {
@@ -76,16 +113,8 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
 
       <Button
         label={t.createAccount}
-        onPress={() => {
-          if (!canSubmit) {
-            setErrorText(t.pleaseFillAllFields);
-            return;
-          }
-          setErrorText('');
-          setShowSuccess(true);
-          const normalizedEmail = email.trim().toLowerCase();
-          setTimeout(() => onSuccess({ email: normalizedEmail, emailVerified: false }), 800);
-        }}
+        onPress={() => void handleSignUp()}
+        disabled={isLoading}
       />
 
       <Text style={styles.legal}>{t.termsText}</Text>

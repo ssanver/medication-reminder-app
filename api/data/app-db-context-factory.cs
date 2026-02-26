@@ -9,7 +9,9 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         var connectionString =
-            "Server=localhost,1433;Database=medication-reminder-db;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True";
+            Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+            ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+            ?? "Server=localhost,1433;Database=medication-reminder-db;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True";
 
         optionsBuilder.UseSqlServer(connectionString);
 

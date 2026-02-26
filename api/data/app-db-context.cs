@@ -6,6 +6,7 @@ namespace api.data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Medication> Medications => Set<Medication>();
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<MedicineCatalogItem> MedicineCatalogItems => Set<MedicineCatalogItem>();
     public DbSet<MedicationSchedule> MedicationSchedules => Set<MedicationSchedule>();
     public DbSet<DoseEvent> DoseEvents => Set<DoseEvent>();
@@ -34,6 +35,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Dosage).HasMaxLength(60).IsRequired();
             entity.Property(x => x.UsageType).HasMaxLength(60);
             entity.Property(x => x.UpdatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<UserAccount>(entity =>
+        {
+            entity.ToTable("user-accounts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.FirstName).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.LastName).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Email).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => x.Email).IsUnique();
         });
 
         modelBuilder.Entity<MedicineCatalogItem>(entity =>

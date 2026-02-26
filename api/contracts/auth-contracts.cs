@@ -50,3 +50,35 @@ public sealed class VerifyEmailCodeResponse
     public required string Email { get; set; }
     public required bool IsVerified { get; set; }
 }
+
+public sealed class EmailSignUpRequest
+{
+    public required string FirstName { get; set; }
+    public required string LastName { get; set; }
+    public required string Email { get; set; }
+    public required string Password { get; set; }
+}
+
+public sealed class EmailSignInRequest
+{
+    public required string Email { get; set; }
+    public required string Password { get; set; }
+}
+
+public sealed class ChangePasswordRequest
+{
+    public required string Email { get; set; }
+    public required string CurrentPassword { get; set; }
+    public required string NewPassword { get; set; }
+}
+
+public sealed class EmailAuthResponse
+{
+    public required Guid UserId { get; set; }
+    public required string FirstName { get; set; }
+    public required string LastName { get; set; }
+    public required string Email { get; set; }
+    public required string AccessToken { get; set; }
+    public required string RefreshToken { get; set; }
+    public required DateTimeOffset ExpiresAt { get; set; }
+}

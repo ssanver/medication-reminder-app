@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
+import { signInWithEmail } from '../../features/auth/email-auth-service';
 import { getTranslations, type Locale } from '../../features/localization/localization';
 import { loginWithSocial, type SocialLoginResult } from '../../features/auth/social-auth';
 import { theme } from '../../theme';
@@ -21,8 +22,31 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
   const [errorText, setErrorText] = useState('');
   const [socialMessage, setSocialMessage] = useState('');
   const [isSocialLoading, setIsSocialLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const canSubmit = useMemo(() => email.trim().length > 0 && password.trim().length >= 6, [email, password]);
+
+  async function handleSignIn() {
+    if (!canSubmit) {
+      setErrorText(t.pleaseFillAllFields);
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorText('');
+    try {
+      const response = await signInWithEmail({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      onSuccess({ email: response.email, emailVerified: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Sign-in failed.';
+      setErrorText(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   async function handleSocialAuth(provider: 'Apple' | 'Google') {
     try {
@@ -62,14 +86,8 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
 
       <Button
         label={t.signIn}
-        onPress={() => {
-          if (!canSubmit) {
-            setErrorText(t.pleaseFillAllFields);
-            return;
-          }
-          setErrorText('');
-          onSuccess({ email: email.trim().toLowerCase(), emailVerified: true });
-        }}
+        onPress={() => void handleSignIn()}
+        disabled={isLoading}
       />
 
       <Text style={styles.legal}>{t.termsText}</Text>

@@ -37,6 +37,34 @@ jobs:
       - name: Build
         run: dotnet build medication-reminder-app.slnx --configuration Release --no-restore
 
+      - name: Validate production DB secret
+        env:
+          PROD_DB_CONNECTION_STRING: ${{ secrets.PROD_DB_CONNECTION_STRING }}
+        run: |
+          if [ -z "$PROD_DB_CONNECTION_STRING" ]; then
+            echo "Missing required secret: PROD_DB_CONNECTION_STRING"
+            exit 1
+          fi
+
+      - name: Configure Production DB connection
+        env:
+          PROD_DB_CONNECTION_STRING: ${{ secrets.PROD_DB_CONNECTION_STRING }}
+        run: |
+          cat > api/appsettings.Production.json <<EOF
+          {
+            "ConnectionStrings": {
+              "DefaultConnection": "${PROD_DB_CONNECTION_STRING}"
+            },
+            "Defaults": {
+              "UserReference": "suleymansanver@gmail.com",
+              "ResetDataOnStartup": false
+            },
+            "Swagger": {
+              "Enabled": true
+            }
+          }
+          EOF
+
       - name: Publish API
         run: dotnet publish api/api.csproj --configuration Release --no-build --output ./api/publish
 

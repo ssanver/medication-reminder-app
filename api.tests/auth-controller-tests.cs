@@ -133,6 +133,82 @@ public sealed class AuthControllerTests
         Assert.True(payload.IsVerified);
     }
 
+    [Fact]
+    public async Task SignUpWithEmail_ShouldCreateUser_WhenRequestIsValid()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext);
+
+        var result = await controller.SignUpWithEmail(new EmailSignUpRequest
+        {
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            Password = "strong-pass-123",
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<EmailAuthResponse>(ok.Value);
+        Assert.Equal("suleyman@example.com", payload.Email);
+        Assert.Equal(1, await dbContext.UserAccounts.CountAsync());
+    }
+
+    [Fact]
+    public async Task SignInWithEmail_ShouldReturnUnauthorized_WhenPasswordIsInvalid()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext);
+
+        _ = await controller.SignUpWithEmail(new EmailSignUpRequest
+        {
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            Password = "strong-pass-123",
+        });
+
+        var result = await controller.SignInWithEmail(new EmailSignInRequest
+        {
+            Email = "suleyman@example.com",
+            Password = "wrong-pass",
+        });
+
+        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        Assert.Equal("Email or password is invalid.", unauthorized.Value);
+    }
+
+    [Fact]
+    public async Task ChangePassword_ShouldReturnNoContent_WhenCurrentPasswordIsValid()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext);
+
+        _ = await controller.SignUpWithEmail(new EmailSignUpRequest
+        {
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            Password = "strong-pass-123",
+        });
+
+        var changeResult = await controller.ChangePassword(new ChangePasswordRequest
+        {
+            Email = "suleyman@example.com",
+            CurrentPassword = "strong-pass-123",
+            NewPassword = "new-strong-pass-456",
+        });
+
+        Assert.IsType<NoContentResult>(changeResult);
+
+        var signInResult = await controller.SignInWithEmail(new EmailSignInRequest
+        {
+            Email = "suleyman@example.com",
+            Password = "new-strong-pass-456",
+        });
+
+        Assert.IsType<OkObjectResult>(signInResult.Result);
+    }
+
     private static AppDbContext CreateInMemoryContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
