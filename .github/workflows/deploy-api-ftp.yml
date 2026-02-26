@@ -40,6 +40,43 @@ jobs:
       - name: Publish API
         run: dotnet publish api/api.csproj --configuration Release --no-build --output ./api/publish
 
+      - name: Prepare app_offline file
+        run: |
+          mkdir -p ./ci-temp
+          cat > ./ci-temp/app_offline.htm <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Maintenance</title>
+          </head>
+          <body>
+            <h1>We are updating the service.</h1>
+            <p>Please try again in a minute.</p>
+          </body>
+          </html>
+          EOF
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Upload app_offline.htm
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
+        run: |
+          lftp -e "
+            set ssl:verify-certificate no;
+            set cmd:fail-exit yes;
+            open -u ${FTP_USERNAME},${FTP_PASSWORD} ${FTP_SERVER};
+            cd ${FTP_SERVER_DIR};
+            put ./ci-temp/app_offline.htm -o app_offline.htm;
+            bye
+          "
+
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -48,3 +85,20 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./api/publish/
           server-dir: ${{ secrets.FTP_SERVER_DIR }}
+
+      - name: Remove app_offline.htm
+        if: always()
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
+        run: |
+          lftp -e "
+            set ssl:verify-certificate no;
+            set cmd:fail-exit no;
+            open -u ${FTP_USERNAME},${FTP_PASSWORD} ${FTP_SERVER};
+            cd ${FTP_SERVER_DIR};
+            rm app_offline.htm;
+            bye
+          "
