@@ -34,6 +34,7 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+builder.Services.AddHostedService<DatabaseBaselineResetHostedService>();
 builder.Services.AddScoped<IMedicationRepository, EfMedicationRepository>();
 builder.Services.AddScoped<MedicationApplicationService>();
 builder.Services.AddScoped<IMedicineCatalogRepository, EfMedicineCatalogRepository>();
