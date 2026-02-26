@@ -1,0 +1,65 @@
+appId: com.suleymansanver.medicationreminder
+---
+- launchApp:
+    clearState: true
+
+- runFlow:
+    when:
+      visible: "Skip"
+    commands:
+      - tapOn: "Skip"
+
+- runFlow:
+    when:
+      visible:
+        text: "^(Sign Up|Kayıt Ol)$"
+    commands:
+      - tapOn:
+          text: '(Already have an account\? Sign in|Zaten hesabın var mı\? Giriş yap)'
+
+- extendedWaitUntil:
+    visible:
+      text: "^(Sign In|Giriş Yap)$"
+    timeout: 15000
+- tapOn:
+    point: "50%,28%"
+- inputText: "123456"
+- tapOn:
+    point: "50%,35%"
+
+- extendedWaitUntil:
+    visible:
+      text: "^(Settings|Ayarlar)$"
+    timeout: 25000
+- tapOn:
+    text: "^(Settings|Ayarlar)$"
+- assertVisible:
+    text: "^(Settings|Ayarlar)$"
+
+- scrollUntilVisible:
+    element:
+      text: "^(Notification settings|Bildirim ayarları)$"
+    direction: DOWN
+- tapOn:
+    text: "^(Notification settings|Bildirim ayarları)$"
+- assertVisible:
+    text: "^(Notification settings|Bildirim ayarları)$"
+- assertVisible:
+    text: "^(App Notifications|Uygulama bildirimleri)$"
+- assertVisible:
+    text: "^(Medication reminders|İlaç hatırlatmaları)$"
+
+- tapOn:
+    text: "^(Done|Tamam)$"
+- assertVisible:
+    text: "^(Settings|Ayarlar)$"
+
+- tapOn:
+    text: "^(Snooze duration|Erteleme süresi)$"
+- assertVisible:
+    text: "^(Reminder Preferences|Hatırlatma Tercihleri)$"
+- tapOn: "15 min"
+- tapOn:
+    text: "^(Done|Tamam)$"
+- assertVisible:
+    text: "^(Settings|Ayarlar)$"

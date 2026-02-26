@@ -1,4 +1,4 @@
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 import { AppIcon } from './app-icon';
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: theme.grid.marginWidth,
     paddingTop: theme.spacing[8],
-    paddingBottom: Platform.OS === 'ios' ? theme.spacing[24] : theme.spacing[8],
+    paddingBottom: theme.spacing[8],
     gap: theme.spacing[8],
   },
   item: {

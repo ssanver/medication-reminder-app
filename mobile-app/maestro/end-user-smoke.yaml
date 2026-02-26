@@ -1,0 +1,64 @@
+appId: com.suleymansanver.medicationreminder
+---
+- launchApp:
+    clearState: true
+
+- runFlow:
+    when:
+      visible: "Skip"
+    commands:
+      - tapOn: "Skip"
+
+- runFlow:
+    when:
+      visible:
+        text: "^(Sign Up|Kayıt Ol)$"
+    commands:
+      - tapOn:
+          text: '(Already have an account\? Sign in|Zaten hesabın var mı\? Giriş yap)'
+
+- extendedWaitUntil:
+    visible:
+      text: "^(Sign In|Giriş Yap)$"
+    timeout: 15000
+- tapOn:
+    point: "50%,28%"
+- inputText: "123456"
+- tapOn:
+    point: "50%,35%"
+
+- extendedWaitUntil:
+    visible:
+      text: "^(Today|Bugün)$"
+    timeout: 25000
+
+- tapOn:
+    text: "^(My Meds|İlaçlarım)$"
+- assertVisible:
+    text: "(İlaçlarım|My Meds|No medications found|İlacınız bulunmamaktadır)"
+
+- tapOn:
+    text: "^(Add Meds|İlaç Ekle)$"
+- assertVisible:
+    text: "^(Medication Name|İlaç Adı)$"
+
+- tapOn:
+    text: "^(Settings|Ayarlar)$"
+- assertVisible:
+    text: "^(Settings|Ayarlar)$"
+
+- scrollUntilVisible:
+    element:
+      text: "^(Cancel Account|Kaydı İptal Et)$"
+    direction: DOWN
+- tapOn:
+    text: "^(Cancel Account|Kaydı İptal Et)$"
+- assertVisible:
+    text: "(cannot be recovered|geri dönüşü yoktur)"
+- tapOn:
+    text: "^(Cancel|Vazgeç)$"
+
+- tapOn:
+    text: "^(Today|Bugün)$"
+- assertVisible:
+    text: "(Today's Medication|Bugünün İlaçları)"
