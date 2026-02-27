@@ -1,4 +1,4 @@
 export const currentUser = {
-  fullName: 'Suleyman Şanver',
-  email: 'suleymansanver@gmail.com',
+  fullName: 'Guest User',
+  email: 'guest@pillmind.local',
 };

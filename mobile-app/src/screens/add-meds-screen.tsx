@@ -428,7 +428,11 @@ export function AddMedsScreen({
           </Pressable>
 
           <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Kaç interval türünde bir' : 'Repeat every'}</Text>
+            <Text style={styles.selectionLabel}>
+              {locale === 'tr'
+                ? `Her ${intervalCount} ${intervalUnit === 'day' ? 'günde' : 'haftada'} bir`
+                : `Repeat every ${intervalCount} ${intervalUnit}${intervalCount > 1 ? 's' : ''}`}
+            </Text>
             <View style={styles.doseCountChipRow}>
               {(intervalUnit === 'day' ? dayIntervalOptions : weekIntervalOptions).map((count) => {
                 const selected = count === intervalCount;

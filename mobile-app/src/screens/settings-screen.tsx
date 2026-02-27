@@ -57,7 +57,6 @@ export function SettingsScreen({
   onEnableNotifications: _onEnableNotifications,
 }: SettingsScreenProps) {
   const t = getTranslations(locale);
-  const shortDisplayName = toShortDisplayName('Suleyman Şanver');
   const localeOptions = getLocaleOptions(locale);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
@@ -65,6 +64,7 @@ export function SettingsScreen({
   const [cancelPassword, setCancelPassword] = useState('');
   const [cancelErrorText, setCancelErrorText] = useState('');
   const [isCancelLoading, setIsCancelLoading] = useState(false);
+  const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('');
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
@@ -80,10 +80,12 @@ export function SettingsScreen({
   useEffect(() => {
     void (async () => {
       const profile = await loadProfile();
+      setProfileName(profile.fullName);
       setProfileGender(profile.gender);
     })();
   }, []);
 
+  const shortDisplayName = toShortDisplayName(profileName) || (locale === 'tr' ? 'Kullanıcı' : 'User');
   const profileAvatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
 
   const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale;

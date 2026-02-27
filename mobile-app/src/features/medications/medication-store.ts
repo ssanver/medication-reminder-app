@@ -1,4 +1,4 @@
-import { apiRequestJson } from '../network/api-client';
+import { apiRequestJson, apiRequestVoid } from '../network/api-client';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { getLocaleTag, type Locale } from '../localization/localization';
 
@@ -548,7 +548,7 @@ export async function setMedicationActive(medicationId: string, active: boolean)
 }
 
 export async function deleteMedication(medicationId: string): Promise<void> {
-  await apiRequestJson(`/api/medications/${medicationId}`, {
+  await apiRequestVoid(`/api/medications/${medicationId}`, {
     method: 'DELETE',
     correlationPrefix: 'medication-delete',
   });

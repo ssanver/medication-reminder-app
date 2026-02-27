@@ -136,6 +136,94 @@ public sealed class MedicationsControllerTests
     }
 
     [Fact]
+    public async Task Delete_ShouldRemoveDependentRecords_WhenEntityHasRelations()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext);
+        var medicationId = Guid.NewGuid();
+
+        dbContext.Medications.Add(new api.models.Medication
+        {
+            Id = medicationId,
+            Name = "Aferin",
+            Dosage = "200mg",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+        });
+
+        dbContext.MedicationSchedules.Add(new api.models.MedicationSchedule
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medicationId,
+            RepeatType = "daily",
+            ReminderTime = new TimeOnly(8, 0),
+        });
+
+        dbContext.DoseEvents.Add(new api.models.DoseEvent
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medicationId,
+            ActionType = "taken",
+            DateKey = "2026-02-20",
+            ScheduledTime = "08:00",
+            ActionAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+
+        dbContext.InventoryRecords.Add(new api.models.InventoryRecord
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medicationId,
+            CurrentStock = 10,
+            Threshold = 2,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+
+        dbContext.PrescriptionReminders.Add(new api.models.PrescriptionReminder
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medicationId,
+            OffsetsCsv = "3,1",
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+
+        dbContext.HealthEvents.Add(new api.models.HealthEvent
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medicationId,
+            EventType = "doctor-visit",
+            EventAt = DateTimeOffset.UtcNow,
+            ReminderOffsetsCsv = "3,1",
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+
+        dbContext.NotificationDeliveries.Add(new api.models.NotificationDelivery
+        {
+            Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
+            MedicationId = medicationId,
+            ScheduledAt = DateTimeOffset.UtcNow,
+            SentAt = DateTimeOffset.UtcNow,
+            Channel = "ios-local",
+            Status = "sent",
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        var result = await controller.Delete(medicationId);
+
+        Assert.IsType<NoContentResult>(result);
+        Assert.Equal(0, await dbContext.Medications.CountAsync());
+        Assert.Equal(0, await dbContext.MedicationSchedules.CountAsync());
+        Assert.Equal(0, await dbContext.DoseEvents.CountAsync());
+        Assert.Equal(0, await dbContext.InventoryRecords.CountAsync());
+        Assert.Equal(0, await dbContext.PrescriptionReminders.CountAsync());
+        Assert.Equal(0, await dbContext.HealthEvents.CountAsync());
+        Assert.Equal(0, await dbContext.NotificationDeliveries.CountAsync());
+    }
+
+    [Fact]
     public async Task AddSchedule_ShouldAppendSchedule_WhenRequestIsValid()
     {
         await using var dbContext = CreateInMemoryContext();

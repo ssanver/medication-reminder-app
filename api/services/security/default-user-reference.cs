@@ -3,7 +3,7 @@ namespace api.services.security;
 public static class DefaultUserReference
 {
     public const string ConfigurationKey = "Defaults:UserReference";
-    public const string Fallback = "suleymansanver@gmail.com";
+    public const string Fallback = "guest@pillmind.local";
 
     public static string Resolve(IConfiguration configuration)
     {

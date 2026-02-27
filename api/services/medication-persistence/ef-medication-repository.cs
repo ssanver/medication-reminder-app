@@ -134,6 +134,45 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
             return false;
         }
 
+        // Remove dependent rows explicitly to keep delete behavior stable across
+        // environments where FK cascade options may differ from the model.
+        var schedules = await dbContext.MedicationSchedules.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
+        var doseEvents = await dbContext.DoseEvents.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
+        var inventoryRecord = await dbContext.InventoryRecords.FirstOrDefaultAsync(x => x.MedicationId == id, cancellationToken);
+        var prescriptionReminders = await dbContext.PrescriptionReminders.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
+        var healthEvents = await dbContext.HealthEvents.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
+        var notificationDeliveries = await dbContext.NotificationDeliveries.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
+
+        if (schedules.Count > 0)
+        {
+            dbContext.MedicationSchedules.RemoveRange(schedules);
+        }
+
+        if (doseEvents.Count > 0)
+        {
+            dbContext.DoseEvents.RemoveRange(doseEvents);
+        }
+
+        if (inventoryRecord is not null)
+        {
+            dbContext.InventoryRecords.Remove(inventoryRecord);
+        }
+
+        if (prescriptionReminders.Count > 0)
+        {
+            dbContext.PrescriptionReminders.RemoveRange(prescriptionReminders);
+        }
+
+        if (healthEvents.Count > 0)
+        {
+            dbContext.HealthEvents.RemoveRange(healthEvents);
+        }
+
+        if (notificationDeliveries.Count > 0)
+        {
+            dbContext.NotificationDeliveries.RemoveRange(notificationDeliveries);
+        }
+
         dbContext.Medications.Remove(medication);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;

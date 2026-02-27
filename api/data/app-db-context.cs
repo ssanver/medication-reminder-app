@@ -8,7 +8,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Medication> Medications => Set<Medication>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
-    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<MedicineCatalogItem> MedicineCatalogItems => Set<MedicineCatalogItem>();
     public DbSet<MedicationSchedule> MedicationSchedules => Set<MedicationSchedule>();
     public DbSet<DoseEvent> DoseEvents => Set<DoseEvent>();
@@ -47,6 +46,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.LastName).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Email).HasMaxLength(160).IsRequired();
             entity.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.FullName).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.BirthDate).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.Gender).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.PhotoUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.IsEmailVerified).IsRequired();
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
@@ -71,26 +74,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .HasOne(x => x.UserAccount)
                 .WithOne(x => x.Preference)
                 .HasForeignKey<UserPreference>(x => x.UserAccountId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<UserProfile>(entity =>
-        {
-            entity.ToTable("user-profiles");
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.UserAccountId).IsRequired();
-            entity.Property(x => x.FullName).HasMaxLength(120).IsRequired();
-            entity.Property(x => x.BirthDate).HasMaxLength(10).IsRequired();
-            entity.Property(x => x.Gender).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.PhotoUri).HasMaxLength(500).IsRequired();
-            entity.Property(x => x.CreatedAt).IsRequired();
-            entity.Property(x => x.UpdatedAt).IsRequired();
-            entity.HasIndex(x => x.UserAccountId).IsUnique();
-
-            entity
-                .HasOne(x => x.UserAccount)
-                .WithOne(x => x.Profile)
-                .HasForeignKey<UserProfile>(x => x.UserAccountId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

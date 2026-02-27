@@ -47,9 +47,9 @@ export function TodayScreen({
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [actionWarning, setActionWarning] = useState<string | null>(null);
   const [showFutureActionPopup, setShowFutureActionPopup] = useState(false);
-  const [profileName, setProfileName] = useState('Suleyman Şanver');
+  const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('');
-  const shortDisplayName = toShortDisplayName(profileName);
+  const shortDisplayName = toShortDisplayName(profileName) || (locale === 'tr' ? 'Kullanıcı' : 'User');
   const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
   const doses = useMemo(() => getScheduledDosesForDate(selectedDate, locale), [selectedDate, locale, store.medications, store.events]);
 

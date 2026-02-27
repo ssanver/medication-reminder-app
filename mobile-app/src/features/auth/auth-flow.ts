@@ -3,7 +3,8 @@ import type { AuthSession } from './auth-session-store';
 export type InitialPhase = 'onboarding' | 'signin' | 'app';
 
 export function resolveInitialPhase(session: AuthSession): InitialPhase {
-  if (session.isLoggedIn) {
+  const hasSessionEmail = session.email.trim().length > 0;
+  if (session.isLoggedIn || hasSessionEmail) {
     return 'app';
   }
 

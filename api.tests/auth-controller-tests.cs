@@ -172,6 +172,8 @@ public sealed class AuthControllerTests
         var payload = Assert.IsType<EmailAuthResponse>(ok.Value);
         Assert.Equal("suleyman@example.com", payload.Email);
         Assert.Equal(1, await dbContext.UserAccounts.CountAsync());
+        var user = await dbContext.UserAccounts.AsNoTracking().SingleAsync();
+        Assert.Equal("Suleyman Sanver", user.FullName);
     }
 
     [Fact]

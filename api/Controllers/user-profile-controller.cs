@@ -28,27 +28,7 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
         }
-
-        var item = await dbContext
-            .UserProfiles
-            .AsNoTracking()
-            .Include(x => x.UserAccount)
-            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
-
-        if (item is null)
-        {
-            return Ok(new UserProfileResponse
-            {
-                FullName = string.Empty,
-                Email = resolvedUserReference,
-                BirthDate = string.Empty,
-                Gender = string.Empty,
-                PhotoUri = string.Empty,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            });
-        }
-
-        return Ok(ToResponse(item));
+        return Ok(ToResponse(userAccount));
     }
 
     [HttpPut]
@@ -65,6 +45,10 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
                 LastName = "Profile",
                 Email = resolvedUserReference,
                 PasswordHash = "profile-only-account",
+                FullName = "User Profile",
+                BirthDate = string.Empty,
+                Gender = string.Empty,
+                PhotoUri = string.Empty,
                 IsEmailVerified = false,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
@@ -72,31 +56,9 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
             dbContext.UserAccounts.Add(userAccount);
         }
 
-        var item = await dbContext
-            .UserProfiles
-            .Include(x => x.UserAccount)
-            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
-
-        if (item is null)
-        {
-            item = new UserProfile
-            {
-                Id = Guid.NewGuid(),
-                UserAccountId = userAccount.Id,
-                UserAccount = userAccount,
-                FullName = string.Empty,
-                BirthDate = string.Empty,
-                Gender = string.Empty,
-                PhotoUri = string.Empty,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            };
-            dbContext.UserProfiles.Add(item);
-        }
-
         if (request.FullName is not null)
         {
-            item.FullName = request.FullName.Trim();
+            userAccount.FullName = request.FullName.Trim();
         }
 
         if (request.Email is not null)
@@ -114,23 +76,26 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
 
         if (request.BirthDate is not null)
         {
-            item.BirthDate = request.BirthDate.Trim();
+            userAccount.BirthDate = request.BirthDate.Trim();
         }
 
         if (request.Gender is not null)
         {
-            item.Gender = request.Gender.Trim();
+            userAccount.Gender = request.Gender.Trim();
         }
 
         if (request.PhotoUri is not null)
         {
-            item.PhotoUri = request.PhotoUri.Trim();
+            userAccount.PhotoUri = request.PhotoUri.Trim();
         }
 
-        item.UpdatedAt = DateTimeOffset.UtcNow;
+        userAccount.FullName = string.IsNullOrWhiteSpace(userAccount.FullName)
+            ? BuildFallbackFullName(userAccount)
+            : userAccount.FullName.Trim();
+        userAccount.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync();
 
-        return Ok(ToResponse(item));
+        return Ok(ToResponse(userAccount));
     }
 
     [HttpDelete]
@@ -142,15 +107,16 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
         {
             return NoContent();
         }
-
-        var item = await dbContext.UserProfiles.FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
-
+        var item = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Id == userAccount.Id);
         if (item is null)
         {
             return NoContent();
         }
-
-        dbContext.UserProfiles.Remove(item);
+        item.FullName = BuildFallbackFullName(item);
+        item.BirthDate = string.Empty;
+        item.Gender = string.Empty;
+        item.PhotoUri = string.Empty;
+        item.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync();
 
         return NoContent();
@@ -163,16 +129,28 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
             : userReference.Trim().ToLowerInvariant();
     }
 
-    private static UserProfileResponse ToResponse(UserProfile item)
+    private static UserProfileResponse ToResponse(UserAccount userAccount)
     {
+        var fullName = string.IsNullOrWhiteSpace(userAccount.FullName)
+            ? BuildFallbackFullName(userAccount)
+            : userAccount.FullName.Trim();
+
         return new UserProfileResponse
         {
-            FullName = item.FullName,
-            Email = item.UserAccount.Email,
-            BirthDate = item.BirthDate,
-            Gender = item.Gender,
-            PhotoUri = item.PhotoUri,
-            UpdatedAt = item.UpdatedAt,
+            FullName = fullName,
+            Email = userAccount.Email,
+            BirthDate = userAccount.BirthDate,
+            Gender = userAccount.Gender,
+            PhotoUri = userAccount.PhotoUri,
+            UpdatedAt = userAccount.UpdatedAt,
         };
+    }
+
+    private static string BuildFallbackFullName(UserAccount userAccount)
+    {
+        var firstName = userAccount.FirstName?.Trim() ?? string.Empty;
+        var lastName = userAccount.LastName?.Trim() ?? string.Empty;
+        var fullName = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(fullName) ? "User" : fullName;
     }
 }

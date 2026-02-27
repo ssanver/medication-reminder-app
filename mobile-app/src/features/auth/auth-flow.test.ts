@@ -28,6 +28,19 @@ describe('resolveInitialPhase', () => {
     expect(phase).toBe('signin');
   });
 
+  it('returns app when session email exists even if login flag is false', () => {
+    const phase = resolveInitialPhase({
+      isLoggedIn: false,
+      hasCompletedOnboarding: true,
+      hasSeenPermissionScreen: true,
+      hasSeenSplashOnce: true,
+      email: 'suleyman@example.com',
+      emailVerified: true,
+    });
+
+    expect(phase).toBe('app');
+  });
+
   it('returns onboarding on fresh install state', () => {
     const phase = resolveInitialPhase({
       isLoggedIn: false,

@@ -1,4 +1,4 @@
-import { apiRequestJson } from '../network/api-client';
+import { apiRequestJson, apiRequestVoid } from '../network/api-client';
 import { buildUserReferenceQuery } from '../auth/user-reference';
 
 export type ProfileState = {
@@ -65,7 +65,7 @@ export async function saveProfile(nextProfile: ProfileState): Promise<void> {
 
 export async function clearProfile(): Promise<void> {
   const query = await buildUserReferenceQuery();
-  await apiRequestJson(`/api/user-profile${query}`, {
+  await apiRequestVoid(`/api/user-profile${query}`, {
     method: 'DELETE',
     correlationPrefix: 'user-profile-delete',
   });
