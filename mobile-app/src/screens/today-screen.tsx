@@ -19,6 +19,7 @@ import { theme } from '../theme';
 type TodayScreenProps = {
   locale: Locale;
   fontScale: number;
+  weekStartsOn: 'monday' | 'sunday';
   remindersEnabled: boolean;
   snoozeMinutes: number;
   showEmailVerificationAlert: boolean;
@@ -32,6 +33,7 @@ type DoseStatus = 'All' | 'Taken' | 'Missed';
 export function TodayScreen({
   locale,
   fontScale,
+  weekStartsOn,
   remindersEnabled,
   snoozeMinutes,
   showEmailVerificationAlert,
@@ -102,7 +104,7 @@ export function TodayScreen({
     })();
   }, []);
 
-  const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale), [selectedDate, locale]);
+  const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale, weekStartsOn), [selectedDate, locale, weekStartsOn]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
   const sponsoredAd = useMemo(() => getSponsoredAd(locale === 'tr' ? 'tr' : 'en'), [locale]);
   const sectionTitle = useMemo(() => {

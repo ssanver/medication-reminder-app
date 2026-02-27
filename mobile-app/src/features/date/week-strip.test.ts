@@ -7,6 +7,11 @@ describe('week-strip', () => {
     expect(start.getDay()).toBe(1);
   });
 
+  it('ayar pazar ise hafta baslangicini pazara ceker', () => {
+    const start = getStartOfWeek(new Date('2026-02-18T10:00:00.000Z'), 'sunday');
+    expect(start.getDay()).toBe(0);
+  });
+
   it('7 gunluk strip uretir ve secili gunu isaretler', () => {
     const selected = new Date('2026-02-15T10:00:00.000Z');
     const strip = getWeekStrip(selected, 'en');

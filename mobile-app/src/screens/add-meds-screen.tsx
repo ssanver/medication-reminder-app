@@ -44,6 +44,7 @@ type AddMedsScreenProps = {
 };
 
 type SheetType = 'none' | 'date' | 'time' | 'interval' | 'form';
+type DateField = 'start' | 'end';
 
 function resolveIntervalFromFrequencyLabel(label: string, startDate: string): { intervalUnit: IntervalUnit; intervalCount: number; selectedWeekday: number } {
   const parsedCount = Number(label.match(/\d+/)?.[0] ?? '1');
@@ -79,17 +80,22 @@ export function AddMedsScreen({
   const [form, setForm] = useState('');
   const [iconEmoji, setIconEmoji] = useState('💊');
   const [dosage, setDosage] = useState('0.5');
+  const [isBeforeMeal, setIsBeforeMeal] = useState(false);
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
   const [intervalCount, setIntervalCount] = useState<number>(1);
   const [selectedWeekday, setSelectedWeekday] = useState<number>(1);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
   const [startDate, setStartDate] = useState(formatDate(new Date()));
+  const [endDate, setEndDate] = useState(formatDate(new Date()));
+  const [useEndDate, setUseEndDate] = useState(false);
+  const [totalQuantity, setTotalQuantity] = useState('');
   const [doseTimes, setDoseTimes] = useState<string[]>(defaultDoseTimes);
   const [note, setNote] = useState('');
   const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>([]);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
+  const [dateField, setDateField] = useState<DateField>('start');
   const [draftHour, setDraftHour] = useState('09');
   const [draftMinute, setDraftMinute] = useState('00');
   const [editingTimeIndex, setEditingTimeIndex] = useState(0);
@@ -140,6 +146,12 @@ export function AddMedsScreen({
     () => new Set(selectedDoseTimes.map((item) => item.trim())).size !== selectedDoseTimes.length,
     [selectedDoseTimes],
   );
+  const isEndDateValid = useMemo(() => {
+    if (!useEndDate) {
+      return true;
+    }
+    return parseDateKey(endDate).getTime() >= parseDateKey(startDate).getTime();
+  }, [endDate, startDate, useEndDate]);
 
   useEffect(() => {
     if (intervalUnit !== 'week') {
@@ -167,11 +179,19 @@ export function AddMedsScreen({
     setForm(editingMedication.form);
     setIconEmoji(editingMedication.iconEmoji || resolveFormDefaultIcon(editingMedication.form));
     setDosage(editingMedication.dosage || '1');
+    setIsBeforeMeal(Boolean(editingMedication.isBeforeMeal));
     setIntervalUnit(intervalPreset.intervalUnit);
     setIntervalCount(intervalPreset.intervalCount);
     setSelectedWeekday(intervalPreset.selectedWeekday);
     setDosesPerDay(Math.min(3, Math.max(1, presetTimes.length)));
     setStartDate(editingMedication.startDate);
+    setUseEndDate(Boolean(editingMedication.endDate));
+    setEndDate(editingMedication.endDate ?? editingMedication.startDate);
+    setTotalQuantity(
+      typeof editingMedication.totalQuantity === 'number' && editingMedication.totalQuantity > 0
+        ? `${editingMedication.totalQuantity}`
+        : '',
+    );
     setDoseTimes([...presetTimes, ...defaultDoseTimes].slice(0, 3));
     setNote(editingMedication.note ?? '');
     setStep('name');
@@ -196,7 +216,11 @@ export function AddMedsScreen({
   const canProceed =
     (step === 'name' && name.trim().length > 1) ||
     (step === 'form-dose' && form.length > 0) ||
-    (step === 'frequency' && Boolean(startDate) && selectedDoseTimes.every((item) => item.trim().length > 0) && !hasDuplicateTimes) ||
+    (step === 'frequency' &&
+      Boolean(startDate) &&
+      selectedDoseTimes.every((item) => item.trim().length > 0) &&
+      !hasDuplicateTimes &&
+      isEndDateValid) ||
     step === 'note';
 
   const headerTitle =
@@ -210,6 +234,9 @@ export function AddMedsScreen({
 
   async function handleSave(shouldSkipNote = false) {
     const normalizedName = name.trim();
+    const parsedTotalQuantity = Number(totalQuantity);
+    const normalizedTotalQuantity =
+      Number.isFinite(parsedTotalQuantity) && parsedTotalQuantity > 0 ? Math.floor(parsedTotalQuantity) : undefined;
     if (!normalizedName || !form || selectedDoseTimes.length === 0) {
       return;
     }
@@ -220,11 +247,14 @@ export function AddMedsScreen({
         form,
         iconEmoji,
         dosage,
+        isBeforeMeal,
         frequencyLabel: toFrequencyLabel(dayInterval),
         note: note.trim(),
         startDate: effectiveStartDate,
+        endDate: useEndDate ? endDate : null,
         time: selectedDoseTimes[0],
         times: selectedDoseTimes,
+        totalQuantity: normalizedTotalQuantity,
       });
     } else {
       await addMedication({
@@ -232,11 +262,14 @@ export function AddMedsScreen({
         form,
         iconEmoji,
         dosage,
+        isBeforeMeal,
         frequencyLabel: toFrequencyLabel(dayInterval),
         note: shouldSkipNote ? '' : note.trim(),
         startDate: effectiveStartDate,
+        endDate: useEndDate ? endDate : null,
         time: selectedDoseTimes[0],
         times: selectedDoseTimes,
+        totalQuantity: normalizedTotalQuantity,
         active: true,
       });
 
@@ -244,11 +277,15 @@ export function AddMedsScreen({
       setForm('');
       setIconEmoji('💊');
       setDosage('0.5');
+      setIsBeforeMeal(false);
       setIntervalUnit('day');
       setIntervalCount(1);
       setSelectedWeekday(1);
       setDosesPerDay(1);
       setStartDate(formatDate(new Date()));
+      setUseEndDate(false);
+      setEndDate(formatDate(new Date()));
+      setTotalQuantity('');
       setDoseTimes(defaultDoseTimes);
       setNote('');
       setStep('name');
@@ -278,8 +315,13 @@ export function AddMedsScreen({
     setStep(steps[stepIndex - 1]);
   }
 
-  function openDateSheet() {
-    const initialDate = intervalUnit === 'week' ? alignDateToWeekday(startDate, selectedWeekday) : startDate;
+  function openDateSheet(target: DateField = 'start') {
+    const initialDate = target === 'end'
+      ? endDate
+      : intervalUnit === 'week'
+        ? alignDateToWeekday(startDate, selectedWeekday)
+        : startDate;
+    setDateField(target);
     setDraftDate(initialDate);
     setCalendarMonth(parseDateKey(initialDate));
     setSheet('date');
@@ -440,7 +482,41 @@ export function AddMedsScreen({
 
           <Text style={styles.frequencySummary}>{getFrequencySummary(dayInterval, dosesPerDay, locale)}</Text>
 
-          <Pressable style={styles.selectionRow} onPress={openDateSheet}>
+          <View style={styles.doseCountRow}>
+            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Kullanım tipi' : 'Meal preference'}</Text>
+            <View style={styles.doseCountChipRow}>
+              <Pressable
+                onPress={() => setIsBeforeMeal(true)}
+                style={[styles.doseCountChip, isBeforeMeal && styles.doseCountChipSelected]}
+              >
+                <Text style={[styles.doseCountChipText, isBeforeMeal && styles.doseCountChipTextSelected]}>
+                  {locale === 'tr' ? 'Aç karnına' : 'Before meal'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setIsBeforeMeal(false)}
+                style={[styles.doseCountChip, !isBeforeMeal && styles.doseCountChipSelected]}
+              >
+                <Text style={[styles.doseCountChipText, !isBeforeMeal && styles.doseCountChipTextSelected]}>
+                  {locale === 'tr' ? 'Tok karnına' : 'After meal'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.doseCountRow}>
+            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Toplam ilaç adedi' : 'Total quantity'}</Text>
+            <TextInput
+              value={totalQuantity}
+              onChangeText={(value) => setTotalQuantity(value.replace(/[^0-9]/g, ''))}
+              keyboardType="number-pad"
+              placeholder={locale === 'tr' ? 'Örn: 30' : 'Ex: 30'}
+              placeholderTextColor={theme.colors.neutral[400]}
+              style={styles.searchInput}
+            />
+          </View>
+
+          <Pressable style={styles.selectionRow} onPress={() => openDateSheet('start')}>
             <View style={styles.selectionLeft}>
               <Text style={styles.selectionIcon}>🗓</Text>
               <Text style={styles.selectionLabel}>{t.startDate}</Text>
@@ -450,6 +526,58 @@ export function AddMedsScreen({
               <Text style={styles.selectionChevron}>›</Text>
             </View>
           </Pressable>
+
+          <View style={styles.doseCountRow}>
+            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Bitiş tarihi' : 'End date'}</Text>
+            <View style={styles.doseCountChipRow}>
+              <Pressable
+                onPress={() => setUseEndDate(false)}
+                style={[styles.doseCountChip, !useEndDate && styles.doseCountChipSelected]}
+              >
+                <Text style={[styles.doseCountChipText, !useEndDate && styles.doseCountChipTextSelected]}>
+                  {locale === 'tr' ? 'Yok' : 'None'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setUseEndDate(true);
+                  if (parseDateKey(endDate).getTime() < parseDateKey(startDate).getTime()) {
+                    setEndDate(startDate);
+                  }
+                }}
+                style={[styles.doseCountChip, useEndDate && styles.doseCountChipSelected]}
+              >
+                <Text style={[styles.doseCountChipText, useEndDate && styles.doseCountChipTextSelected]}>
+                  {locale === 'tr' ? 'Seç' : 'Set'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {useEndDate ? (
+            <Pressable style={styles.selectionRow} onPress={() => openDateSheet('end')}>
+              <View style={styles.selectionLeft}>
+                <Text style={styles.selectionIcon}>📍</Text>
+                <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Bitiş tarihi seç' : 'Select end date'}</Text>
+              </View>
+              <View style={styles.selectionRight}>
+                <Text style={styles.selectionValue}>
+                  {parseDateKey(endDate).toLocaleDateString(getLocaleTag(locale), {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </Text>
+                <Text style={styles.selectionChevron}>›</Text>
+              </View>
+            </Pressable>
+          ) : null}
+
+          {useEndDate && !isEndDateValid ? (
+            <Text style={styles.timeWarning}>
+              {locale === 'tr' ? 'Bitiş tarihi başlangıç tarihinden önce olamaz.' : 'End date cannot be earlier than start date.'}
+            </Text>
+          ) : null}
 
           {selectedDoseTimes.map((slotTime, index) => (
             <Pressable key={`${index}-${slotTime}`} style={styles.selectionRow} onPress={() => openTimeSheet(index)}>
@@ -542,7 +670,11 @@ export function AddMedsScreen({
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>
                 {sheet === 'date'
-                  ? t.selectDate
+                  ? dateField === 'end'
+                    ? locale === 'tr'
+                      ? 'Bitiş tarihi seçin'
+                      : 'Select end date'
+                    : t.selectDate
                   : sheet === 'time'
                     ? t.setTime
                     : sheet === 'form'
@@ -638,7 +770,7 @@ export function AddMedsScreen({
 
                     const dateKey = formatDate(dateCell);
                     const selected = draftDate === dateKey;
-                    const selectable = intervalUnit !== 'week' || dateCell.getDay() === selectedWeekday;
+                    const selectable = dateField === 'end' || intervalUnit !== 'week' || dateCell.getDay() === selectedWeekday;
 
                     return (
                       <Pressable
@@ -669,7 +801,14 @@ export function AddMedsScreen({
                 <Button
                   label={t.done}
                   onPress={() => {
-                    setStartDate(draftDate);
+                    if (dateField === 'end') {
+                      setEndDate(draftDate);
+                    } else {
+                      setStartDate(draftDate);
+                      if (useEndDate && parseDateKey(endDate).getTime() < parseDateKey(draftDate).getTime()) {
+                        setEndDate(draftDate);
+                      }
+                    }
                     setSheet('none');
                   }}
                 />

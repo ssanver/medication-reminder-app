@@ -21,6 +21,15 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
   const store = useMedicationStore();
   const t = getTranslations(locale);
   const [filter, setFilter] = useState<MedStatus>('All');
+  const takenCountsByMedication = useMemo(() => {
+    return store.events.reduce<Record<string, number>>((acc, item) => {
+      if (item.status !== 'taken') {
+        return acc;
+      }
+      acc[item.medicationId] = (acc[item.medicationId] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [store.events]);
 
   const items = useMemo(
     () =>
@@ -36,20 +45,37 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
 
         const formLabel = localizeFormLabel(item.form, locale);
         const frequencyLabel = localizeFrequencyLabel(item.frequencyLabel, locale);
+        const mealLabel = item.isBeforeMeal
+          ? locale === 'tr'
+            ? 'Aç karnına'
+            : 'Before meal'
+          : locale === 'tr'
+            ? 'Tok karnına'
+            : 'After meal';
+        const takenCount = takenCountsByMedication[item.id] ?? 0;
+        const remainingCount =
+          typeof item.totalQuantity === 'number' && item.totalQuantity > 0 ? Math.max(item.totalQuantity - takenCount, 0) : null;
 
         return {
           id: item.id,
           name: item.name,
           details:
             locale === 'tr'
-              ? `${frequencyLabel} | ${item.dosage} ${formLabel}`
-              : `${frequencyLabel} | ${item.dosage} ${formLabel}`,
-          schedule: locale === 'tr' ? `${startedLabel} başlangıç | 10 ${formLabel.toLowerCase()} kaldı` : `Started ${startedLabel} | 10 ${formLabel}s remain`,
+              ? `${frequencyLabel} | ${item.dosage} ${formLabel} | ${mealLabel}`
+              : `${frequencyLabel} | ${item.dosage} ${formLabel} | ${mealLabel}`,
+          schedule:
+            remainingCount === null
+              ? locale === 'tr'
+                ? `${startedLabel} başlangıç`
+                : `Started ${startedLabel}`
+              : locale === 'tr'
+                ? `${startedLabel} başlangıç | ${remainingCount} adet kaldı`
+                : `Started ${startedLabel} | ${remainingCount} left`,
           active: item.active,
           emoji: icon,
         };
       }),
-    [store.medications, locale],
+    [store.medications, locale, takenCountsByMedication],
   );
 
   const filtered = useMemo(() => {

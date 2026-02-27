@@ -9,12 +9,12 @@ export type WeekDayItem = {
   isToday: boolean;
 };
 
-export function getStartOfWeek(date: Date): Date {
+export function getStartOfWeek(date: Date, weekStartsOn: 'monday' | 'sunday' = 'monday'): Date {
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
 
   const day = start.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
+  const diff = weekStartsOn === 'sunday' ? -day : day === 0 ? -6 : 1 - day;
   start.setDate(start.getDate() + diff);
 
   return start;
@@ -49,8 +49,8 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
-export function getWeekStrip(selectedDate: Date, locale: Locale): WeekDayItem[] {
-  const start = getStartOfWeek(selectedDate);
+export function getWeekStrip(selectedDate: Date, locale: Locale, weekStartsOn: 'monday' | 'sunday' = 'monday'): WeekDayItem[] {
+  const start = getStartOfWeek(selectedDate, weekStartsOn);
   const today = new Date();
 
   return Array.from({ length: 7 }, (_, index) => {

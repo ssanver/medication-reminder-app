@@ -82,6 +82,7 @@ export function AppNavigator() {
   const [phase, setPhase] = useState<AppPhase>('splash');
   const [locale, setLocale] = useState<Locale>('tr');
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
+  const [weekStartsOn, setWeekStartsOn] = useState<'monday' | 'sunday'>('monday');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [medicationRemindersEnabled, setMedicationRemindersEnabled] = useState(true);
   const [snoozeMinutes, setSnoozeMinutes] = useState(10);
@@ -138,6 +139,7 @@ export function AppNavigator() {
       const preferences = await loadAppPreferences();
       setLocale(preferences.locale);
       setFontScale(preferences.fontScale);
+      setWeekStartsOn(preferences.weekStartsOn);
       setNotificationsEnabled(preferences.notificationsEnabled);
       setMedicationRemindersEnabled(preferences.medicationRemindersEnabled);
       setSnoozeMinutes(preferences.snoozeMinutes);
@@ -148,11 +150,12 @@ export function AppNavigator() {
     void saveAppPreferences({
       locale,
       fontScale,
+      weekStartsOn,
       notificationsEnabled,
       medicationRemindersEnabled,
       snoozeMinutes,
     });
-  }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
+  }, [locale, fontScale, weekStartsOn, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
 
   useEffect(() => {
     setAppFontScale(fontScale);
@@ -520,6 +523,8 @@ export function AppNavigator() {
           },
           fontScale,
           setFontScale,
+          weekStartsOn,
+          setWeekStartsOn,
           notificationsEnabled,
           medicationRemindersEnabled,
           snoozeMinutes,
@@ -631,6 +636,8 @@ function renderTab(
   onLocaleChange: (locale: Locale) => void,
   fontScale: number,
   onFontScaleChange: (value: number) => void,
+  weekStartsOn: 'monday' | 'sunday',
+  onWeekStartsOnChange: (value: 'monday' | 'sunday') => void,
   notificationsEnabled: boolean,
   medicationRemindersEnabled: boolean,
   snoozeMinutes: number,
@@ -659,6 +666,7 @@ function renderTab(
         <TodayScreen
           locale={locale}
           fontScale={fontScale}
+          weekStartsOn={weekStartsOn}
           onOpenAddMedication={onOpenAddMeds}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
@@ -683,6 +691,8 @@ function renderTab(
         <SettingsScreen
           locale={locale}
           fontScale={fontScale}
+          weekStartsOn={weekStartsOn}
+          onWeekStartsOnChange={onWeekStartsOnChange}
           onSaveAppearance={(nextLocale, nextFontScale) => {
             onLocaleChange(nextLocale);
             if (isFontScaleLevelValid(nextFontScale)) {
@@ -711,6 +721,7 @@ function renderTab(
         <TodayScreen
           locale={locale}
           fontScale={fontScale}
+          weekStartsOn={weekStartsOn}
           onOpenAddMedication={onOpenAddMeds}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}

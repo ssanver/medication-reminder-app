@@ -20,12 +20,15 @@ export type Medication = {
   form: string;
   iconEmoji?: string;
   dosage: string;
+  isBeforeMeal: boolean;
   frequencyLabel: string;
   recurrence: MedicationRecurrence;
   note: string;
   startDate: string;
+  endDate?: string | null;
   time: string;
   times?: string[];
+  totalQuantity?: number;
   active: boolean;
 };
 
@@ -169,6 +172,12 @@ type ApiMedication = {
   schedules: ApiMedicationSchedule[];
 };
 
+type ApiInventoryRecord = {
+  medicationId: string;
+  currentStock: number;
+  threshold: number;
+};
+
 type ApiSaveMedicationRequest = {
   name: string;
   dosage: string;
@@ -224,9 +233,9 @@ function toApiSaveMedicationRequest(medication: Medication): ApiSaveMedicationRe
     name: medication.name.trim(),
     dosage: medication.dosage.trim(),
     usageType: medication.form,
-    isBeforeMeal: false,
+    isBeforeMeal: medication.isBeforeMeal,
     startDate: medication.startDate,
-    endDate: null,
+    endDate: medication.endDate ?? null,
     schedules: toApiSchedules(medication),
   };
 }
@@ -245,13 +254,34 @@ function fromApiMedication(item: ApiMedication): Medication {
     form,
     iconEmoji: iconForForm(form),
     dosage: item.dosage,
+    isBeforeMeal: item.isBeforeMeal,
     frequencyLabel,
     recurrence,
     note: '',
     startDate: item.startDate,
+    endDate: item.endDate ?? null,
     time: times[0] ?? '09:00',
     times,
+    totalQuantity: undefined,
     active: item.isActive,
+  });
+}
+
+async function listInventoryRecords(): Promise<ApiInventoryRecord[]> {
+  return apiRequestJson<ApiInventoryRecord[]>('/api/inventory', {
+    correlationPrefix: 'inventory-list',
+  });
+}
+
+async function updateInventoryStock(medicationId: string, totalQuantity: number): Promise<void> {
+  await apiRequestJson('/api/inventory/update', {
+    method: 'POST',
+    body: {
+      medicationId,
+      currentStock: totalQuantity,
+      threshold: Math.max(1, Math.min(5, Math.floor(totalQuantity * 0.2))),
+    },
+    correlationPrefix: 'inventory-update',
   });
 }
 
@@ -286,8 +316,22 @@ export async function hydrateMedicationStore(): Promise<void> {
       correlationPrefix: 'medication-list',
     });
     const remoteMedications = remote.map(fromApiMedication);
+    let inventoryByMedicationId: Record<string, number> = {};
+    try {
+      const inventoryRecords = await listInventoryRecords();
+      inventoryByMedicationId = inventoryRecords.reduce<Record<string, number>>((acc, item) => {
+        acc[item.medicationId] = item.currentStock;
+        return acc;
+      }, {});
+    } catch {
+      inventoryByMedicationId = {};
+    }
+
     state = {
-      medications: remoteMedications,
+      medications: remoteMedications.map((item) => ({
+        ...item,
+        totalQuantity: inventoryByMedicationId[item.id],
+      })),
       events: localEvents,
       isHydrated: true,
     };
@@ -321,10 +365,13 @@ export async function addMedication(payload: {
   iconEmoji?: string;
   frequencyLabel: string;
   dosage: string;
+  isBeforeMeal: boolean;
   note: string;
   startDate?: string;
+  endDate?: string | null;
   time?: string;
   times?: string[];
+  totalQuantity?: number;
   active?: boolean;
 }): Promise<void> {
   const today = toDateKey(new Date());
@@ -335,12 +382,15 @@ export async function addMedication(payload: {
     form: payload.form,
     iconEmoji: payload.iconEmoji || iconForForm(payload.form),
     dosage: payload.dosage.trim().split(' - ')[0] ?? payload.dosage.trim(),
+    isBeforeMeal: payload.isBeforeMeal,
     frequencyLabel: payload.frequencyLabel,
     recurrence: recurrenceFromLabel(payload.frequencyLabel),
     note: payload.note.trim(),
     startDate: payload.startDate ?? today,
+    endDate: payload.endDate ?? null,
     time: normalizedTimes[0] ?? '09:00',
     times: normalizedTimes,
+    totalQuantity: payload.totalQuantity,
     active: payload.active ?? true,
   };
   const created = await apiRequestJson<ApiMedication>('/api/medications', {
@@ -349,6 +399,14 @@ export async function addMedication(payload: {
     correlationPrefix: 'medication-create',
   });
   const medication = fromApiMedication(created);
+  if (typeof payload.totalQuantity === 'number' && Number.isFinite(payload.totalQuantity) && payload.totalQuantity > 0) {
+    try {
+      await updateInventoryStock(medication.id, Math.floor(payload.totalQuantity));
+      medication.totalQuantity = Math.floor(payload.totalQuantity);
+    } catch {
+      medication.totalQuantity = Math.floor(payload.totalQuantity);
+    }
+  }
 
   state = {
     ...state,
@@ -364,7 +422,9 @@ export function getMedicationById(medicationId: string): Medication | undefined 
 
 export async function updateMedication(
   medicationId: string,
-  patch: Partial<Pick<Medication, 'name' | 'form' | 'iconEmoji' | 'dosage' | 'frequencyLabel' | 'note' | 'startDate' | 'time' | 'times' | 'active'>>,
+  patch: Partial<
+    Pick<Medication, 'name' | 'form' | 'iconEmoji' | 'dosage' | 'isBeforeMeal' | 'frequencyLabel' | 'note' | 'startDate' | 'endDate' | 'time' | 'times' | 'totalQuantity' | 'active'>
+  >,
 ): Promise<void> {
   const current = state.medications.find((item) => item.id === medicationId);
   if (!current) {
@@ -386,6 +446,14 @@ export async function updateMedication(
       correlationPrefix: 'medication-update',
     });
     const updatedMedication = fromApiMedication(updated);
+    if (typeof nextWithRecurrence.totalQuantity === 'number' && Number.isFinite(nextWithRecurrence.totalQuantity) && nextWithRecurrence.totalQuantity > 0) {
+      try {
+        await updateInventoryStock(medicationId, Math.floor(nextWithRecurrence.totalQuantity));
+      } catch {
+        // Keep local value even when inventory update is not reachable.
+      }
+      updatedMedication.totalQuantity = Math.floor(nextWithRecurrence.totalQuantity);
+    }
 
     state = {
       ...state,
@@ -516,10 +584,18 @@ function recurrenceIntervalDays(recurrence: MedicationRecurrence): number {
 }
 
 function isScheduled(medication: Medication, date: Date): boolean {
-  const dayDiff = diffDays(parseDateKey(medication.startDate), date);
+  const normalizedDate = normalize(date);
+  const dayDiff = diffDays(parseDateKey(medication.startDate), normalizedDate);
 
   if (dayDiff < 0) {
     return false;
+  }
+
+  if (medication.endDate) {
+    const endDate = normalize(parseDateKey(medication.endDate));
+    if (normalizedDate.getTime() > endDate.getTime()) {
+      return false;
+    }
   }
 
   if (

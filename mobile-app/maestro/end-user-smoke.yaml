@@ -19,12 +19,13 @@ appId: com.suleymansanver.medicationreminder
       - tapOn:
           id: "signup-open-signin-link"
 
-- extendedWaitUntil:
-    visible:
-      id: "signin-submit-button"
-    timeout: 15000
-- tapOn:
-    id: "signin-submit-button"
+- runFlow:
+    when:
+      visible:
+        id: "signin-submit-button"
+    commands:
+      - tapOn:
+          id: "signin-submit-button"
 
 - extendedWaitUntil:
     visible:
@@ -45,17 +46,6 @@ appId: com.suleymansanver.medicationreminder
     id: "tab-settings"
 - assertVisible:
     text: "^(Settings|Ayarlar)$"
-
-- scrollUntilVisible:
-    element:
-      id: "settings-delete-account-row"
-    direction: DOWN
-- tapOn:
-    id: "settings-delete-account-row"
-- assertVisible:
-    id: "cancel-account-dismiss-button"
-- tapOn:
-    id: "cancel-account-dismiss-button"
 
 - tapOn:
     id: "tab-today"

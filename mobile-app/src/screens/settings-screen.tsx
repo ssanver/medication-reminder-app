@@ -14,6 +14,8 @@ import { theme } from '../theme';
 type SettingsScreenProps = {
   locale: Locale;
   fontScale: number;
+  weekStartsOn: 'monday' | 'sunday';
+  onWeekStartsOnChange: (value: 'monday' | 'sunday') => void;
   onSaveAppearance: (locale: Locale, fontScale: number) => void;
   onOpenProfile: () => void;
   onOpenNotificationSettings: () => void;
@@ -35,6 +37,8 @@ type SettingsScreenProps = {
 export function SettingsScreen({
   locale,
   fontScale,
+  weekStartsOn,
+  onWeekStartsOnChange,
   onSaveAppearance,
   onOpenProfile,
   onOpenNotificationSettings,
@@ -139,6 +143,28 @@ export function SettingsScreen({
               disabled={!isAppearanceDirty}
               size="s"
             />
+          </View>
+
+          <View style={styles.weekStartBlock}>
+            <Text style={styles.rowTitle}>{locale === 'tr' ? 'Hafta başlangıcı' : 'Week starts on'}</Text>
+            <View style={styles.weekStartRow}>
+              <Pressable
+                style={[styles.weekStartChip, weekStartsOn === 'monday' && styles.weekStartChipActive]}
+                onPress={() => onWeekStartsOnChange('monday')}
+              >
+                <Text style={[styles.weekStartChipText, weekStartsOn === 'monday' && styles.weekStartChipTextActive]}>
+                  {locale === 'tr' ? 'Pazartesi' : 'Monday'}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.weekStartChip, weekStartsOn === 'sunday' && styles.weekStartChipActive]}
+                onPress={() => onWeekStartsOnChange('sunday')}
+              >
+                <Text style={[styles.weekStartChipText, weekStartsOn === 'sunday' && styles.weekStartChipTextActive]}>
+                  {locale === 'tr' ? 'Pazar' : 'Sunday'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </Section>
 
@@ -493,6 +519,37 @@ const styles = StyleSheet.create({
   },
   zoomTextActive: {
     color: theme.colors.primaryBlue[500],
+  },
+  weekStartBlock: {
+    gap: theme.spacing[8],
+    paddingHorizontal: theme.spacing[16],
+    paddingBottom: theme.spacing[16],
+  },
+  weekStartRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
+  },
+  weekStartChip: {
+    minHeight: 32,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.neutral[50],
+    paddingHorizontal: theme.spacing[16],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekStartChipActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  weekStartChipText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  weekStartChipTextActive: {
+    color: theme.colors.primaryBlue[500],
+    fontWeight: '700',
   },
   overlay: {
     flex: 1,
