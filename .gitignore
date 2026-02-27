@@ -4,6 +4,7 @@ node_modules/
 # React Native / Expo
 .expo/
 dist/
+mobile-app/build/
 
 # .NET
 bin/
