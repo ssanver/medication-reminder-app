@@ -379,19 +379,29 @@ export async function updateMedication(
     ...next,
     recurrence: patch.frequencyLabel ? recurrenceFromLabel(patch.frequencyLabel) : next.recurrence,
   };
-  const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
-    method: 'PUT',
-    body: toApiSaveMedicationRequest(nextWithRecurrence),
-    correlationPrefix: 'medication-update',
-  });
-  const updatedMedication = fromApiMedication(updated);
+  try {
+    const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
+      method: 'PUT',
+      body: toApiSaveMedicationRequest(nextWithRecurrence),
+      correlationPrefix: 'medication-update',
+    });
+    const updatedMedication = fromApiMedication(updated);
 
-  state = {
-    ...state,
-    medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
-  };
-  emit();
-  await persist();
+    state = {
+      ...state,
+      medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
+    };
+    emit();
+    await persist();
+  } catch {
+    // Keep local edits usable when backend update fails.
+    state = {
+      ...state,
+      medications: state.medications.map((item) => (item.id === medicationId ? nextWithRecurrence : item)),
+    };
+    emit();
+    await persist();
+  }
 }
 
 export async function setMedicationActive(medicationId: string, active: boolean): Promise<void> {
@@ -400,22 +410,34 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     return;
   }
 
-  const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
-    method: 'PUT',
-    body: toApiSaveMedicationRequest({
-      ...current,
-      active,
-    }),
-    correlationPrefix: 'medication-update-active',
-  });
-  const updatedMedication = fromApiMedication(updated);
-
-  state = {
-    ...state,
-    medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
+  const localUpdated: Medication = {
+    ...current,
+    active,
   };
-  emit();
-  await persist();
+
+  try {
+    const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
+      method: 'PUT',
+      body: toApiSaveMedicationRequest(localUpdated),
+      correlationPrefix: 'medication-update-active',
+    });
+    const updatedMedication = fromApiMedication(updated);
+
+    state = {
+      ...state,
+      medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
+    };
+    emit();
+    await persist();
+  } catch {
+    // Fallback to local status toggle to keep My Meds actions responsive offline.
+    state = {
+      ...state,
+      medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
+    };
+    emit();
+    await persist();
+  }
 }
 
 export async function setDoseStatus(medicationId: string, date: Date, status: DoseStatus, scheduledTime = ''): Promise<void> {

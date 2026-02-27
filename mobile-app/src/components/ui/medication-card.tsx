@@ -68,7 +68,10 @@ export function MedicationCard({
         {showToggle ? (
           <Pressable
             style={[styles.toggleTrack, active && styles.toggleTrackActive]}
-            onPress={() => onToggle?.(!active)}
+            onPress={(event) => {
+              event.stopPropagation();
+              onToggle?.(!active);
+            }}
             hitSlop={8}
           >
             <View style={[styles.toggleThumb, active && styles.toggleThumbActive]} />
