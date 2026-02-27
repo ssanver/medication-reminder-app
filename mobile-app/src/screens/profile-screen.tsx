@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
@@ -27,30 +28,8 @@ function parseDateKey(value: string): Date {
     return new Date();
   }
 
-  return new Date(`${value}T00:00:00`);
-}
-
-function shiftMonth(base: Date, delta: number): Date {
-  return new Date(base.getFullYear(), base.getMonth() + delta, 1);
-}
-
-function buildCalendarCells(month: Date): Array<Date | null> {
-  const year = month.getFullYear();
-  const monthIndex = month.getMonth();
-  const firstDay = new Date(year, monthIndex, 1);
-  const mondayStartOffset = (firstDay.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const cells: Array<Date | null> = Array.from({ length: mondayStartOffset }, () => null);
-
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    cells.push(new Date(year, monthIndex, day));
-  }
-
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
-
-  return cells;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
 function getGenderOptions(locale: Locale): string[] {
@@ -69,8 +48,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
   const [gender, setGender] = useState('');
   const [sheet, setSheet] = useState<SheetType>('none');
   const [savedMessage, setSavedMessage] = useState('');
-  const [draftBirthDate, setDraftBirthDate] = useState(formatDate(new Date()));
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [draftBirthDate, setDraftBirthDate] = useState(new Date());
   const avatarEmoji = resolveProfileAvatarEmoji(gender, locale);
 
   useEffect(() => {
@@ -96,9 +74,6 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
     });
   }, [birthDate, locale]);
 
-  const dayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const calendarCells = buildCalendarCells(calendarMonth);
-
   async function onSave() {
     await saveProfile({
       fullName: name,
@@ -112,9 +87,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
   }
 
   function openDateSheet() {
-    const initialDate = birthDate || formatDate(new Date());
-    setDraftBirthDate(initialDate);
-    setCalendarMonth(parseDateKey(initialDate));
+    setDraftBirthDate(parseDateKey(birthDate));
     setSheet('birth-date');
   }
 
@@ -180,47 +153,26 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
 
             {sheet === 'birth-date' ? (
               <>
-                <View style={styles.calendarHeader}>
-                  <Text style={styles.sheetTitle}>{t.selectDate}</Text>
-                </View>
-
-                <View style={styles.monthHeader}>
-                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, -1))} hitSlop={8}>
-                    <Text style={styles.monthArrow}>‹</Text>
-                  </Pressable>
-                  <Text style={styles.monthTitle}>{calendarMonth.toLocaleDateString(getLocaleTag(locale), { month: 'short', year: 'numeric' })}</Text>
-                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, 1))} hitSlop={8}>
-                    <Text style={styles.monthArrow}>›</Text>
-                  </Pressable>
-                </View>
-
-                <View style={styles.dayHeaderRow}>
-                  {dayHeaders.map((day, index) => (
-                    <Text key={`${day}-${index}`} style={styles.dayHeaderText}>{day}</Text>
-                  ))}
-                </View>
-
-                <View style={styles.calendarGrid}>
-                  {calendarCells.map((dateCell, index) => {
-                    if (!dateCell) {
-                      return <View key={`empty-${index}`} style={styles.calendarCell} />;
-                    }
-
-                    const dateKey = formatDate(dateCell);
-                    const selected = dateKey === draftBirthDate;
-
-                    return (
-                      <Pressable key={dateKey} style={[styles.calendarCell, selected && styles.calendarCellSelected]} onPress={() => setDraftBirthDate(dateKey)}>
-                        <Text style={[styles.calendarCellText, selected && styles.calendarCellTextSelected]}>{dateCell.getDate()}</Text>
-                      </Pressable>
-                    );
-                  })}
+                <Text style={styles.sheetTitle}>{t.selectDate}</Text>
+                <View style={styles.datePickerWrap}>
+                  <DateTimePicker
+                    value={draftBirthDate}
+                    mode="date"
+                    display="spinner"
+                    locale={getLocaleTag(locale)}
+                    maximumDate={new Date()}
+                    onChange={(_, date) => {
+                      if (date) {
+                        setDraftBirthDate(date);
+                      }
+                    }}
+                  />
                 </View>
 
                 <Button
                   label={t.save}
                   onPress={() => {
-                    setBirthDate(draftBirthDate);
+                    setBirthDate(formatDate(draftBirthDate));
                     setSheet('none');
                   }}
                 />
@@ -336,56 +288,8 @@ const styles = StyleSheet.create({
     color: theme.colors.primaryBlue[500],
     fontWeight: '700',
   },
-  calendarHeader: {
-    minHeight: 28,
-    justifyContent: 'center',
-  },
-  monthHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  datePickerWrap: {
     marginBottom: theme.spacing[8],
-  },
-  monthArrow: {
-    ...theme.typography.heading.h6Medium,
-    color: theme.colors.semantic.textSecondary,
-  },
-  monthTitle: {
-    ...theme.typography.bodyScale.mMedium,
-    color: theme.colors.semantic.textPrimary,
-  },
-  dayHeaderRow: {
-    flexDirection: 'row',
-  },
-  dayHeaderText: {
-    width: `${100 / 7}%`,
-    textAlign: 'center',
-    ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.textMuted,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: theme.spacing[8],
-  },
-  calendarCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.radius[8],
-  },
-  calendarCellSelected: {
-    backgroundColor: theme.colors.primaryBlue[50],
-    borderWidth: 1,
-    borderColor: theme.colors.primaryBlue[500],
-  },
-  calendarCellText: {
-    ...theme.typography.bodyScale.xmRegular,
-    color: theme.colors.semantic.textSecondary,
-  },
-  calendarCellTextSelected: {
-    color: theme.colors.primaryBlue[600],
-    fontWeight: '600',
   },
 });
