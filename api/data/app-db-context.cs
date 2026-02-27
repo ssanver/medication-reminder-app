@@ -7,6 +7,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     public DbSet<Medication> Medications => Set<Medication>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<MedicineCatalogItem> MedicineCatalogItems => Set<MedicineCatalogItem>();
     public DbSet<MedicationSchedule> MedicationSchedules => Set<MedicationSchedule>();
     public DbSet<DoseEvent> DoseEvents => Set<DoseEvent>();
@@ -49,6 +50,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
             entity.HasIndex(x => x.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<UserPreference>(entity =>
+        {
+            entity.ToTable("user-preferences");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserReference).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.WeekStartsOn).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => x.UserReference).IsUnique();
         });
 
         modelBuilder.Entity<MedicineCatalogItem>(entity =>

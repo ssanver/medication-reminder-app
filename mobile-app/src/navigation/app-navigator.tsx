@@ -35,6 +35,7 @@ import {
   syncMedicationReminderNotifications,
 } from '../features/notifications/local-notifications';
 import { loadAppPreferences, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
+import { loadWeekStartPreference, saveWeekStartPreference } from '../features/settings/week-start-preference-service';
 import { clearProfile } from '../features/profile/profile-store';
 import { shareApplication } from '../features/share/app-share';
 import { AddMedsScreen } from '../screens/add-meds-screen';
@@ -139,23 +140,43 @@ export function AppNavigator() {
       const preferences = await loadAppPreferences();
       setLocale(preferences.locale);
       setFontScale(preferences.fontScale);
-      setWeekStartsOn(preferences.weekStartsOn);
       setNotificationsEnabled(preferences.notificationsEnabled);
       setMedicationRemindersEnabled(preferences.medicationRemindersEnabled);
       setSnoozeMinutes(preferences.snoozeMinutes);
+
+      try {
+        const weekStart = await loadWeekStartPreference();
+        setWeekStartsOn(weekStart);
+      } catch {
+        setWeekStartsOn('monday');
+      }
     })();
   }, []);
+
+  useEffect(() => {
+    if (phase !== 'app') {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const weekStart = await loadWeekStartPreference(accountEmail || undefined);
+        setWeekStartsOn(weekStart);
+      } catch {
+        // Keep the current in-memory preference when API is unreachable.
+      }
+    })();
+  }, [accountEmail, phase]);
 
   useEffect(() => {
     void saveAppPreferences({
       locale,
       fontScale,
-      weekStartsOn,
       notificationsEnabled,
       medicationRemindersEnabled,
       snoozeMinutes,
     });
-  }, [locale, fontScale, weekStartsOn, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
+  }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
 
   useEffect(() => {
     setAppFontScale(fontScale);
@@ -524,7 +545,10 @@ export function AppNavigator() {
           fontScale,
           setFontScale,
           weekStartsOn,
-          setWeekStartsOn,
+          (nextWeekStartsOn) => {
+            setWeekStartsOn(nextWeekStartsOn);
+            void saveWeekStartPreference(nextWeekStartsOn, accountEmail || undefined);
+          },
           notificationsEnabled,
           medicationRemindersEnabled,
           snoozeMinutes,

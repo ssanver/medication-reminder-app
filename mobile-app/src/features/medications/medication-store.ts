@@ -135,16 +135,8 @@ function normalizeMedication(payload: Medication): Medication {
 }
 
 function toPersistableState() {
-  const stockByMedicationId = state.medications.reduce<Record<string, number>>((acc, item) => {
-    if (typeof item.totalQuantity === 'number' && item.totalQuantity > 0) {
-      acc[item.id] = item.totalQuantity;
-    }
-    return acc;
-  }, {});
-
   return {
     events: state.events,
-    stockByMedicationId,
   };
 }
 
@@ -178,6 +170,12 @@ type ApiMedication = {
   endDate?: string | null;
   isActive: boolean;
   schedules: ApiMedicationSchedule[];
+};
+
+type ApiInventoryRecord = {
+  medicationId: string;
+  currentStock: number;
+  threshold: number;
 };
 
 type ApiSaveMedicationRequest = {
@@ -269,6 +267,12 @@ function fromApiMedication(item: ApiMedication): Medication {
   });
 }
 
+async function listInventoryRecords(): Promise<ApiInventoryRecord[]> {
+  return apiRequestJson<ApiInventoryRecord[]>('/api/inventory', {
+    correlationPrefix: 'inventory-list',
+  });
+}
+
 async function updateInventoryStock(medicationId: string, totalQuantity: number): Promise<void> {
   await apiRequestJson('/api/inventory/update', {
     method: 'POST',
@@ -287,7 +291,6 @@ export async function hydrateMedicationStore(): Promise<void> {
   }
 
   let localEvents: DoseEvent[] = [];
-  let localStockByMedicationId: Record<string, number> = {};
 
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -295,7 +298,6 @@ export async function hydrateMedicationStore(): Promise<void> {
     if (raw) {
       const parsed = JSON.parse(raw) as {
         events?: Array<Omit<DoseEvent, 'scheduledTime'> & Partial<Pick<DoseEvent, 'scheduledTime'>>>;
-        stockByMedicationId?: Record<string, number>;
       };
       localEvents =
         parsed.events?.map((item) => ({
@@ -304,12 +306,6 @@ export async function hydrateMedicationStore(): Promise<void> {
           scheduledTime: typeof item.scheduledTime === 'string' ? normalizeTime(item.scheduledTime) : '',
           status: item.status,
         })) ?? [];
-      localStockByMedicationId = Object.entries(parsed.stockByMedicationId ?? {}).reduce<Record<string, number>>((acc, [key, value]) => {
-        if (Number.isFinite(value) && value > 0) {
-          acc[key] = Math.floor(value);
-        }
-        return acc;
-      }, {});
     }
   } catch {
     // Keep empty local cache when persisted payload is unavailable/corrupt.
@@ -320,11 +316,21 @@ export async function hydrateMedicationStore(): Promise<void> {
       correlationPrefix: 'medication-list',
     });
     const remoteMedications = remote.map(fromApiMedication);
+    let inventoryByMedicationId: Record<string, number> = {};
+    try {
+      const inventoryRecords = await listInventoryRecords();
+      inventoryByMedicationId = inventoryRecords.reduce<Record<string, number>>((acc, item) => {
+        acc[item.medicationId] = item.currentStock;
+        return acc;
+      }, {});
+    } catch {
+      inventoryByMedicationId = {};
+    }
 
     state = {
       medications: remoteMedications.map((item) => ({
         ...item,
-        totalQuantity: localStockByMedicationId[item.id],
+        totalQuantity: inventoryByMedicationId[item.id],
       })),
       events: localEvents,
       isHydrated: true,
