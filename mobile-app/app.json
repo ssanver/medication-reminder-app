@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Medication Reminder",
+    "name": "Pill Mind",
     "slug": "medication-reminder",
     "scheme": "medication-reminder",
     "version": "0.1.0",
@@ -14,7 +14,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.medication-reminder"
+      "bundleIdentifier": "com.suleymansanver.medicationreminder"
     },
     "android": {
       "adaptiveIcon": {
