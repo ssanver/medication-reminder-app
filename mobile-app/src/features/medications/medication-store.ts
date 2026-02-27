@@ -440,6 +440,21 @@ export async function setMedicationActive(medicationId: string, active: boolean)
   }
 }
 
+export async function deleteMedication(medicationId: string): Promise<void> {
+  await apiRequestJson(`/api/medications/${medicationId}`, {
+    method: 'DELETE',
+    correlationPrefix: 'medication-delete',
+  });
+
+  state = {
+    ...state,
+    medications: state.medications.filter((item) => item.id !== medicationId),
+    events: state.events.filter((item) => item.medicationId !== medicationId),
+  };
+  emit();
+  await persist();
+}
+
 export async function setDoseStatus(medicationId: string, date: Date, status: DoseStatus, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');

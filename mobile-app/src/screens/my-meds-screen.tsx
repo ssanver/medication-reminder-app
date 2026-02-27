@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
 import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
-import { resolveMedicationIcon, setMedicationActive } from '../features/medications/medication-store';
+import { deleteMedication, resolveMedicationIcon, setMedicationActive } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { theme } from '../theme';
 
@@ -104,6 +104,35 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
               compact
               medEmoji={item.emoji}
               onToggle={(value) => void setMedicationActive(item.id, value)}
+              secondaryActionLabel={locale === 'tr' ? 'Sil' : 'Delete'}
+              onSecondaryActionPress={() => {
+                Alert.alert(
+                  locale === 'tr' ? 'İlacı sil' : 'Delete medication',
+                  locale === 'tr' ? 'Bu işlem geri alınamaz. Devam edilsin mi?' : 'This action cannot be undone. Continue?',
+                  [
+                    {
+                      text: locale === 'tr' ? 'Vazgeç' : 'Cancel',
+                      style: 'cancel',
+                    },
+                    {
+                      text: locale === 'tr' ? 'Onayla' : 'Confirm',
+                      style: 'destructive',
+                      onPress: () => {
+                        void (async () => {
+                          try {
+                            await deleteMedication(item.id);
+                          } catch {
+                            Alert.alert(
+                              locale === 'tr' ? 'Silme başarısız' : 'Delete failed',
+                              locale === 'tr' ? 'İlaç silinemedi. Lütfen tekrar deneyin.' : 'Medication could not be deleted. Please try again.',
+                            );
+                          }
+                        })();
+                      },
+                    },
+                  ],
+                );
+              }}
               onPress={() => onOpenMedicationDetails(item.id)}
             />
           ))}

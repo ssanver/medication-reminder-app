@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
@@ -45,12 +45,12 @@ export function SettingsScreen({
   onShareApp,
   onOpenDonate,
   onCancelAccount,
-  notificationsEnabled,
-  medicationRemindersEnabled,
+  notificationsEnabled: _notificationsEnabled,
+  medicationRemindersEnabled: _medicationRemindersEnabled,
   snoozeMinutes,
-  onNotificationsToggle,
-  onMedicationRemindersToggle,
-  onEnableNotifications,
+  onNotificationsToggle: _onNotificationsToggle,
+  onMedicationRemindersToggle: _onMedicationRemindersToggle,
+  onEnableNotifications: _onEnableNotifications,
 }: SettingsScreenProps) {
   const t = getTranslations(locale);
   const shortDisplayName = toShortDisplayName('Suleyman Şanver');
@@ -109,41 +109,6 @@ export function SettingsScreen({
 
         <Section title={t.reminderAlarm}>
           <MenuRow testID="settings-notification-settings-row" label={t.notificationSettings} value={t.defaultAppSound} onPress={onOpenNotificationSettings} />
-          <View style={styles.switchRow}>
-            <View>
-              <Text style={styles.rowTitle}>{t.appNotifications}</Text>
-              <Text style={styles.rowSubtitle}>{t.openMedicationReminders}</Text>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={async (value) => {
-                if (value) {
-                  await onEnableNotifications();
-                  return;
-                }
-
-                onNotificationsToggle(false);
-                onMedicationRemindersToggle(false);
-              }}
-            />
-          </View>
-          <View style={styles.switchRow}>
-            <View>
-              <Text style={styles.rowTitle}>{t.medicationReminders}</Text>
-              <Text style={styles.rowSubtitle}>{t.dailyMedicationAlerts}</Text>
-            </View>
-            <Switch
-              value={medicationRemindersEnabled}
-              onValueChange={async (value) => {
-                if (value && !notificationsEnabled) {
-                  await onEnableNotifications();
-                  return;
-                }
-
-                onMedicationRemindersToggle(value);
-              }}
-            />
-          </View>
           <MenuRow testID="settings-snooze-duration-row" label={t.snoozeDuration} value={`${snoozeMinutes} min`} onPress={onOpenReminderPreferences} />
         </Section>
 
@@ -177,11 +142,14 @@ export function SettingsScreen({
           </View>
         </Section>
 
-        <Section title={t.reporting}>
+        <Section title={locale === 'tr' ? 'Destek ve Güvenlik' : 'Support & Security'}>
           <MenuRow testID="settings-change-password-row" label={t.changePassword} onPress={onOpenChangePassword} />
           <MenuRow testID="settings-contact-us-row" label={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} onPress={onOpenFeedback} />
           <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
             <Text style={styles.logoutText}>{locale === 'tr' ? 'Çıkış Yap' : 'Log Out'}</Text>
+          </Pressable>
+          <Pressable testID="settings-delete-account-row" style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
+            <Text style={styles.dangerText}>{locale === 'tr' ? 'Hesabı Sil' : 'Delete Account'}</Text>
           </Pressable>
         </Section>
 
@@ -192,12 +160,6 @@ export function SettingsScreen({
             <Text style={styles.rowTitle}>{locale === 'tr' ? 'Sürüm' : 'Version'}</Text>
             <Text style={styles.rowSubtitle}>{version}</Text>
           </View>
-        </Section>
-
-        <Section title={locale === 'tr' ? 'Hesap' : 'Account'}>
-          <Pressable testID="settings-cancel-account-row" style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
-            <Text style={styles.dangerText}>{locale === 'tr' ? 'Kaydı İptal Et' : 'Cancel Account'}</Text>
-          </Pressable>
         </Section>
 
         <View style={styles.bottomSpacer} />
@@ -249,7 +211,7 @@ export function SettingsScreen({
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmCard}>
             <Text style={styles.confirmTitle}>
-              {locale === 'tr' ? 'Bilgileriniz silinecektir, geri dönüşü yoktur.' : 'Your data will be permanently deleted and cannot be recovered.'}
+              {locale === 'tr' ? 'Emin misiniz? Bu işlem geri alınamaz.' : 'Are you sure? This action cannot be undone.'}
             </Text>
             <TextField
               label={locale === 'tr' ? 'Şifre' : 'Password'}

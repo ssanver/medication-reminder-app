@@ -48,10 +48,10 @@ appId: com.suleymansanver.medicationreminder
 
 - scrollUntilVisible:
     element:
-      id: "settings-cancel-account-row"
+      id: "settings-delete-account-row"
     direction: DOWN
 - tapOn:
-    id: "settings-cancel-account-row"
+    id: "settings-delete-account-row"
 - assertVisible:
     id: "cancel-account-dismiss-button"
 - tapOn:

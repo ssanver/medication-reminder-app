@@ -10,11 +10,10 @@ import {
   buildCalendarCells,
   dayIntervalOptions,
   defaultDoseTimes,
-  dosageOptions,
   dosesPerDayOptions,
   formOptions,
   formatDate,
-  getDayIntervalLabel,
+  getFrequencySummary,
   getWeekdayLabel,
   hourOptions,
   medicationIconOptions,
@@ -204,7 +203,7 @@ export function AddMedsScreen({
     step === 'name'
       ? t.medicationName
       : step === 'form-dose'
-        ? `${t.selectForm} & ${t.dose}`
+        ? t.selectForm
         : step === 'frequency'
           ? t.frequency
           : t.note;
@@ -340,17 +339,6 @@ export function AddMedsScreen({
     if (step === 'form-dose') {
       return (
         <View style={styles.stepBody}>
-          <View style={styles.dosageRow}>
-            {dosageOptions.map((item) => {
-              const selected = item === dosage;
-              return (
-                <Pressable key={item} onPress={() => setDosage(item)} style={[styles.dosageChip, selected && styles.dosageChipSelected]}>
-                  <Text style={[styles.dosageChipText, selected && styles.dosageChipTextSelected]}>{item}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
           <Pressable style={styles.selectionRow} onPress={openFormSheet}>
             <View style={styles.selectionLeft}>
               <Text style={styles.selectionIcon}>💊</Text>
@@ -396,7 +384,7 @@ export function AddMedsScreen({
           </Pressable>
 
           <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Kaç aralıkta bir' : 'Repeat every'}</Text>
+            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Kaç interval türünde bir' : 'Repeat every'}</Text>
             <View style={styles.doseCountChipRow}>
               {(intervalUnit === 'day' ? dayIntervalOptions : weekIntervalOptions).map((count) => {
                 const selected = count === intervalCount;
@@ -450,7 +438,7 @@ export function AddMedsScreen({
             </View>
           </View>
 
-          <Text style={styles.frequencySummary}>{getDayIntervalLabel(dayInterval, locale)}</Text>
+          <Text style={styles.frequencySummary}>{getFrequencySummary(dayInterval, dosesPerDay, locale)}</Text>
 
           <Pressable style={styles.selectionRow} onPress={openDateSheet}>
             <View style={styles.selectionLeft}>

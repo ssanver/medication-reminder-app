@@ -10,7 +10,6 @@ export type FormOption = {
 };
 
 export const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
-export const dosageOptions = ['0.5', '1', '2', '3'];
 export const defaultDoseTimes = ['09:00', '14:00', '20:00'];
 export const dayIntervalOptions = [1, 2, 3] as const;
 export const weekIntervalOptions = [1, 2] as const;
@@ -85,6 +84,24 @@ export function toFrequencyLabel(dayInterval: number): string {
 
 export function getDayIntervalLabel(dayInterval: number, locale: Locale): string {
   return localizeFrequencyLabel(toFrequencyLabel(dayInterval), locale);
+}
+
+export function getFrequencySummary(dayInterval: number, dosesPerDay: number, locale: Locale): string {
+  if (!Number.isFinite(dayInterval) || !Number.isFinite(dosesPerDay) || dayInterval < 1 || dosesPerDay < 1) {
+    return locale === 'tr' ? 'Sıklık seçin' : 'Select a valid frequency';
+  }
+
+  if (locale === 'tr') {
+    if (dayInterval === 1) {
+      return `Her gün ${dosesPerDay} kez`;
+    }
+
+    return `Her ${dayInterval} günde ${dosesPerDay} kez`;
+  }
+
+  const dayLabel = dayInterval === 1 ? 'day' : 'days';
+  const doseLabel = dosesPerDay === 1 ? 'time' : 'times';
+  return `Every ${dayInterval} ${dayLabel}, ${dosesPerDay} ${doseLabel}`;
 }
 
 export function resolveDayInterval(intervalUnit: IntervalUnit, intervalCount: number): number {

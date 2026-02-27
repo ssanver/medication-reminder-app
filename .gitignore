@@ -5,6 +5,7 @@ node_modules/
 .expo/
 dist/
 mobile-app/build/
+mobile-app/artifacts/
 
 # .NET
 bin/
