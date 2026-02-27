@@ -17,7 +17,7 @@ export function ReminderPreferencesScreen({ locale, snoozeMinutes, onSnoozeMinut
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={t.reminderPreferences} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={t.reminderPreferences} leftAction={{ icon: 'back', onPress: onBack }} />
 
       <View style={styles.group}>
         <Text style={styles.label}>{t.snoozeDuration}</Text>

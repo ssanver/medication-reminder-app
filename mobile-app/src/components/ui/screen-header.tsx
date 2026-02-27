@@ -15,11 +15,11 @@ export function ScreenHeader({ title, subtitle, leftAction, rightAction }: Scree
   return (
     <View style={styles.wrapper}>
       <View style={styles.row}>
-        <View style={styles.side}>{leftAction ? <IconButton icon={leftAction.icon} onPress={leftAction.onPress} /> : null}</View>
+        <View style={styles.side}>{leftAction ? <IconButton icon={leftAction.icon} variant="outlined" onPress={leftAction.onPress} /> : null}</View>
         <Text numberOfLines={1} style={[styles.title, { fontSize: theme.typography.heading.h5Semibold.fontSize * fontScale }]}>
           {title}
         </Text>
-        <View style={styles.side}>{rightAction ? <IconButton icon={rightAction.icon} onPress={rightAction.onPress} /> : null}</View>
+        <View style={styles.side}>{rightAction ? <IconButton icon={rightAction.icon} variant="outlined" onPress={rightAction.onPress} /> : null}</View>
       </View>
       {subtitle ? <Text style={[styles.subtitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{subtitle}</Text> : null}
     </View>

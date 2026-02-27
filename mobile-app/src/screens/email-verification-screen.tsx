@@ -76,7 +76,7 @@ export function EmailVerificationScreen({
   return (
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <ScreenHeader title={locale === 'tr' ? 'E-posta Doğrulama' : 'Email Verification'} leftAction={{ icon: '<', onPress: onBack }} />
+        <ScreenHeader title={locale === 'tr' ? 'E-posta Doğrulama' : 'Email Verification'} leftAction={{ icon: 'back', onPress: onBack }} />
 
         <View style={styles.card}>
           <View style={styles.badgeRow}>

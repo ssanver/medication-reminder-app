@@ -51,7 +51,7 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} leftAction={{ icon: 'back', onPress: onBack }} />
 
       <View style={styles.card}>
         <Text style={styles.label}>{locale === 'tr' ? 'Konu' : 'Subject'}</Text>

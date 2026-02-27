@@ -24,7 +24,7 @@ export function NotificationSettingsScreen({
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={t.notificationSettings} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={t.notificationSettings} leftAction={{ icon: 'back', onPress: onBack }} />
 
       <View style={styles.group}>
         <View style={styles.row}>

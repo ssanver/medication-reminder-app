@@ -15,7 +15,7 @@ export function PlaceholderDetailScreen({ locale, title, description, items = []
   const t = getTranslations(locale);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={title} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={title} leftAction={{ icon: 'back', onPress: onBack }} />
 
       <Text style={styles.description}>{description}</Text>
 

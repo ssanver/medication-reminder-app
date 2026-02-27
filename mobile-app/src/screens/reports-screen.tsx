@@ -22,7 +22,7 @@ export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
       <ScreenHeader
         title={t.reportsTitle}
         subtitle={t.reportsSubtitle}
-        leftAction={{ icon: '<', onPress: onBack }}
+        leftAction={{ icon: 'back', onPress: onBack }}
       />
 
       <View style={styles.summaryRow}>

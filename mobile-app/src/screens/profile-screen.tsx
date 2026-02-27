@@ -121,7 +121,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
   return (
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <ScreenHeader title={t.editProfile} leftAction={{ icon: '<', onPress: onBack }} />
+        <ScreenHeader title={t.editProfile} leftAction={{ icon: 'back', onPress: onBack }} />
 
         <View style={styles.avatarWrap}>
           <View style={styles.avatar}>

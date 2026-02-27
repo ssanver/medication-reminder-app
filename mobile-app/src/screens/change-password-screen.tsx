@@ -71,7 +71,7 @@ export function ChangePasswordScreen({ locale, onBack }: ChangePasswordScreenPro
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={t.changePassword} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={t.changePassword} leftAction={{ icon: 'back', onPress: onBack }} />
 
       <View style={styles.card}>
         <TextField

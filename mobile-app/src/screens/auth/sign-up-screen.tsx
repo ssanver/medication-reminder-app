@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
+import { IconButton } from '../../components/ui/icon-button';
 import { TextField } from '../../components/ui/text-field';
 import { signUpWithEmail } from '../../features/auth/email-auth-service';
 import { getTranslations, type Locale } from '../../features/localization/localization';
@@ -82,9 +83,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable testID="signup-back-button" style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backIcon}>{'<'}</Text>
-      </Pressable>
+      <IconButton testID="signup-back-button" icon="back" variant="outlined" onPress={onBack} />
       <Text style={styles.title}>{t.signUpTitle}</Text>
       <Text style={styles.subtitle}>{t.signUpSubtitle}</Text>
 
@@ -154,17 +153,6 @@ const styles = StyleSheet.create({
   content: {
     gap: theme.spacing[16],
     paddingBottom: theme.spacing[24],
-  },
-  backButton: {
-    width: 32,
-    height: 32,
-    borderRadius: theme.radius[16],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    ...theme.typography.bodyScale.mMedium,
-    color: theme.colors.semantic.textPrimary,
   },
   title: {
     ...theme.typography.heading.h4Medium,

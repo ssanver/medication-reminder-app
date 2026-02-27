@@ -63,7 +63,7 @@ export function NotificationHistoryScreen({ locale, onBack }: NotificationHistor
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={locale === 'tr' ? 'Bildirim Geçmişi' : 'Notification History'} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={locale === 'tr' ? 'Bildirim Geçmişi' : 'Notification History'} leftAction={{ icon: 'back', onPress: onBack }} />
 
       {sortedItems.length === 0 ? (
         <View style={styles.emptyCard}>

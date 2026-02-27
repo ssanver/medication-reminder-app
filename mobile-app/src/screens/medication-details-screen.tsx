@@ -26,7 +26,7 @@ export function MedicationDetailsScreen({ locale, medicationId, onBack }: Medica
   if (!medication) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title={t.medicationDetails} leftAction={{ icon: '<', onPress: onBack }} />
+        <ScreenHeader title={t.medicationDetails} leftAction={{ icon: 'back', onPress: onBack }} />
         <Text style={styles.notFound}>{t.medicationNotFound}</Text>
       </View>
     );
@@ -34,7 +34,7 @@ export function MedicationDetailsScreen({ locale, medicationId, onBack }: Medica
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={t.medicationDetails} leftAction={{ icon: '<', onPress: onBack }} />
+      <ScreenHeader title={t.medicationDetails} leftAction={{ icon: 'back', onPress: onBack }} />
 
       <View style={styles.card}>
         <TextField label={t.medicationName} value={name} onChangeText={setName} />
