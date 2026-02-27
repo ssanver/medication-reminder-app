@@ -88,6 +88,8 @@ public sealed class AuthController(
             LastName = lastName,
             Email = normalizedEmail,
             PasswordHash = HashPassword(request.Password),
+            IsEmailVerified = false,
+            EmailVerifiedAt = null,
             CreatedAt = now,
             UpdatedAt = now,
             LastLoginAt = now,
@@ -119,9 +121,7 @@ public sealed class AuthController(
         user.UpdatedAt = now;
         await dbContext.SaveChangesAsync();
 
-        var latestToken = await GetLatestToken(normalizedEmail);
-        var isEmailVerified = latestToken?.VerifiedAt.HasValue == true;
-        return Ok(CreateEmailAuthResponse(user, now, isEmailVerified));
+        return Ok(CreateEmailAuthResponse(user, now, user.IsEmailVerified));
     }
 
     [HttpPost("email/change-password")]
@@ -206,6 +206,17 @@ public sealed class AuthController(
         }
 
         var now = DateTimeOffset.UtcNow;
+        var user = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+        if (user?.IsEmailVerified == true)
+        {
+            return Ok(new EmailVerificationRequestResponse
+            {
+                Email = normalizedEmail,
+                Sent = false,
+                ExpiresAt = user.EmailVerifiedAt ?? now,
+            });
+        }
+
         var active = await GetLatestToken(normalizedEmail);
         if (active is not null && active.VerifiedAt.HasValue)
         {
@@ -288,6 +299,17 @@ public sealed class AuthController(
         }
 
         var now = DateTimeOffset.UtcNow;
+        var user = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+        if (user?.IsEmailVerified == true)
+        {
+            return Ok(new EmailVerificationStatusResponse
+            {
+                Email = normalizedEmail,
+                IsVerified = true,
+                ExpiresAt = user.EmailVerifiedAt,
+            });
+        }
+
         var latest = await GetLatestToken(normalizedEmail);
         if (latest is null)
         {
@@ -367,6 +389,13 @@ public sealed class AuthController(
         token.LockedUntil = null;
         token.AttemptCount = 0;
         token.UpdatedAt = now;
+        var user = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == normalizedEmail);
+        if (user is not null)
+        {
+            user.IsEmailVerified = true;
+            user.EmailVerifiedAt = now;
+            user.UpdatedAt = now;
+        }
         await dbContext.SaveChangesAsync();
 
         return Ok(new VerifyEmailCodeResponse
