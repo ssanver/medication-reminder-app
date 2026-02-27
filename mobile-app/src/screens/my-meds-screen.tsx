@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type ReactNode, useMemo, useState } from 'react';
+import { Alert, Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
 import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { SegmentedControl } from '../components/ui/segmented-control';
@@ -95,6 +95,35 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
     [items],
   );
 
+  function confirmDelete(medicationId: string) {
+    Alert.alert(
+      locale === 'tr' ? 'İlacı sil' : 'Delete medication',
+      locale === 'tr' ? 'Bu işlem geri alınamaz. Devam edilsin mi?' : 'This action cannot be undone. Continue?',
+      [
+        {
+          text: locale === 'tr' ? 'Vazgeç' : 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: locale === 'tr' ? 'Onayla' : 'Confirm',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteMedication(medicationId);
+              } catch {
+                Alert.alert(
+                  locale === 'tr' ? 'Silme başarısız' : 'Delete failed',
+                  locale === 'tr' ? 'İlaç silinemedi. Lütfen tekrar deneyin.' : 'Medication could not be deleted. Please try again.',
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>{t.myMedicationTitle}</Text>
@@ -120,53 +149,73 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
       ) : (
         <View style={styles.list}>
           {filtered.map((item) => (
-            <MedicationCard
-              key={item.id}
-              name={item.name}
-              details={item.details}
-              schedule={item.schedule}
-              active={item.active}
-              showToggle
-              compact
-              medEmoji={item.emoji}
-              onToggle={(value) => void setMedicationActive(item.id, value)}
-              secondaryActionLabel={locale === 'tr' ? 'Sil' : 'Delete'}
-              onSecondaryActionPress={() => {
-                Alert.alert(
-                  locale === 'tr' ? 'İlacı sil' : 'Delete medication',
-                  locale === 'tr' ? 'Bu işlem geri alınamaz. Devam edilsin mi?' : 'This action cannot be undone. Continue?',
-                  [
-                    {
-                      text: locale === 'tr' ? 'Vazgeç' : 'Cancel',
-                      style: 'cancel',
-                    },
-                    {
-                      text: locale === 'tr' ? 'Onayla' : 'Confirm',
-                      style: 'destructive',
-                      onPress: () => {
-                        void (async () => {
-                          try {
-                            await deleteMedication(item.id);
-                          } catch {
-                            Alert.alert(
-                              locale === 'tr' ? 'Silme başarısız' : 'Delete failed',
-                              locale === 'tr' ? 'İlaç silinemedi. Lütfen tekrar deneyin.' : 'Medication could not be deleted. Please try again.',
-                            );
-                          }
-                        })();
-                      },
-                    },
-                  ],
-                );
-              }}
-              onPress={() => onOpenMedicationDetails(item.id)}
-            />
+            <SwipeToDeleteRow key={item.id} locale={locale} onDelete={() => confirmDelete(item.id)}>
+              <MedicationCard
+                name={item.name}
+                details={item.details}
+                schedule={item.schedule}
+                active={item.active}
+                showToggle
+                compact
+                medEmoji={item.emoji}
+                onToggle={(value) => void setMedicationActive(item.id, value)}
+                onPress={() => onOpenMedicationDetails(item.id)}
+              />
+            </SwipeToDeleteRow>
           ))}
         </View>
       )}
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
+  );
+}
+
+type SwipeToDeleteRowProps = {
+  locale: Locale;
+  onDelete: () => void;
+  children: ReactNode;
+};
+
+function SwipeToDeleteRow({ locale, onDelete, children }: SwipeToDeleteRowProps) {
+  const actionWidth = 96;
+  const [isOpen, setIsOpen] = useState(false);
+  const translateX = useState(() => new Animated.Value(0))[0];
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 8 && Math.abs(gesture.dy) < 16,
+        onPanResponderMove: (_, gesture) => {
+          const base = isOpen ? -actionWidth : 0;
+          const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
+          translateX.setValue(next);
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const base = isOpen ? -actionWidth : 0;
+          const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
+          const shouldOpen = next < -actionWidth * 0.45 || gesture.vx < -0.35;
+          Animated.spring(translateX, {
+            toValue: shouldOpen ? -actionWidth : 0,
+            useNativeDriver: true,
+            bounciness: 0,
+          }).start(() => setIsOpen(shouldOpen));
+        },
+      }),
+    [actionWidth, isOpen, translateX],
+  );
+
+  return (
+    <View style={styles.swipeContainer}>
+      <View style={styles.swipeDeleteAction}>
+        <Pressable style={styles.swipeDeleteButton} onPress={onDelete}>
+          <Text style={styles.swipeDeleteButtonText}>{locale === 'tr' ? 'Sil' : 'Delete'}</Text>
+        </Pressable>
+      </View>
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+        {children}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -188,6 +237,26 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: theme.spacing[16],
+  },
+  swipeContainer: {
+    position: 'relative',
+  },
+  swipeDeleteAction: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  swipeDeleteButton: {
+    width: 96,
+    height: '100%',
+    borderRadius: theme.radius[16],
+    backgroundColor: theme.colors.error[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeDeleteButtonText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: '#FFFFFF',
   },
   emptyCard: {
     borderRadius: theme.radius[16],

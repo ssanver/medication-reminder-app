@@ -27,6 +27,7 @@ export type Medication = {
   endDate?: string | null;
   time: string;
   times?: string[];
+  weeklyDays?: number[];
   totalQuantity?: number;
   active: boolean;
 };
@@ -124,11 +125,13 @@ function getMedicationTimes(medication: Medication): string[] {
 
 function normalizeMedication(payload: Medication): Medication {
   const normalizedTimes = getMedicationTimes(payload);
+  const weeklyDays = Array.from(new Set((payload.weeklyDays ?? []).filter((item) => Number.isInteger(item) && item >= 0 && item <= 6)));
   return {
     ...payload,
     iconEmoji: payload.iconEmoji || iconForForm(payload.form),
     time: normalizedTimes[0] ?? '09:00',
     times: normalizedTimes,
+    weeklyDays,
   };
 }
 
@@ -203,8 +206,7 @@ function parseReminderTime(time: string): string {
   return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
 }
 
-function getWeekdayName(dateKey: string): string {
-  const date = parseDateKey(dateKey);
+function weekdayNumberToName(weekday: number): 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' {
   const dayNames: Array<'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'> = [
     'sunday',
     'monday',
@@ -214,13 +216,41 @@ function getWeekdayName(dateKey: string): string {
     'friday',
     'saturday',
   ];
-  return dayNames[date.getDay()] ?? 'monday';
+  return dayNames[weekday] ?? 'monday';
+}
+
+function parseWeekdayName(name: string): number | null {
+  const normalized = name.trim().toLowerCase();
+  const map: Record<string, number> = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
+  };
+  return map[normalized] ?? null;
+}
+
+function getWeeklyDays(medication: Medication): number[] {
+  const fromMedication = Array.from(
+    new Set((medication.weeklyDays ?? []).filter((item) => Number.isInteger(item) && item >= 0 && item <= 6)),
+  );
+  if (fromMedication.length > 0) {
+    return fromMedication.sort((a, b) => a - b);
+  }
+  return [parseDateKey(medication.startDate).getDay()];
 }
 
 function toApiSchedules(medication: Medication): ApiSaveMedicationRequest['schedules'] {
   const times = getMedicationTimes(medication);
   const isWeekly = medication.recurrence === 'every-7-days' || medication.recurrence === 'every-14-days';
-  const daysOfWeek = isWeekly ? getWeekdayName(medication.startDate) : undefined;
+  const daysOfWeek = isWeekly
+    ? getWeeklyDays(medication)
+        .map((weekday) => weekdayNumberToName(weekday))
+        .join(',')
+    : undefined;
   const repeatType = isWeekly ? 'weekly' : 'daily';
   return times.map((time) => ({
     repeatType,
@@ -245,6 +275,16 @@ function fromApiMedication(item: ApiMedication): Medication {
   const schedules = Array.isArray(item.schedules) ? item.schedules : [];
   const times = schedules.map((schedule) => parseReminderTime(schedule.reminderTime));
   const hasWeeklySchedule = schedules.some((schedule) => schedule.repeatType?.toLowerCase() === 'weekly');
+  const weeklyDays = hasWeeklySchedule
+    ? Array.from(
+        new Set(
+          schedules
+            .flatMap((schedule) => (schedule.daysOfWeek ?? '').split(','))
+            .map((name) => parseWeekdayName(name))
+            .filter((day): day is number => day !== null),
+        ),
+      ).sort((a, b) => a - b)
+    : undefined;
   const recurrence: MedicationRecurrence = hasWeeklySchedule ? 'every-7-days' : 'daily';
   const frequencyLabel = hasWeeklySchedule ? 'Every 7 Days' : 'Every 1 Day';
   const form = item.usageType?.trim() ? item.usageType.trim() : 'Capsule';
@@ -263,6 +303,7 @@ function fromApiMedication(item: ApiMedication): Medication {
     endDate: item.endDate ?? null,
     time: times[0] ?? '09:00',
     times,
+    weeklyDays,
     totalQuantity: undefined,
     active: item.isActive,
   });
@@ -372,6 +413,7 @@ export async function addMedication(payload: {
   times?: string[];
   totalQuantity?: number;
   active?: boolean;
+  weeklyDays?: number[];
 }): Promise<void> {
   const today = toDateKey(new Date());
   const normalizedTimes = (payload.times && payload.times.length > 0 ? payload.times : [payload.time ?? '09:00']).map((item) => normalizeTime(item));
@@ -389,6 +431,7 @@ export async function addMedication(payload: {
     endDate: payload.endDate ?? null,
     time: normalizedTimes[0] ?? '09:00',
     times: normalizedTimes,
+    weeklyDays: payload.weeklyDays,
     totalQuantity: payload.totalQuantity,
     active: payload.active ?? true,
   };
@@ -418,7 +461,10 @@ export function getMedicationById(medicationId: string): Medication | undefined 
 export async function updateMedication(
   medicationId: string,
   patch: Partial<
-    Pick<Medication, 'name' | 'form' | 'iconEmoji' | 'dosage' | 'isBeforeMeal' | 'frequencyLabel' | 'note' | 'startDate' | 'endDate' | 'time' | 'times' | 'totalQuantity' | 'active'>
+    Pick<
+      Medication,
+      'name' | 'form' | 'iconEmoji' | 'dosage' | 'isBeforeMeal' | 'frequencyLabel' | 'note' | 'startDate' | 'endDate' | 'time' | 'times' | 'weeklyDays' | 'totalQuantity' | 'active'
+    >
   >,
 ): Promise<void> {
   const current = state.medications.find((item) => item.id === medicationId);
@@ -615,6 +661,19 @@ function isScheduled(medication: Medication, date: Date): boolean {
     medication.recurrence === 'every-8-hours' ||
     medication.recurrence === 'every-12-hours'
   ) {
+    return true;
+  }
+
+  if (medication.recurrence === 'every-7-days' || medication.recurrence === 'every-14-days') {
+    const weekday = normalizedDate.getDay();
+    const weeklyDays = getWeeklyDays(medication);
+    if (!weeklyDays.includes(weekday)) {
+      return false;
+    }
+    if (medication.recurrence === 'every-14-days') {
+      const weekDiff = Math.floor(dayDiff / 7);
+      return weekDiff % 2 === 0;
+    }
     return true;
   }
 

@@ -3,6 +3,7 @@ import { getLocaleTag, type Locale } from '../localization/localization';
 
 export type WizardStep = 'name' | 'form-dose' | 'frequency' | 'note';
 export type IntervalUnit = 'day' | 'week';
+export type WeekStartsOn = 'monday' | 'sunday';
 
 export type FormOption = {
   key: string;
@@ -43,13 +44,19 @@ export function shiftMonth(base: Date, delta: number): Date {
   return new Date(base.getFullYear(), base.getMonth() + delta, 1);
 }
 
-export function buildCalendarCells(month: Date): Array<Date | null> {
+export function getOrderedWeekdayOptions(weekStartsOn: WeekStartsOn): number[] {
+  return weekStartsOn === 'sunday' ? [0, 1, 2, 3, 4, 5, 6] : [...weekdayOptions];
+}
+
+export function buildCalendarCells(month: Date, weekStartsOn: WeekStartsOn = 'monday'): Array<Date | null> {
   const year = month.getFullYear();
   const monthIndex = month.getMonth();
   const firstDay = new Date(year, monthIndex, 1);
-  const mondayStartOffset = (firstDay.getDay() + 6) % 7;
+  const weekStartOffset = weekStartsOn === 'sunday'
+    ? firstDay.getDay()
+    : (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const cells: Array<Date | null> = Array.from({ length: mondayStartOffset }, () => null);
+  const cells: Array<Date | null> = Array.from({ length: weekStartOffset }, () => null);
 
   for (let day = 1; day <= daysInMonth; day += 1) {
     cells.push(new Date(year, monthIndex, day));

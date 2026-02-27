@@ -14,6 +14,7 @@ import {
   formOptions,
   formatDate,
   getFrequencySummary,
+  getOrderedWeekdayOptions,
   getWeekdayLabel,
   hourOptions,
   medicationIconOptions,
@@ -27,8 +28,8 @@ import {
   toFrequencyLabel,
   type IntervalUnit,
   type WizardStep,
-  weekdayOptions,
   weekIntervalOptions,
+  type WeekStartsOn,
 } from '../features/medications/add-medication-use-case';
 import { searchMedicineCatalog } from '../features/medications/medicine-catalog-service';
 import { addMedication, getMedicationById, updateMedication } from '../features/medications/medication-store';
@@ -37,6 +38,7 @@ import { theme } from '../theme';
 type AddMedsScreenProps = {
   locale: Locale;
   fontScale: number;
+  weekStartsOn: WeekStartsOn;
   onMedicationSaved: () => void;
   mode?: 'create' | 'edit';
   medicationId?: string;
@@ -46,27 +48,31 @@ type AddMedsScreenProps = {
 type SheetType = 'none' | 'date' | 'time' | 'interval' | 'form';
 type DateField = 'start' | 'end';
 
-function resolveIntervalFromFrequencyLabel(label: string, startDate: string): { intervalUnit: IntervalUnit; intervalCount: number; selectedWeekday: number } {
+function resolveIntervalFromFrequencyLabel(
+  label: string,
+  startDate: string,
+): { intervalUnit: IntervalUnit; intervalCount: number; selectedWeekdays: number[] } {
   const parsedCount = Number(label.match(/\d+/)?.[0] ?? '1');
   const dayCount = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 1;
   if (dayCount === 7 || dayCount === 14) {
     return {
       intervalUnit: 'week',
       intervalCount: dayCount === 14 ? 2 : 1,
-      selectedWeekday: parseDateKey(startDate).getDay(),
+      selectedWeekdays: [parseDateKey(startDate).getDay()],
     };
   }
 
   return {
     intervalUnit: 'day',
     intervalCount: [1, 2, 3].includes(dayCount) ? dayCount : 1,
-    selectedWeekday: parseDateKey(startDate).getDay(),
+    selectedWeekdays: [parseDateKey(startDate).getDay()],
   };
 }
 
 export function AddMedsScreen({
   locale,
   fontScale: _fontScale,
+  weekStartsOn,
   onMedicationSaved,
   mode = 'create',
   medicationId,
@@ -83,7 +89,7 @@ export function AddMedsScreen({
   const [isBeforeMeal, setIsBeforeMeal] = useState(false);
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
   const [intervalCount, setIntervalCount] = useState<number>(1);
-  const [selectedWeekday, setSelectedWeekday] = useState<number>(1);
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1]);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
   const [startDate, setStartDate] = useState(formatDate(new Date()));
   const [endDate, setEndDate] = useState(formatDate(new Date()));
@@ -124,11 +130,12 @@ export function AddMedsScreen({
       year: 'numeric',
     });
   }, [locale, startDate]);
-  const addMedicationLabel = useMemo(() => t.addMedication.replace(/^\s*\+\s*/, ''), [t.addMedication]);
   const selectedDoseTimes = useMemo(
     () => Array.from({ length: dosesPerDay }, (_, index) => doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00'),
     [doseTimes, dosesPerDay],
   );
+  const orderedWeekdays = useMemo(() => getOrderedWeekdayOptions(weekStartsOn), [weekStartsOn]);
+  const selectedWeekday = selectedWeekdays[0] ?? 1;
   const dayInterval = useMemo(() => resolveDayInterval(intervalUnit, intervalCount), [intervalUnit, intervalCount]);
   const effectiveStartDate = useMemo(
     () => (intervalUnit === 'week' ? alignDateToWeekday(startDate, selectedWeekday) : startDate),
@@ -165,6 +172,23 @@ export function AddMedsScreen({
   }, [intervalUnit, selectedWeekday, startDate]);
 
   useEffect(() => {
+    if (intervalUnit !== 'week') {
+      return;
+    }
+
+    setSelectedWeekdays((prev) => {
+      const unique = Array.from(new Set(prev));
+      if (unique.length > intervalCount) {
+        return unique.slice(0, intervalCount);
+      }
+      if (unique.length > 0) {
+        return unique;
+      }
+      return [orderedWeekdays[0] ?? 1];
+    });
+  }, [intervalCount, intervalUnit, orderedWeekdays]);
+
+  useEffect(() => {
     if (mode !== 'edit' || !editingMedication) {
       return;
     }
@@ -182,7 +206,11 @@ export function AddMedsScreen({
     setIsBeforeMeal(Boolean(editingMedication.isBeforeMeal));
     setIntervalUnit(intervalPreset.intervalUnit);
     setIntervalCount(intervalPreset.intervalCount);
-    setSelectedWeekday(intervalPreset.selectedWeekday);
+    setSelectedWeekdays(
+      Array.isArray(editingMedication.weeklyDays) && editingMedication.weeklyDays.length > 0
+        ? editingMedication.weeklyDays
+        : intervalPreset.selectedWeekdays,
+    );
     setDosesPerDay(Math.min(3, Math.max(1, presetTimes.length)));
     setStartDate(editingMedication.startDate);
     setUseEndDate(Boolean(editingMedication.endDate));
@@ -218,6 +246,7 @@ export function AddMedsScreen({
     (step === 'form-dose' && form.length > 0) ||
     (step === 'frequency' &&
       Boolean(startDate) &&
+      (intervalUnit !== 'week' || selectedWeekdays.length === intervalCount) &&
       selectedDoseTimes.every((item) => item.trim().length > 0) &&
       !hasDuplicateTimes &&
       isEndDateValid) ||
@@ -254,6 +283,7 @@ export function AddMedsScreen({
         endDate: useEndDate ? endDate : null,
         time: selectedDoseTimes[0],
         times: selectedDoseTimes,
+        weeklyDays: intervalUnit === 'week' ? selectedWeekdays : undefined,
         totalQuantity: normalizedTotalQuantity,
       });
     } else {
@@ -269,6 +299,7 @@ export function AddMedsScreen({
         endDate: useEndDate ? endDate : null,
         time: selectedDoseTimes[0],
         times: selectedDoseTimes,
+        weeklyDays: intervalUnit === 'week' ? selectedWeekdays : undefined,
         totalQuantity: normalizedTotalQuantity,
         active: true,
       });
@@ -280,7 +311,7 @@ export function AddMedsScreen({
       setIsBeforeMeal(false);
       setIntervalUnit('day');
       setIntervalCount(1);
-      setSelectedWeekday(1);
+      setSelectedWeekdays([1]);
       setDosesPerDay(1);
       setStartDate(formatDate(new Date()));
       setUseEndDate(false);
@@ -361,13 +392,6 @@ export function AddMedsScreen({
           </View>
 
           <View style={styles.suggestionList}>
-            {name.trim().length > 0 ? (
-              <Pressable onPress={() => setName(name.trim())} style={styles.suggestionRow}>
-                <Text style={styles.addNewBullet}>＋</Text>
-                <Text numberOfLines={1} style={styles.suggestionPrimaryText}>{`${addMedicationLabel} ${name.trim()}`}</Text>
-              </Pressable>
-            ) : null}
-
             {filteredSuggestions.map((item) => (
               <Pressable key={item} onPress={() => setName(item)} style={styles.suggestionRow}>
                 <Text numberOfLines={1} style={styles.suggestionText}>{item}</Text>
@@ -441,14 +465,24 @@ export function AddMedsScreen({
 
           {intervalUnit === 'week' ? (
             <View style={styles.doseCountRow}>
-              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Haftanın günü' : 'Day of week'}</Text>
+              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Haftanın günleri' : 'Days of week'}</Text>
               <View style={styles.weekdayChipRow}>
-                {weekdayOptions.map((weekday) => {
-                  const selected = weekday === selectedWeekday;
+                {orderedWeekdays.map((weekday) => {
+                  const selected = selectedWeekdays.includes(weekday);
                   return (
                     <Pressable
                       key={weekday}
-                      onPress={() => setSelectedWeekday(weekday)}
+                      onPress={() =>
+                        setSelectedWeekdays((prev) => {
+                          if (prev.includes(weekday)) {
+                            return prev.length === 1 ? prev : prev.filter((item) => item !== weekday);
+                          }
+                          if (prev.length >= intervalCount) {
+                            return [...prev.slice(1), weekday];
+                          }
+                          return [...prev, weekday];
+                        })
+                      }
                       style={[styles.weekdayChip, selected && styles.weekdayChipSelected]}
                     >
                       <Text style={[styles.weekdayChipText, selected && styles.weekdayChipTextSelected]}>
@@ -460,8 +494,8 @@ export function AddMedsScreen({
               </View>
               <Text style={styles.selectionHint}>
                 {locale === 'tr'
-                  ? `Başlangıç tarihi seçilen güne hizalanır: ${localizedEffectiveStartDate}`
-                  : `Start date will align to selected day: ${localizedEffectiveStartDate}`}
+                  ? `${intervalCount} gün seçin. Başlangıç tarihi ilk seçilen güne hizalanır: ${localizedEffectiveStartDate}`
+                  : `Select ${intervalCount} day(s). Start date aligns to the first selected day: ${localizedEffectiveStartDate}`}
               </Text>
             </View>
           ) : null}
@@ -484,10 +518,10 @@ export function AddMedsScreen({
 
           <View style={styles.doseCountRow}>
             <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Kullanım tipi' : 'Meal preference'}</Text>
-            <View style={styles.doseCountChipRow}>
+            <View style={styles.mealPreferenceRow}>
               <Pressable
                 onPress={() => setIsBeforeMeal(true)}
-                style={[styles.doseCountChip, isBeforeMeal && styles.doseCountChipSelected]}
+                style={[styles.mealPreferenceChip, isBeforeMeal && styles.doseCountChipSelected]}
               >
                 <Text style={[styles.doseCountChipText, isBeforeMeal && styles.doseCountChipTextSelected]}>
                   {locale === 'tr' ? 'Aç karnına' : 'Before meal'}
@@ -495,7 +529,7 @@ export function AddMedsScreen({
               </Pressable>
               <Pressable
                 onPress={() => setIsBeforeMeal(false)}
-                style={[styles.doseCountChip, !isBeforeMeal && styles.doseCountChipSelected]}
+                style={[styles.mealPreferenceChip, !isBeforeMeal && styles.doseCountChipSelected]}
               >
                 <Text style={[styles.doseCountChipText, !isBeforeMeal && styles.doseCountChipTextSelected]}>
                   {locale === 'tr' ? 'Tok karnına' : 'After meal'}
@@ -512,7 +546,7 @@ export function AddMedsScreen({
               keyboardType="number-pad"
               placeholder={locale === 'tr' ? 'Örn: 30' : 'Ex: 30'}
               placeholderTextColor={theme.colors.neutral[400]}
-              style={styles.searchInput}
+              style={styles.quantityInput}
             />
           </View>
 
@@ -527,51 +561,47 @@ export function AddMedsScreen({
             </View>
           </Pressable>
 
-          <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Bitiş tarihi' : 'End date'}</Text>
-            <View style={styles.doseCountChipRow}>
-              <Pressable
-                onPress={() => setUseEndDate(false)}
-                style={[styles.doseCountChip, !useEndDate && styles.doseCountChipSelected]}
-              >
-                <Text style={[styles.doseCountChipText, !useEndDate && styles.doseCountChipTextSelected]}>
-                  {locale === 'tr' ? 'Yok' : 'None'}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setUseEndDate(true);
-                  if (parseDateKey(endDate).getTime() < parseDateKey(startDate).getTime()) {
-                    setEndDate(startDate);
-                  }
-                }}
-                style={[styles.doseCountChip, useEndDate && styles.doseCountChipSelected]}
-              >
-                <Text style={[styles.doseCountChipText, useEndDate && styles.doseCountChipTextSelected]}>
-                  {locale === 'tr' ? 'Seç' : 'Set'}
-                </Text>
-              </Pressable>
+          <Pressable
+            style={styles.selectionRow}
+            onPress={() => {
+              if (!useEndDate) {
+                setUseEndDate(true);
+                if (parseDateKey(endDate).getTime() < parseDateKey(startDate).getTime()) {
+                  setEndDate(startDate);
+                }
+              }
+              openDateSheet('end');
+            }}
+          >
+            <View style={styles.selectionLeft}>
+              <Text style={styles.selectionIcon}>📍</Text>
+              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Bitiş tarihi' : 'End date'}</Text>
             </View>
-          </View>
-
-          {useEndDate ? (
-            <Pressable style={styles.selectionRow} onPress={() => openDateSheet('end')}>
-              <View style={styles.selectionLeft}>
-                <Text style={styles.selectionIcon}>📍</Text>
-                <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Bitiş tarihi seç' : 'Select end date'}</Text>
-              </View>
-              <View style={styles.selectionRight}>
-                <Text style={styles.selectionValue}>
-                  {parseDateKey(endDate).toLocaleDateString(getLocaleTag(locale), {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </Text>
-                <Text style={styles.selectionChevron}>›</Text>
-              </View>
-            </Pressable>
-          ) : null}
+            <View style={styles.selectionRight}>
+              <Text style={styles.selectionValue}>
+                {useEndDate
+                  ? parseDateKey(endDate).toLocaleDateString(getLocaleTag(locale), {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : locale === 'tr'
+                    ? 'Süresiz'
+                    : 'Unlimited'}
+              </Text>
+              {useEndDate ? (
+                <Pressable
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    setUseEndDate(false);
+                  }}
+                >
+                  <Text style={styles.endDateClearText}>{locale === 'tr' ? 'Sıfırla' : 'Clear'}</Text>
+                </Pressable>
+              ) : null}
+              <Text style={styles.selectionChevron}>›</Text>
+            </View>
+          </Pressable>
 
           {useEndDate && !isEndDateValid ? (
             <Text style={styles.timeWarning}>
@@ -618,8 +648,8 @@ export function AddMedsScreen({
     );
   }
 
-  const calendarCells = buildCalendarCells(calendarMonth);
-  const dayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const calendarCells = buildCalendarCells(calendarMonth, weekStartsOn);
+  const dayHeaders = orderedWeekdays.map((weekday) => getWeekdayLabel(weekday, locale).slice(0, 2).toUpperCase());
 
   if (mode === 'edit' && !editingMedication) {
     return (
@@ -1016,6 +1046,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing[8],
   },
+  mealPreferenceRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
+  },
+  mealPreferenceChip: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing[8],
+  },
   weekdayChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1109,6 +1154,20 @@ const styles = StyleSheet.create({
   selectionChevron: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textMuted,
+  },
+  quantityInput: {
+    minHeight: 42,
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[8],
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textPrimary,
+  },
+  endDateClearText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.primaryBlue[500],
   },
   noteLabel: {
     ...theme.typography.captionScale.lRegular,

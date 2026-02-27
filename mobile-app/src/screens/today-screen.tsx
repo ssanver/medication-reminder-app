@@ -110,8 +110,12 @@ export function TodayScreen({
   const sectionTitle = useMemo(() => {
     const localeTag = getLocaleTag(locale);
     const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
-    return `${dateText} ${t.todaysMedication}`;
-  }, [selectedDate, locale]);
+    const isToday = dateDelta === 0;
+    if (isToday) {
+      return `${dateText} ${t.todaysMedication}`;
+    }
+    return locale === 'tr' ? `${dateText} ilaçları` : `${dateText} medications`;
+  }, [selectedDate, locale, dateDelta, t.todaysMedication]);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

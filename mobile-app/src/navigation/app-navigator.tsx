@@ -360,6 +360,7 @@ export function AppNavigator() {
           <AddMedsScreen
             locale={locale}
             fontScale={fontScale}
+            weekStartsOn={weekStartsOn}
             mode="edit"
             medicationId={selectedMedicationId}
             onBack={() => setOverlayScreen('none')}
@@ -709,7 +710,7 @@ function renderTab(
         />
       );
     case 'add-meds':
-      return <AddMedsScreen locale={locale} fontScale={fontScale} onMedicationSaved={onMedicationSaved} />;
+      return <AddMedsScreen locale={locale} fontScale={fontScale} weekStartsOn={weekStartsOn} onMedicationSaved={onMedicationSaved} />;
     case 'settings':
       return (
         <SettingsScreen
