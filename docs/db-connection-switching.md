@@ -1,5 +1,7 @@
 # DB Connection Switching
 
+> Bu dosya private repo icindeki merkezi sunucu ayarlari/kimlik bilgileri dokumanidir.
+
 ## Amaç
 API'nin aynı kod tabanında hem local DB hem production DB ile çalışmasını net ve tekrar edilebilir hale getmek.
 
@@ -41,3 +43,8 @@ dotnet run --project api/api.csproj
 - Password: `Sth280711!`
 - Connection String:
 `Data Source=SQL6034.site4now.net;Initial Catalog=db_ac5e54_dbpillreminder;User Id=db_ac5e54_dbpillreminder_admin;Password=Sth280711!;Encrypt=True;TrustServerCertificate=True;`
+
+## Production API
+- Base URL: `http://suleymansanver-001-site1.stempurl.com/pillreminder`
+- Health Endpoint: `http://suleymansanver-001-site1.stempurl.com/pillreminder/api/health`
+- Mobile Env Key: `EXPO_PUBLIC_API_BASE_URL`
