@@ -3,6 +3,7 @@ namespace api.contracts;
 public sealed class MedicationScheduleInput
 {
     public required string RepeatType { get; set; }
+    public int IntervalCount { get; set; } = 1;
     public required TimeOnly ReminderTime { get; set; }
     public string? DaysOfWeek { get; set; }
 }

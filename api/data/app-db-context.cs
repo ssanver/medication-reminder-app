@@ -57,7 +57,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.ToTable("user-preferences");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.UserReference).HasMaxLength(160).IsRequired();
             entity.Property(x => x.Locale).HasMaxLength(8).IsRequired();
             entity.Property(x => x.FontScale).HasPrecision(4, 2).IsRequired();
             entity.Property(x => x.NotificationsEnabled).IsRequired();
@@ -66,22 +65,33 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.WeekStartsOn).HasMaxLength(16).IsRequired();
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
-            entity.HasIndex(x => x.UserReference).IsUnique();
+            entity.HasIndex(x => x.UserAccountId).IsUnique();
+
+            entity
+                .HasOne(x => x.UserAccount)
+                .WithOne(x => x.Preference)
+                .HasForeignKey<UserPreference>(x => x.UserAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<UserProfile>(entity =>
         {
             entity.ToTable("user-profiles");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.UserReference).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.UserAccountId).IsRequired();
             entity.Property(x => x.FullName).HasMaxLength(120).IsRequired();
-            entity.Property(x => x.Email).HasMaxLength(160).IsRequired();
             entity.Property(x => x.BirthDate).HasMaxLength(10).IsRequired();
             entity.Property(x => x.Gender).HasMaxLength(40).IsRequired();
             entity.Property(x => x.PhotoUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
-            entity.HasIndex(x => x.UserReference).IsUnique();
+            entity.HasIndex(x => x.UserAccountId).IsUnique();
+
+            entity
+                .HasOne(x => x.UserAccount)
+                .WithOne(x => x.Profile)
+                .HasForeignKey<UserProfile>(x => x.UserAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<MedicineCatalogItem>(entity =>
@@ -107,6 +117,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.ToTable("medication-schedules");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.RepeatType).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.IntervalCount).HasDefaultValue(1).IsRequired();
             entity.Property(x => x.DaysOfWeek).HasMaxLength(40);
             entity.Property(x => x.UpdatedAt).IsRequired();
             entity.HasIndex(x => new { x.MedicationId, x.ReminderTime }).IsUnique();

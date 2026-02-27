@@ -20,12 +20,10 @@ import {
   medicationIconOptions,
   minuteOptions,
   parseDateKey,
-  resolveDayInterval,
   resolveFormDefaultIcon,
   shiftMonth,
   splitTime,
   steps,
-  toFrequencyLabel,
   type IntervalUnit,
   type WizardStep,
   weekIntervalOptions,
@@ -47,27 +45,6 @@ type AddMedsScreenProps = {
 
 type SheetType = 'none' | 'date' | 'time' | 'interval' | 'form';
 type DateField = 'start' | 'end';
-
-function resolveIntervalFromFrequencyLabel(
-  label: string,
-  startDate: string,
-): { intervalUnit: IntervalUnit; intervalCount: number; selectedWeekdays: number[] } {
-  const parsedCount = Number(label.match(/\d+/)?.[0] ?? '1');
-  const dayCount = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 1;
-  if (dayCount === 7 || dayCount === 14) {
-    return {
-      intervalUnit: 'week',
-      intervalCount: dayCount === 14 ? 2 : 1,
-      selectedWeekdays: [parseDateKey(startDate).getDay()],
-    };
-  }
-
-  return {
-    intervalUnit: 'day',
-    intervalCount: [1, 2, 3].includes(dayCount) ? dayCount : 1,
-    selectedWeekdays: [parseDateKey(startDate).getDay()],
-  };
-}
 
 export function AddMedsScreen({
   locale,
@@ -136,7 +113,7 @@ export function AddMedsScreen({
   );
   const orderedWeekdays = useMemo(() => getOrderedWeekdayOptions(weekStartsOn), [weekStartsOn]);
   const selectedWeekday = selectedWeekdays[0] ?? 1;
-  const dayInterval = useMemo(() => resolveDayInterval(intervalUnit, intervalCount), [intervalUnit, intervalCount]);
+  const dayInterval = useMemo(() => (intervalUnit === 'week' ? intervalCount * 7 : intervalCount), [intervalUnit, intervalCount]);
   const effectiveStartDate = useMemo(
     () => (intervalUnit === 'week' ? alignDateToWeekday(startDate, selectedWeekday) : startDate),
     [intervalUnit, startDate, selectedWeekday],
@@ -193,7 +170,6 @@ export function AddMedsScreen({
       return;
     }
 
-    const intervalPreset = resolveIntervalFromFrequencyLabel(editingMedication.frequencyLabel, editingMedication.startDate);
     const presetTimes =
       Array.isArray(editingMedication.times) && editingMedication.times.length > 0
         ? editingMedication.times
@@ -204,12 +180,12 @@ export function AddMedsScreen({
     setIconEmoji(editingMedication.iconEmoji || resolveFormDefaultIcon(editingMedication.form));
     setDosage(editingMedication.dosage || '1');
     setIsBeforeMeal(Boolean(editingMedication.isBeforeMeal));
-    setIntervalUnit(intervalPreset.intervalUnit);
-    setIntervalCount(intervalPreset.intervalCount);
+    setIntervalUnit(editingMedication.intervalUnit ?? 'day');
+    setIntervalCount(Math.max(1, editingMedication.intervalCount ?? 1));
     setSelectedWeekdays(
       Array.isArray(editingMedication.weeklyDays) && editingMedication.weeklyDays.length > 0
         ? editingMedication.weeklyDays
-        : intervalPreset.selectedWeekdays,
+        : [parseDateKey(editingMedication.startDate).getDay()],
     );
     setDosesPerDay(Math.min(3, Math.max(1, presetTimes.length)));
     setStartDate(editingMedication.startDate);
@@ -277,7 +253,8 @@ export function AddMedsScreen({
         iconEmoji,
         dosage,
         isBeforeMeal,
-        frequencyLabel: toFrequencyLabel(dayInterval),
+        intervalUnit,
+        intervalCount,
         note: note.trim(),
         startDate: effectiveStartDate,
         endDate: useEndDate ? endDate : null,
@@ -293,7 +270,8 @@ export function AddMedsScreen({
         iconEmoji,
         dosage,
         isBeforeMeal,
-        frequencyLabel: toFrequencyLabel(dayInterval),
+        intervalUnit,
+        intervalCount,
         note: shouldSkipNote ? '' : note.trim(),
         startDate: effectiveStartDate,
         endDate: useEndDate ? endDate : null,

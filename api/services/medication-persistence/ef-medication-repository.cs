@@ -47,6 +47,7 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
                 {
                     Id = Guid.NewGuid(),
                     RepeatType = schedule.RepeatType,
+                    IntervalCount = schedule.IntervalCount,
                     ReminderTime = schedule.ReminderTime,
                     DaysOfWeek = schedule.DaysOfWeek,
                     UpdatedAt = DateTimeOffset.UtcNow,
@@ -82,6 +83,7 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
                 Id = Guid.NewGuid(),
                 MedicationId = entity.Id,
                 RepeatType = schedule.RepeatType,
+                IntervalCount = schedule.IntervalCount,
                 ReminderTime = schedule.ReminderTime,
                 DaysOfWeek = schedule.DaysOfWeek,
                 UpdatedAt = DateTimeOffset.UtcNow,
@@ -111,6 +113,7 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
             Id = Guid.NewGuid(),
             MedicationId = medication.Id,
             RepeatType = schedule.RepeatType,
+            IntervalCount = schedule.IntervalCount,
             ReminderTime = schedule.ReminderTime,
             DaysOfWeek = schedule.DaysOfWeek,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -153,6 +156,7 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
                 .Select(schedule => new MedicationScheduleRecord(
                     schedule.Id,
                     schedule.RepeatType,
+                    schedule.IntervalCount,
                     schedule.ReminderTime,
                     schedule.DaysOfWeek,
                     schedule.UpdatedAt))

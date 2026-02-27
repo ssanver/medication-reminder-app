@@ -16,11 +16,12 @@ public sealed class SchedulePlannerTests
                     Id = Guid.NewGuid(),
                     MedicationId = Guid.NewGuid(),
                     RepeatType = "daily",
+                    IntervalCount = 1,
                     ReminderTime = new TimeOnly(8, 0),
                 },
             };
 
-        var planned = SchedulePlanner.BuildOccurrences(schedules, new DateOnly(2026, 2, 1), 30);
+        var planned = SchedulePlanner.BuildOccurrences(schedules, new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), 30);
 
         Assert.Equal(30, planned.Count);
         Assert.Equal(new DateTimeOffset(new DateTime(2026, 2, 1, 8, 0, 0), TimeSpan.Zero), planned.First());
@@ -37,12 +38,13 @@ public sealed class SchedulePlannerTests
                     Id = Guid.NewGuid(),
                     MedicationId = Guid.NewGuid(),
                     RepeatType = "weekly",
+                    IntervalCount = 1,
                     DaysOfWeek = "mon,wed",
                     ReminderTime = new TimeOnly(9, 15),
                 },
             };
 
-        var planned = SchedulePlanner.BuildOccurrences(schedules, new DateOnly(2026, 2, 2), 7);
+        var planned = SchedulePlanner.BuildOccurrences(schedules, new DateOnly(2026, 2, 2), new DateOnly(2026, 2, 2), 7);
 
         Assert.Equal(2, planned.Count);
         Assert.All(planned, item => Assert.True(item.DayOfWeek is DayOfWeek.Monday or DayOfWeek.Wednesday));

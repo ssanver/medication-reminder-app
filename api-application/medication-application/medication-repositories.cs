@@ -3,6 +3,7 @@ namespace api_application.medication_application;
 public sealed record MedicationScheduleRecord(
     Guid Id,
     string RepeatType,
+    int IntervalCount,
     TimeOnly ReminderTime,
     string? DaysOfWeek,
     DateTimeOffset UpdatedAt);
@@ -30,6 +31,7 @@ public sealed record SaveMedicationCommand(
 
 public sealed record MedicationScheduleInput(
     string RepeatType,
+    int IntervalCount,
     TimeOnly ReminderTime,
     string? DaysOfWeek);
 

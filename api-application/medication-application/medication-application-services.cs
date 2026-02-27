@@ -103,6 +103,11 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
             throw new ArgumentException("Repeat type must be one of: daily, weekly.");
         }
 
+        if (schedule.IntervalCount < 1)
+        {
+            throw new ArgumentException("Interval count must be greater than zero.");
+        }
+
         if (schedule.RepeatType.Equals("weekly", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(schedule.DaysOfWeek))
         {
             throw new ArgumentException("At least one weekday is required for weekly repeat type.");
@@ -130,6 +135,7 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         return schedule with
         {
             RepeatType = schedule.RepeatType.Trim().ToLowerInvariant(),
+            IntervalCount = Math.Max(1, schedule.IntervalCount),
             DaysOfWeek = NormalizeDaysOfWeek(schedule.DaysOfWeek),
         };
     }

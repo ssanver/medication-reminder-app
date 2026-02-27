@@ -160,7 +160,7 @@ export function AppNavigator() {
 
     void (async () => {
       try {
-        const weekStart = await loadWeekStartPreference(accountEmail || undefined);
+        const weekStart = await loadWeekStartPreference();
         setWeekStartsOn(weekStart);
       } catch {
         // Keep the current in-memory preference when API is unreachable.
@@ -548,7 +548,7 @@ export function AppNavigator() {
           weekStartsOn,
           (nextWeekStartsOn) => {
             setWeekStartsOn(nextWeekStartsOn);
-            void saveWeekStartPreference(nextWeekStartsOn, accountEmail || undefined);
+            void saveWeekStartPreference(nextWeekStartsOn);
           },
           notificationsEnabled,
           medicationRemindersEnabled,

@@ -35,11 +35,11 @@ public sealed class MedicationApplicationServiceTests
             false,
             new DateOnly(2026, 2, 20),
             null,
-            [new MedicationScheduleInput("daily", new TimeOnly(9, 0), null)]));
+            [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var act = async () => await service.AddScheduleAsync(
             created.Id,
-            new MedicationScheduleInput("daily", new TimeOnly(12, 0), "mon"));
+            new MedicationScheduleInput("daily", 1, new TimeOnly(12, 0), "mon"));
 
         var error = await Assert.ThrowsAsync<ArgumentException>(act);
         Assert.Equal("DaysOfWeek is only supported for weekly repeat type.", error.Message);
@@ -59,7 +59,7 @@ public sealed class MedicationApplicationServiceTests
                 false,
                 new DateOnly(2026, 2, 20),
                 null,
-                [new MedicationScheduleInput("daily", new TimeOnly(9, 0), null)]));
+                [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var error = await Assert.ThrowsAsync<KeyNotFoundException>(act);
         Assert.Equal("Medication not found.", error.Message);
@@ -144,7 +144,7 @@ public sealed class MedicationApplicationServiceTests
 
         private static MedicationScheduleRecord ToSchedule(MedicationScheduleInput input)
         {
-            return new MedicationScheduleRecord(Guid.NewGuid(), input.RepeatType, input.ReminderTime, input.DaysOfWeek, DateTimeOffset.UtcNow);
+            return new MedicationScheduleRecord(Guid.NewGuid(), input.RepeatType, input.IntervalCount, input.ReminderTime, input.DaysOfWeek, DateTimeOffset.UtcNow);
         }
     }
 }

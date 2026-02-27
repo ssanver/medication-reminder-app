@@ -1,4 +1,5 @@
 import { apiRequestJson } from '../network/api-client';
+import { buildUserReferenceQuery } from '../auth/user-reference';
 
 export type ProfileState = {
   fullName: string;
@@ -9,7 +10,6 @@ export type ProfileState = {
 };
 
 type UserProfileApiResponse = {
-  userReference: string;
   fullName: string;
   email: string;
   birthDate: string;
@@ -38,7 +38,8 @@ function fromApi(response: UserProfileApiResponse): ProfileState {
 
 export async function loadProfile(): Promise<ProfileState> {
   try {
-    const response = await apiRequestJson<UserProfileApiResponse>('/api/user-profile', {
+    const query = await buildUserReferenceQuery();
+    const response = await apiRequestJson<UserProfileApiResponse>(`/api/user-profile${query}`, {
       correlationPrefix: 'user-profile-get',
     });
     return fromApi(response);
@@ -48,7 +49,8 @@ export async function loadProfile(): Promise<ProfileState> {
 }
 
 export async function saveProfile(nextProfile: ProfileState): Promise<void> {
-  await apiRequestJson<UserProfileApiResponse>('/api/user-profile', {
+  const query = await buildUserReferenceQuery();
+  await apiRequestJson<UserProfileApiResponse>(`/api/user-profile${query}`, {
     method: 'PUT',
     body: {
       fullName: nextProfile.fullName,
@@ -62,7 +64,8 @@ export async function saveProfile(nextProfile: ProfileState): Promise<void> {
 }
 
 export async function clearProfile(): Promise<void> {
-  await apiRequestJson('/api/user-profile', {
+  const query = await buildUserReferenceQuery();
+  await apiRequestJson(`/api/user-profile${query}`, {
     method: 'DELETE',
     correlationPrefix: 'user-profile-delete',
   });

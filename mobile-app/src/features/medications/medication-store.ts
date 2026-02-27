@@ -2,15 +2,6 @@ import { apiRequestJson } from '../network/api-client';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { getLocaleTag, type Locale } from '../localization/localization';
 
-export type MedicationRecurrence =
-  | 'daily'
-  | 'every-2-days'
-  | 'every-3-days'
-  | 'every-7-days'
-  | 'every-14-days'
-  | 'every-8-hours'
-  | 'every-12-hours'
-  | 'hourly';
 export type DoseStatus = 'taken' | 'missed';
 
 export type Medication = {
@@ -21,7 +12,8 @@ export type Medication = {
   dosage: string;
   isBeforeMeal: boolean;
   frequencyLabel: string;
-  recurrence: MedicationRecurrence;
+  intervalUnit: 'day' | 'week';
+  intervalCount: number;
   note: string;
   startDate: string;
   endDate?: string | null;
@@ -77,36 +69,34 @@ function diffDays(from: Date, to: Date): number {
   return Math.round(ms / (1000 * 60 * 60 * 24));
 }
 
-function recurrenceFromLabel(label: string): MedicationRecurrence {
-  if (label === 'Every 2 Days') {
-    return 'every-2-days';
+function toFrequencyLabel(intervalUnit: 'day' | 'week', intervalCount: number): string {
+  if (intervalUnit === 'week') {
+    return intervalCount === 2 ? 'Every 14 Days' : 'Every 7 Days';
   }
-
-  if (label === 'Every 3 Days') {
-    return 'every-3-days';
+  if (intervalCount === 3) {
+    return 'Every 3 Days';
   }
-
-  if (label === 'Every 7 Days') {
-    return 'every-7-days';
+  if (intervalCount === 2) {
+    return 'Every 2 Days';
   }
+  return 'Every 1 Day';
+}
 
-  if (label === 'Every 14 Days') {
-    return 'every-14-days';
+function parseRuleFromFrequencyLabel(label: string): { intervalUnit: Medication['intervalUnit']; intervalCount: number } {
+  const normalized = label.trim().toLowerCase();
+  if (normalized.includes('14')) {
+    return { intervalUnit: 'week', intervalCount: 2 };
   }
-
-  if (label === 'Every 8 Hours') {
-    return 'every-8-hours';
+  if (normalized.includes('7')) {
+    return { intervalUnit: 'week', intervalCount: 1 };
   }
-
-  if (label === 'Every 12 Hours') {
-    return 'every-12-hours';
+  if (normalized.includes('3')) {
+    return { intervalUnit: 'day', intervalCount: 3 };
   }
-
-  if (label === 'Every 1 Hour') {
-    return 'hourly';
+  if (normalized.includes('2')) {
+    return { intervalUnit: 'day', intervalCount: 2 };
   }
-
-  return 'daily';
+  return { intervalUnit: 'day', intervalCount: 1 };
 }
 
 function normalizeTime(value: string): string {
@@ -150,6 +140,7 @@ export async function clearMedicationStore(): Promise<void> {
 
 type ApiMedicationSchedule = {
   repeatType: string;
+  intervalCount?: number;
   reminderTime: string;
   daysOfWeek?: string | null;
 };
@@ -191,6 +182,7 @@ type ApiSaveMedicationRequest = {
   endDate?: string | null;
   schedules: Array<{
     repeatType: string;
+    intervalCount: number;
     reminderTime: string;
     daysOfWeek?: string | null;
   }>;
@@ -245,7 +237,7 @@ function getWeeklyDays(medication: Medication): number[] {
 
 function toApiSchedules(medication: Medication): ApiSaveMedicationRequest['schedules'] {
   const times = getMedicationTimes(medication);
-  const isWeekly = medication.recurrence === 'every-7-days' || medication.recurrence === 'every-14-days';
+  const isWeekly = medication.intervalUnit === 'week';
   const daysOfWeek = isWeekly
     ? getWeeklyDays(medication)
         .map((weekday) => weekdayNumberToName(weekday))
@@ -254,6 +246,7 @@ function toApiSchedules(medication: Medication): ApiSaveMedicationRequest['sched
   const repeatType = isWeekly ? 'weekly' : 'daily';
   return times.map((time) => ({
     repeatType,
+    intervalCount: Math.max(1, medication.intervalCount),
     reminderTime: formatReminderTime(time),
     daysOfWeek,
   }));
@@ -275,6 +268,7 @@ function fromApiMedication(item: ApiMedication): Medication {
   const schedules = Array.isArray(item.schedules) ? item.schedules : [];
   const times = schedules.map((schedule) => parseReminderTime(schedule.reminderTime));
   const hasWeeklySchedule = schedules.some((schedule) => schedule.repeatType?.toLowerCase() === 'weekly');
+  const intervalCount = Math.max(1, Number(schedules[0]?.intervalCount ?? 1));
   const weeklyDays = hasWeeklySchedule
     ? Array.from(
         new Set(
@@ -285,8 +279,8 @@ function fromApiMedication(item: ApiMedication): Medication {
         ),
       ).sort((a, b) => a - b)
     : undefined;
-  const recurrence: MedicationRecurrence = hasWeeklySchedule ? 'every-7-days' : 'daily';
-  const frequencyLabel = hasWeeklySchedule ? 'Every 7 Days' : 'Every 1 Day';
+  const intervalUnit: Medication['intervalUnit'] = hasWeeklySchedule ? 'week' : 'day';
+  const frequencyLabel = toFrequencyLabel(intervalUnit, intervalCount);
   const form = item.usageType?.trim() ? item.usageType.trim() : 'Capsule';
 
   return normalizeMedication({
@@ -297,7 +291,8 @@ function fromApiMedication(item: ApiMedication): Medication {
     dosage: item.dosage,
     isBeforeMeal: item.isBeforeMeal,
     frequencyLabel,
-    recurrence,
+    intervalUnit,
+    intervalCount,
     note: '',
     startDate: item.startDate,
     endDate: item.endDate ?? null,
@@ -403,7 +398,8 @@ export async function addMedication(payload: {
   name: string;
   form: string;
   iconEmoji?: string;
-  frequencyLabel: string;
+  intervalUnit: Medication['intervalUnit'];
+  intervalCount: number;
   dosage: string;
   isBeforeMeal: boolean;
   note: string;
@@ -424,8 +420,9 @@ export async function addMedication(payload: {
     iconEmoji: payload.iconEmoji || iconForForm(payload.form),
     dosage: payload.dosage.trim().split(' - ')[0] ?? payload.dosage.trim(),
     isBeforeMeal: payload.isBeforeMeal,
-    frequencyLabel: payload.frequencyLabel,
-    recurrence: recurrenceFromLabel(payload.frequencyLabel),
+    frequencyLabel: toFrequencyLabel(payload.intervalUnit, payload.intervalCount),
+    intervalUnit: payload.intervalUnit,
+    intervalCount: Math.max(1, payload.intervalCount),
     note: payload.note.trim(),
     startDate: payload.startDate ?? today,
     endDate: payload.endDate ?? null,
@@ -463,7 +460,7 @@ export async function updateMedication(
   patch: Partial<
     Pick<
       Medication,
-      'name' | 'form' | 'iconEmoji' | 'dosage' | 'isBeforeMeal' | 'frequencyLabel' | 'note' | 'startDate' | 'endDate' | 'time' | 'times' | 'weeklyDays' | 'totalQuantity' | 'active'
+      'name' | 'form' | 'iconEmoji' | 'dosage' | 'isBeforeMeal' | 'frequencyLabel' | 'intervalUnit' | 'intervalCount' | 'note' | 'startDate' | 'endDate' | 'time' | 'times' | 'weeklyDays' | 'totalQuantity' | 'active'
     >
   >,
 ): Promise<void> {
@@ -476,20 +473,25 @@ export async function updateMedication(
     ...current,
     ...patch,
   });
-  const nextWithRecurrence: Medication = {
+  const fallbackRuleFromLabel = patch.frequencyLabel ? parseRuleFromFrequencyLabel(patch.frequencyLabel) : null;
+  const resolvedIntervalUnit = patch.intervalUnit ?? fallbackRuleFromLabel?.intervalUnit ?? next.intervalUnit;
+  const resolvedIntervalCount = Math.max(1, patch.intervalCount ?? fallbackRuleFromLabel?.intervalCount ?? next.intervalCount);
+  const nextWithRule: Medication = {
     ...next,
-    recurrence: patch.frequencyLabel ? recurrenceFromLabel(patch.frequencyLabel) : next.recurrence,
+    intervalUnit: resolvedIntervalUnit,
+    intervalCount: resolvedIntervalCount,
+    frequencyLabel: toFrequencyLabel(resolvedIntervalUnit, resolvedIntervalCount),
   };
   try {
     const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
       method: 'PUT',
-      body: toApiSaveMedicationRequest(nextWithRecurrence),
+      body: toApiSaveMedicationRequest(nextWithRule),
       correlationPrefix: 'medication-update',
     });
     const updatedMedication = fromApiMedication(updated);
-    if (typeof nextWithRecurrence.totalQuantity === 'number' && Number.isFinite(nextWithRecurrence.totalQuantity) && nextWithRecurrence.totalQuantity > 0) {
-      await updateInventoryStock(medicationId, Math.floor(nextWithRecurrence.totalQuantity));
-      updatedMedication.totalQuantity = Math.floor(nextWithRecurrence.totalQuantity);
+    if (typeof nextWithRule.totalQuantity === 'number' && Number.isFinite(nextWithRule.totalQuantity) && nextWithRule.totalQuantity > 0) {
+      await updateInventoryStock(medicationId, Math.floor(nextWithRule.totalQuantity));
+      updatedMedication.totalQuantity = Math.floor(nextWithRule.totalQuantity);
     }
 
     state = {
@@ -502,7 +504,7 @@ export async function updateMedication(
     // Keep local edits usable when backend update fails.
     state = {
       ...state,
-      medications: state.medications.map((item) => (item.id === medicationId ? nextWithRecurrence : item)),
+      medications: state.medications.map((item) => (item.id === medicationId ? nextWithRule : item)),
     };
     emit();
     await persist();
@@ -620,26 +622,6 @@ export async function clearDoseStatus(medicationId: string, date: Date, schedule
   await persist();
 }
 
-function recurrenceIntervalDays(recurrence: MedicationRecurrence): number {
-  if (recurrence === 'every-2-days') {
-    return 2;
-  }
-
-  if (recurrence === 'every-3-days') {
-    return 3;
-  }
-
-  if (recurrence === 'every-7-days') {
-    return 7;
-  }
-
-  if (recurrence === 'every-14-days') {
-    return 14;
-  }
-
-  return 1;
-}
-
 function isScheduled(medication: Medication, date: Date): boolean {
   const normalizedDate = normalize(date);
   const dayDiff = diffDays(parseDateKey(medication.startDate), normalizedDate);
@@ -655,29 +637,17 @@ function isScheduled(medication: Medication, date: Date): boolean {
     }
   }
 
-  if (
-    medication.recurrence === 'daily' ||
-    medication.recurrence === 'hourly' ||
-    medication.recurrence === 'every-8-hours' ||
-    medication.recurrence === 'every-12-hours'
-  ) {
-    return true;
-  }
-
-  if (medication.recurrence === 'every-7-days' || medication.recurrence === 'every-14-days') {
+  if (medication.intervalUnit === 'week') {
     const weekday = normalizedDate.getDay();
     const weeklyDays = getWeeklyDays(medication);
     if (!weeklyDays.includes(weekday)) {
       return false;
     }
-    if (medication.recurrence === 'every-14-days') {
-      const weekDiff = Math.floor(dayDiff / 7);
-      return weekDiff % 2 === 0;
-    }
-    return true;
+    const weekDiff = Math.floor(dayDiff / 7);
+    return weekDiff % Math.max(1, medication.intervalCount) === 0;
   }
 
-  return dayDiff % recurrenceIntervalDays(medication.recurrence) === 0;
+  return dayDiff % Math.max(1, medication.intervalCount) === 0;
 }
 
 function compareDay(a: Date, b: Date): number {
@@ -745,7 +715,7 @@ export function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): Sch
           scheduledTime,
           name: medication.name,
           details: `${medication.dosage} ${detailsUnit}`,
-          schedule: `${scheduledTime} | ${localizeFrequencyLabel(medication.frequencyLabel, locale)}`,
+          schedule: `${scheduledTime} | ${localizeFrequencyLabel(toFrequencyLabel(medication.intervalUnit, medication.intervalCount), locale)}`,
           status,
           emoji: resolveMedicationIcon(medication.form, medication.iconEmoji),
         };

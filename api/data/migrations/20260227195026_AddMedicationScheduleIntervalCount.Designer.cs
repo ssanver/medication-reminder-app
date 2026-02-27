@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using api.data;
 
@@ -11,9 +12,11 @@ using api.data;
 namespace api.data.migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260227195026_AddMedicationScheduleIntervalCount")]
+    partial class AddMedicationScheduleIntervalCount
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -807,8 +810,10 @@ namespace api.data.migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<Guid>("UserAccountId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("UserReference")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
 
                     b.Property<string>("WeekStartsOn")
                         .IsRequired()
@@ -817,7 +822,7 @@ namespace api.data.migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserAccountId")
+                    b.HasIndex("UserReference")
                         .IsUnique();
 
                     b.ToTable("user-preferences", (string)null);
@@ -837,6 +842,11 @@ namespace api.data.migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -855,12 +865,14 @@ namespace api.data.migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<Guid>("UserAccountId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("UserReference")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserAccountId")
+                    b.HasIndex("UserReference")
                         .IsUnique();
 
                     b.ToTable("user-profiles", (string)null);
@@ -921,28 +933,6 @@ namespace api.data.migrations
                     b.Navigation("Medication");
                 });
 
-            modelBuilder.Entity("api.models.UserPreference", b =>
-                {
-                    b.HasOne("api.models.UserAccount", "UserAccount")
-                        .WithOne("Preference")
-                        .HasForeignKey("api.models.UserPreference", "UserAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("UserAccount");
-                });
-
-            modelBuilder.Entity("api.models.UserProfile", b =>
-                {
-                    b.HasOne("api.models.UserAccount", "UserAccount")
-                        .WithOne("Profile")
-                        .HasForeignKey("api.models.UserProfile", "UserAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("UserAccount");
-                });
-
             modelBuilder.Entity("api.models.Medication", b =>
                 {
                     b.Navigation("DoseEvents");
@@ -957,13 +947,6 @@ namespace api.data.migrations
             modelBuilder.Entity("api.models.NotificationDelivery", b =>
                 {
                     b.Navigation("Actions");
-                });
-
-            modelBuilder.Entity("api.models.UserAccount", b =>
-                {
-                    b.Navigation("Preference");
-
-                    b.Navigation("Profile");
                 });
 #pragma warning restore 612, 618
         }

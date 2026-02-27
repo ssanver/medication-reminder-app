@@ -79,8 +79,10 @@ public sealed class MedicationsController(MedicationApplicationService applicati
 
         var planned = SchedulePlanner.BuildOccurrences(
             medication.Schedules.Select(ToModelSchedule).ToArray(),
+            medication.StartDate,
             DateOnly.FromDateTime(DateTime.UtcNow.Date),
-            days);
+            days,
+            medication.EndDate);
 
         return Ok(new SchedulePreviewResponse { PlannedDoseTimes = planned });
     }
@@ -115,6 +117,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
     {
         return new AppMedicationScheduleInput(
             input.RepeatType,
+            Math.Max(1, input.IntervalCount),
             input.ReminderTime,
             input.DaysOfWeek);
     }
@@ -136,6 +139,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
                 .Select(schedule => new api.contracts.MedicationScheduleInput
                 {
                     RepeatType = schedule.RepeatType,
+                    IntervalCount = schedule.IntervalCount,
                     ReminderTime = schedule.ReminderTime,
                     DaysOfWeek = schedule.DaysOfWeek,
                 })
@@ -149,6 +153,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
         {
             Id = schedule.Id,
             RepeatType = schedule.RepeatType,
+            IntervalCount = schedule.IntervalCount,
             ReminderTime = schedule.ReminderTime,
             DaysOfWeek = schedule.DaysOfWeek,
             UpdatedAt = schedule.UpdatedAt,

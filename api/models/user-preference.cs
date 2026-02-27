@@ -3,7 +3,7 @@ namespace api.models;
 public sealed class UserPreference
 {
     public Guid Id { get; set; }
-    public required string UserReference { get; set; }
+    public Guid UserAccountId { get; set; }
     public string Locale { get; set; } = "tr";
     public decimal FontScale { get; set; } = 1.0m;
     public bool NotificationsEnabled { get; set; } = true;
@@ -12,4 +12,5 @@ public sealed class UserPreference
     public string WeekStartsOn { get; set; } = "monday";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public UserAccount UserAccount { get; set; } = null!;
 }

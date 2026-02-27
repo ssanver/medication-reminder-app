@@ -15,13 +15,31 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
     public async Task<ActionResult<UserPreferenceResponse>> Get([FromQuery] string? userReference)
     {
         var resolvedUserReference = ResolveUserReference(userReference);
-        var item = await dbContext.UserPreferences.AsNoTracking().FirstOrDefaultAsync(x => x.UserReference == resolvedUserReference);
+        var userAccount = await dbContext.UserAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
+        if (userAccount is null)
+        {
+            return Ok(new UserPreferenceResponse
+            {
+                Locale = "tr",
+                FontScale = 1.0m,
+                NotificationsEnabled = true,
+                MedicationRemindersEnabled = true,
+                SnoozeMinutes = 10,
+                WeekStartsOn = "monday",
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+        }
+
+        var item = await dbContext
+            .UserPreferences
+            .AsNoTracking()
+            .Include(x => x.UserAccount)
+            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
 
         if (item is null)
         {
             return Ok(new UserPreferenceResponse
             {
-                UserReference = resolvedUserReference,
                 Locale = "tr",
                 FontScale = 1.0m,
                 NotificationsEnabled = true,
@@ -36,16 +54,37 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
     }
 
     [HttpPut]
-    public async Task<ActionResult<UserPreferenceResponse>> Update([FromBody] UpdateUserPreferenceRequest request)
+    public async Task<ActionResult<UserPreferenceResponse>> Update([FromBody] UpdateUserPreferenceRequest request, [FromQuery] string? userReference)
     {
-        var resolvedUserReference = ResolveUserReference(request.UserReference);
-        var item = await dbContext.UserPreferences.FirstOrDefaultAsync(x => x.UserReference == resolvedUserReference);
+        var resolvedUserReference = ResolveUserReference(userReference);
+        var userAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
+        if (userAccount is null)
+        {
+            userAccount = new UserAccount
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "User",
+                LastName = "Preference",
+                Email = resolvedUserReference,
+                PasswordHash = "preference-only-account",
+                IsEmailVerified = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            };
+            dbContext.UserAccounts.Add(userAccount);
+        }
+
+        var item = await dbContext
+            .UserPreferences
+            .Include(x => x.UserAccount)
+            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
         if (item is null)
         {
             item = new UserPreference
             {
                 Id = Guid.NewGuid(),
-                UserReference = resolvedUserReference,
+                UserAccountId = userAccount.Id,
+                UserAccount = userAccount,
                 Locale = "tr",
                 FontScale = 1.0m,
                 NotificationsEnabled = true,
@@ -148,7 +187,6 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
     {
         return new UserPreferenceResponse
         {
-            UserReference = item.UserReference,
             Locale = item.Locale,
             FontScale = item.FontScale,
             NotificationsEnabled = item.NotificationsEnabled,

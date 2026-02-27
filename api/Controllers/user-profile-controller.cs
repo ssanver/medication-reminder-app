@@ -15,13 +15,30 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
     public async Task<ActionResult<UserProfileResponse>> Get([FromQuery] string? userReference)
     {
         var resolvedUserReference = ResolveUserReference(userReference);
-        var item = await dbContext.UserProfiles.AsNoTracking().FirstOrDefaultAsync(x => x.UserReference == resolvedUserReference);
+        var userAccount = await dbContext.UserAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
+        if (userAccount is null)
+        {
+            return Ok(new UserProfileResponse
+            {
+                FullName = string.Empty,
+                Email = resolvedUserReference,
+                BirthDate = string.Empty,
+                Gender = string.Empty,
+                PhotoUri = string.Empty,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+        }
+
+        var item = await dbContext
+            .UserProfiles
+            .AsNoTracking()
+            .Include(x => x.UserAccount)
+            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
 
         if (item is null)
         {
             return Ok(new UserProfileResponse
             {
-                UserReference = resolvedUserReference,
                 FullName = string.Empty,
                 Email = resolvedUserReference,
                 BirthDate = string.Empty,
@@ -35,19 +52,39 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
     }
 
     [HttpPut]
-    public async Task<ActionResult<UserProfileResponse>> Upsert([FromBody] UpsertUserProfileRequest request)
+    public async Task<ActionResult<UserProfileResponse>> Upsert([FromBody] UpsertUserProfileRequest request, [FromQuery] string? userReference)
     {
-        var resolvedUserReference = ResolveUserReference(request.UserReference);
-        var item = await dbContext.UserProfiles.FirstOrDefaultAsync(x => x.UserReference == resolvedUserReference);
+        var resolvedUserReference = ResolveUserReference(userReference);
+        var userAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
+        if (userAccount is null)
+        {
+            userAccount = new UserAccount
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "User",
+                LastName = "Profile",
+                Email = resolvedUserReference,
+                PasswordHash = "profile-only-account",
+                IsEmailVerified = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            };
+            dbContext.UserAccounts.Add(userAccount);
+        }
+
+        var item = await dbContext
+            .UserProfiles
+            .Include(x => x.UserAccount)
+            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
 
         if (item is null)
         {
             item = new UserProfile
             {
                 Id = Guid.NewGuid(),
-                UserReference = resolvedUserReference,
+                UserAccountId = userAccount.Id,
+                UserAccount = userAccount,
                 FullName = string.Empty,
-                Email = resolvedUserReference,
                 BirthDate = string.Empty,
                 Gender = string.Empty,
                 PhotoUri = string.Empty,
@@ -64,7 +101,15 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
 
         if (request.Email is not null)
         {
-            item.Email = request.Email.Trim();
+            var normalizedEmail = ResolveUserReference(request.Email);
+            var isUsedByAnother = await dbContext.UserAccounts.AnyAsync(x => x.Email == normalizedEmail && x.Id != userAccount.Id);
+            if (isUsedByAnother)
+            {
+                return Conflict("Email is already used by another account.");
+            }
+
+            userAccount.Email = normalizedEmail;
+            userAccount.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
         if (request.BirthDate is not null)
@@ -92,7 +137,13 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
     public async Task<IActionResult> Delete([FromQuery] string? userReference)
     {
         var resolvedUserReference = ResolveUserReference(userReference);
-        var item = await dbContext.UserProfiles.FirstOrDefaultAsync(x => x.UserReference == resolvedUserReference);
+        var userAccount = await dbContext.UserAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
+        if (userAccount is null)
+        {
+            return NoContent();
+        }
+
+        var item = await dbContext.UserProfiles.FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
 
         if (item is null)
         {
@@ -116,9 +167,8 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
     {
         return new UserProfileResponse
         {
-            UserReference = item.UserReference,
             FullName = item.FullName,
-            Email = item.Email,
+            Email = item.UserAccount.Email,
             BirthDate = item.BirthDate,
             Gender = item.Gender,
             PhotoUri = item.PhotoUri,

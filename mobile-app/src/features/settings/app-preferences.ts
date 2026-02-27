@@ -1,5 +1,6 @@
 import { apiRequestJson } from '../network/api-client';
 import { isSupportedLocale, type Locale } from '../localization/localization';
+import { buildUserReferenceQuery } from '../auth/user-reference';
 
 export type AppPreferences = {
   locale: Locale;
@@ -10,7 +11,6 @@ export type AppPreferences = {
 };
 
 type UserPreferencesApiResponse = {
-  userReference: string;
   locale: string;
   fontScale: number;
   notificationsEnabled: boolean;
@@ -61,7 +61,8 @@ function fromApi(response: UserPreferencesApiResponse): AppPreferences {
 
 export async function loadAppPreferences(): Promise<AppPreferences> {
   try {
-    const response = await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+    const query = await buildUserReferenceQuery();
+    const response = await apiRequestJson<UserPreferencesApiResponse>(`/api/user-preferences${query}`, {
       correlationPrefix: 'user-preferences-get',
     });
     return fromApi(response);
@@ -71,7 +72,8 @@ export async function loadAppPreferences(): Promise<AppPreferences> {
 }
 
 export async function saveAppPreferences(preferences: AppPreferences): Promise<void> {
-  await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+  const query = await buildUserReferenceQuery();
+  await apiRequestJson<UserPreferencesApiResponse>(`/api/user-preferences${query}`, {
     method: 'PUT',
     body: {
       locale: preferences.locale,
@@ -85,7 +87,8 @@ export async function saveAppPreferences(preferences: AppPreferences): Promise<v
 }
 
 export async function updateLocalePreference(locale: Locale): Promise<void> {
-  await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+  const query = await buildUserReferenceQuery();
+  await apiRequestJson<UserPreferencesApiResponse>(`/api/user-preferences${query}`, {
     method: 'PUT',
     body: {
       locale,
@@ -97,7 +100,8 @@ export async function updateLocalePreference(locale: Locale): Promise<void> {
 export async function updateReminderPreferences(
   patch: Partial<Pick<AppPreferences, 'notificationsEnabled' | 'medicationRemindersEnabled' | 'snoozeMinutes'>>,
 ): Promise<void> {
-  await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+  const query = await buildUserReferenceQuery();
+  await apiRequestJson<UserPreferencesApiResponse>(`/api/user-preferences${query}`, {
     method: 'PUT',
     body: {
       notificationsEnabled: patch.notificationsEnabled,

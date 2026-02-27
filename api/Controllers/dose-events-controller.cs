@@ -173,7 +173,12 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
 
         var dayCount = (toDate.DayNumber - fromDate.DayNumber) + 1;
         var plannedCount = medications
-            .Sum(medication => SchedulePlanner.BuildOccurrences(medication.Schedules.ToArray(), fromDate, dayCount).Count);
+            .Sum(medication => SchedulePlanner.BuildOccurrences(
+                medication.Schedules.ToArray(),
+                medication.StartDate,
+                fromDate,
+                dayCount,
+                medication.EndDate).Count);
 
         var takenCount = events.Count(x => x.ActionType == "taken");
         var missedCount = events.Count(x => x.ActionType == "missed");
