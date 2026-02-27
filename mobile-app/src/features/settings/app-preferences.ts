@@ -1,7 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiRequestJson } from '../network/api-client';
 import { isSupportedLocale, type Locale } from '../localization/localization';
-
-const STORAGE_KEY = 'app-preferences-v1';
 
 export type AppPreferences = {
   locale: Locale;
@@ -9,6 +7,17 @@ export type AppPreferences = {
   notificationsEnabled: boolean;
   medicationRemindersEnabled: boolean;
   snoozeMinutes: number;
+};
+
+type UserPreferencesApiResponse = {
+  userReference: string;
+  locale: string;
+  fontScale: number;
+  notificationsEnabled: boolean;
+  medicationRemindersEnabled: boolean;
+  snoozeMinutes: number;
+  weekStartsOn: 'monday' | 'sunday';
+  updatedAt: string;
 };
 
 function resolveDefaultLocale(): Locale {
@@ -30,49 +39,71 @@ const defaultPreferences: AppPreferences = {
   snoozeMinutes: 10,
 };
 
+function fromApi(response: UserPreferencesApiResponse): AppPreferences {
+  const locale = isSupportedLocale(response.locale) ? response.locale : defaultPreferences.locale;
+  const fontScale = typeof response.fontScale === 'number' ? response.fontScale : defaultPreferences.fontScale;
+  const notificationsEnabled =
+    typeof response.notificationsEnabled === 'boolean' ? response.notificationsEnabled : defaultPreferences.notificationsEnabled;
+  const medicationRemindersEnabled =
+    typeof response.medicationRemindersEnabled === 'boolean'
+      ? response.medicationRemindersEnabled
+      : defaultPreferences.medicationRemindersEnabled;
+  const snoozeMinutes = typeof response.snoozeMinutes === 'number' ? response.snoozeMinutes : defaultPreferences.snoozeMinutes;
+
+  return {
+    locale,
+    fontScale,
+    notificationsEnabled,
+    medicationRemindersEnabled,
+    snoozeMinutes,
+  };
+}
+
 export async function loadAppPreferences(): Promise<AppPreferences> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return defaultPreferences;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<AppPreferences>;
-    const locale = typeof parsed.locale === 'string' && isSupportedLocale(parsed.locale) ? parsed.locale : defaultPreferences.locale;
-    const fontScale = typeof parsed.fontScale === 'number' ? parsed.fontScale : defaultPreferences.fontScale;
-    const notificationsEnabled =
-      typeof parsed.notificationsEnabled === 'boolean' ? parsed.notificationsEnabled : defaultPreferences.notificationsEnabled;
-    const medicationRemindersEnabled =
-      typeof parsed.medicationRemindersEnabled === 'boolean'
-        ? parsed.medicationRemindersEnabled
-        : defaultPreferences.medicationRemindersEnabled;
-    const snoozeMinutes = typeof parsed.snoozeMinutes === 'number' ? parsed.snoozeMinutes : defaultPreferences.snoozeMinutes;
-
-    return {
-      locale,
-      fontScale,
-      notificationsEnabled,
-      medicationRemindersEnabled,
-      snoozeMinutes,
-    };
+    const response = await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+      correlationPrefix: 'user-preferences-get',
+    });
+    return fromApi(response);
   } catch {
     return defaultPreferences;
   }
 }
 
 export async function saveAppPreferences(preferences: AppPreferences): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+  await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+    method: 'PUT',
+    body: {
+      locale: preferences.locale,
+      fontScale: preferences.fontScale,
+      notificationsEnabled: preferences.notificationsEnabled,
+      medicationRemindersEnabled: preferences.medicationRemindersEnabled,
+      snoozeMinutes: preferences.snoozeMinutes,
+    },
+    correlationPrefix: 'user-preferences-put',
+  });
 }
 
 export async function updateLocalePreference(locale: Locale): Promise<void> {
-  const current = await loadAppPreferences();
-  await saveAppPreferences({ ...current, locale });
+  await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+    method: 'PUT',
+    body: {
+      locale,
+    },
+    correlationPrefix: 'user-preferences-put-locale',
+  });
 }
 
-export async function updateReminderPreferences(patch: Partial<Pick<AppPreferences, 'notificationsEnabled' | 'medicationRemindersEnabled' | 'snoozeMinutes'>>): Promise<void> {
-  const current = await loadAppPreferences();
-  await saveAppPreferences({
-    ...current,
-    ...patch,
+export async function updateReminderPreferences(
+  patch: Partial<Pick<AppPreferences, 'notificationsEnabled' | 'medicationRemindersEnabled' | 'snoozeMinutes'>>,
+): Promise<void> {
+  await apiRequestJson<UserPreferencesApiResponse>('/api/user-preferences', {
+    method: 'PUT',
+    body: {
+      notificationsEnabled: patch.notificationsEnabled,
+      medicationRemindersEnabled: patch.medicationRemindersEnabled,
+      snoozeMinutes: patch.snoozeMinutes,
+    },
+    correlationPrefix: 'user-preferences-put-reminders',
   });
 }

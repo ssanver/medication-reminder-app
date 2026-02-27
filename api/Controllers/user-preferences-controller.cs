@@ -22,6 +22,11 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
             return Ok(new UserPreferenceResponse
             {
                 UserReference = resolvedUserReference,
+                Locale = "tr",
+                FontScale = 1.0m,
+                NotificationsEnabled = true,
+                MedicationRemindersEnabled = true,
+                SnoozeMinutes = 10,
                 WeekStartsOn = "monday",
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
@@ -34,16 +39,6 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
     public async Task<ActionResult<UserPreferenceResponse>> Update([FromBody] UpdateUserPreferenceRequest request)
     {
         var resolvedUserReference = ResolveUserReference(request.UserReference);
-        string normalizedWeekStartsOn;
-        try
-        {
-            normalizedWeekStartsOn = NormalizeWeekStartsOn(request.WeekStartsOn);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-
         var item = await dbContext.UserPreferences.FirstOrDefaultAsync(x => x.UserReference == resolvedUserReference);
         if (item is null)
         {
@@ -51,18 +46,71 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
             {
                 Id = Guid.NewGuid(),
                 UserReference = resolvedUserReference,
-                WeekStartsOn = normalizedWeekStartsOn,
+                Locale = "tr",
+                FontScale = 1.0m,
+                NotificationsEnabled = true,
+                MedicationRemindersEnabled = true,
+                SnoozeMinutes = 10,
+                WeekStartsOn = "monday",
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
             };
             dbContext.UserPreferences.Add(item);
         }
-        else
+
+        if (!string.IsNullOrWhiteSpace(request.Locale))
         {
-            item.WeekStartsOn = normalizedWeekStartsOn;
-            item.UpdatedAt = DateTimeOffset.UtcNow;
+            try
+            {
+                item.Locale = NormalizeLocale(request.Locale);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
+        if (request.FontScale.HasValue)
+        {
+            if (request.FontScale.Value is < 0.8m or > 1.6m)
+            {
+                return BadRequest("FontScale must be between 0.8 and 1.6.");
+            }
+            item.FontScale = Math.Round(request.FontScale.Value, 2, MidpointRounding.AwayFromZero);
+        }
+
+        if (request.NotificationsEnabled.HasValue)
+        {
+            item.NotificationsEnabled = request.NotificationsEnabled.Value;
+        }
+
+        if (request.MedicationRemindersEnabled.HasValue)
+        {
+            item.MedicationRemindersEnabled = request.MedicationRemindersEnabled.Value;
+        }
+
+        if (request.SnoozeMinutes.HasValue)
+        {
+            if (request.SnoozeMinutes.Value is not (5 or 10 or 15))
+            {
+                return BadRequest("SnoozeMinutes must be one of: 5, 10, 15.");
+            }
+            item.SnoozeMinutes = request.SnoozeMinutes.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.WeekStartsOn))
+        {
+            try
+            {
+                item.WeekStartsOn = NormalizeWeekStartsOn(request.WeekStartsOn);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        item.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync();
         return Ok(ToResponse(item));
     }
@@ -85,11 +133,27 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
         return normalized;
     }
 
+    private static string NormalizeLocale(string value)
+    {
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized is not ("tr" or "en"))
+        {
+            throw new ArgumentException("Locale must be either 'tr' or 'en'.");
+        }
+
+        return normalized;
+    }
+
     private static UserPreferenceResponse ToResponse(UserPreference item)
     {
         return new UserPreferenceResponse
         {
             UserReference = item.UserReference,
+            Locale = item.Locale,
+            FontScale = item.FontScale,
+            NotificationsEnabled = item.NotificationsEnabled,
+            MedicationRemindersEnabled = item.MedicationRemindersEnabled,
+            SnoozeMinutes = item.SnoozeMinutes,
             WeekStartsOn = item.WeekStartsOn,
             UpdatedAt = item.UpdatedAt,
         };

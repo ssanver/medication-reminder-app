@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequestJson } from '../network/api-client';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { getLocaleTag, type Locale } from '../localization/localization';
@@ -45,7 +44,6 @@ type MedicationStoreState = {
   isHydrated: boolean;
 };
 
-const STORAGE_KEY = 'medication-reminder-store-v1';
 const listeners = new Set<() => void>();
 
 let state: MedicationStoreState = {
@@ -134,14 +132,8 @@ function normalizeMedication(payload: Medication): Medication {
   };
 }
 
-function toPersistableState() {
-  return {
-    events: state.events,
-  };
-}
-
-async function persist() {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toPersistableState()));
+async function persist(): Promise<void> {
+  return Promise.resolve();
 }
 
 export async function clearMedicationStore(): Promise<void> {
@@ -150,7 +142,6 @@ export async function clearMedicationStore(): Promise<void> {
     events: [],
     isHydrated: true,
   };
-  await AsyncStorage.removeItem(STORAGE_KEY);
   emit();
 }
 
@@ -176,6 +167,16 @@ type ApiInventoryRecord = {
   medicationId: string;
   currentStock: number;
   threshold: number;
+};
+
+type ApiDoseEvent = {
+  id: string;
+  medicationId: string;
+  actionType: 'taken' | 'missed' | 'snooze' | 'clear';
+  dateKey: string;
+  scheduledTime: string;
+  actionAt: string;
+  snoozeMinutes?: number | null;
 };
 
 type ApiSaveMedicationRequest = {
@@ -285,30 +286,15 @@ async function updateInventoryStock(medicationId: string, totalQuantity: number)
   });
 }
 
+async function listDoseEvents(): Promise<ApiDoseEvent[]> {
+  return apiRequestJson<ApiDoseEvent[]>('/api/dose-events/history', {
+    correlationPrefix: 'dose-events-history',
+  });
+}
+
 export async function hydrateMedicationStore(): Promise<void> {
   if (state.isHydrated) {
     return;
-  }
-
-  let localEvents: DoseEvent[] = [];
-
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-
-    if (raw) {
-      const parsed = JSON.parse(raw) as {
-        events?: Array<Omit<DoseEvent, 'scheduledTime'> & Partial<Pick<DoseEvent, 'scheduledTime'>>>;
-      };
-      localEvents =
-        parsed.events?.map((item) => ({
-          medicationId: item.medicationId,
-          dateKey: item.dateKey,
-          scheduledTime: typeof item.scheduledTime === 'string' ? normalizeTime(item.scheduledTime) : '',
-          status: item.status,
-        })) ?? [];
-    }
-  } catch {
-    // Keep empty local cache when persisted payload is unavailable/corrupt.
   }
 
   try {
@@ -326,25 +312,38 @@ export async function hydrateMedicationStore(): Promise<void> {
     } catch {
       inventoryByMedicationId = {};
     }
+    let remoteEvents: DoseEvent[] = [];
+    try {
+      const eventRecords = await listDoseEvents();
+      remoteEvents = eventRecords
+        .filter((item) => item.actionType === 'taken' || item.actionType === 'missed')
+        .map((item) => ({
+          medicationId: item.medicationId,
+          dateKey: item.dateKey,
+          scheduledTime: normalizeTime(item.scheduledTime || '00:00'),
+          status: item.actionType === 'taken' ? 'taken' : 'missed',
+        }));
+    } catch {
+      remoteEvents = [];
+    }
 
     state = {
       medications: remoteMedications.map((item) => ({
         ...item,
         totalQuantity: inventoryByMedicationId[item.id],
       })),
-      events: localEvents,
+      events: remoteEvents,
       isHydrated: true,
     };
     emit();
-    await persist();
     return;
   } catch {
-    // Keep medication list empty when API is unreachable to avoid local seed/fallback usage.
+    // Keep medication list empty when API is unreachable.
   }
 
   state = {
     medications: [],
-    events: localEvents,
+    events: [],
     isHydrated: true,
   };
   emit();
@@ -400,12 +399,8 @@ export async function addMedication(payload: {
   });
   const medication = fromApiMedication(created);
   if (typeof payload.totalQuantity === 'number' && Number.isFinite(payload.totalQuantity) && payload.totalQuantity > 0) {
-    try {
-      await updateInventoryStock(medication.id, Math.floor(payload.totalQuantity));
-      medication.totalQuantity = Math.floor(payload.totalQuantity);
-    } catch {
-      medication.totalQuantity = Math.floor(payload.totalQuantity);
-    }
+    await updateInventoryStock(medication.id, Math.floor(payload.totalQuantity));
+    medication.totalQuantity = Math.floor(payload.totalQuantity);
   }
 
   state = {
@@ -447,11 +442,7 @@ export async function updateMedication(
     });
     const updatedMedication = fromApiMedication(updated);
     if (typeof nextWithRecurrence.totalQuantity === 'number' && Number.isFinite(nextWithRecurrence.totalQuantity) && nextWithRecurrence.totalQuantity > 0) {
-      try {
-        await updateInventoryStock(medicationId, Math.floor(nextWithRecurrence.totalQuantity));
-      } catch {
-        // Keep local value even when inventory update is not reachable.
-      }
+      await updateInventoryStock(medicationId, Math.floor(nextWithRecurrence.totalQuantity));
       updatedMedication.totalQuantity = Math.floor(nextWithRecurrence.totalQuantity);
     }
 
@@ -526,6 +517,16 @@ export async function deleteMedication(medicationId: string): Promise<void> {
 export async function setDoseStatus(medicationId: string, date: Date, status: DoseStatus, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
+  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+    method: 'POST',
+    body: {
+      medicationId,
+      actionType: status,
+      dateKey,
+      scheduledTime: normalizedScheduledTime,
+    },
+    correlationPrefix: 'dose-events-action',
+  });
   const existing = state.events.find(
     (item) => item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime,
   );
@@ -553,6 +554,16 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
 export async function clearDoseStatus(medicationId: string, date: Date, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
+  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+    method: 'POST',
+    body: {
+      medicationId,
+      actionType: 'clear',
+      dateKey,
+      scheduledTime: normalizedScheduledTime,
+    },
+    correlationPrefix: 'dose-events-action-clear',
+  });
   state = {
     ...state,
     events: state.events.filter(

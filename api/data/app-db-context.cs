@@ -8,6 +8,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Medication> Medications => Set<Medication>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
+    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<MedicineCatalogItem> MedicineCatalogItems => Set<MedicineCatalogItem>();
     public DbSet<MedicationSchedule> MedicationSchedules => Set<MedicationSchedule>();
     public DbSet<DoseEvent> DoseEvents => Set<DoseEvent>();
@@ -57,7 +58,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.ToTable("user-preferences");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.UserReference).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Locale).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.FontScale).HasPrecision(4, 2).IsRequired();
+            entity.Property(x => x.NotificationsEnabled).IsRequired();
+            entity.Property(x => x.MedicationRemindersEnabled).IsRequired();
+            entity.Property(x => x.SnoozeMinutes).IsRequired();
             entity.Property(x => x.WeekStartsOn).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => x.UserReference).IsUnique();
+        });
+
+        modelBuilder.Entity<UserProfile>(entity =>
+        {
+            entity.ToTable("user-profiles");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserReference).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.FullName).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Email).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.BirthDate).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.Gender).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.PhotoUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
             entity.HasIndex(x => x.UserReference).IsUnique();
@@ -102,8 +123,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.ToTable("dose-events");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.ActionType).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.DateKey).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.ScheduledTime).HasMaxLength(5).IsRequired();
             entity.Property(x => x.ActionAt).IsRequired();
             entity.Property(x => x.CreatedAt).IsRequired();
+            entity.HasIndex(x => new { x.MedicationId, x.DateKey, x.ScheduledTime }).IsUnique();
 
             entity
                 .HasOne(x => x.Medication)

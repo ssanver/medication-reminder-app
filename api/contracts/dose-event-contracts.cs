@@ -4,6 +4,8 @@ public sealed class DoseActionRequest
 {
     public required Guid MedicationId { get; set; }
     public required string ActionType { get; set; }
+    public string? DateKey { get; set; }
+    public string? ScheduledTime { get; set; }
     public int? SnoozeMinutes { get; set; }
 }
 
@@ -12,6 +14,8 @@ public sealed class DoseEventResponse
     public required Guid Id { get; set; }
     public required Guid MedicationId { get; set; }
     public required string ActionType { get; set; }
+    public required string DateKey { get; set; }
+    public required string ScheduledTime { get; set; }
     public DateTimeOffset ActionAt { get; set; }
     public int? SnoozeMinutes { get; set; }
 }
