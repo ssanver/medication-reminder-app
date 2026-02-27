@@ -72,8 +72,9 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       {socialMessage ? <Text style={styles.successText}>{socialMessage}</Text> : null}
 
       <View style={styles.form}>
-        <TextField label={t.email} value={email} placeholder={t.enterYourEmail} onChangeText={setEmail} />
+        <TextField testID="signin-email-input" label={t.email} value={email} placeholder={t.enterYourEmail} onChangeText={setEmail} />
         <TextField
+          testID="signin-password-input"
           label={t.password}
           value={password}
           secureTextEntry={isPasswordHidden}
@@ -85,6 +86,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
       </View>
 
       <Button
+        testID="signin-submit-button"
         label={t.signIn}
         onPress={() => void handleSignIn()}
         disabled={isLoading}
@@ -106,7 +108,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
         disabled={isSocialLoading}
       />
 
-      <Pressable onPress={onOpenSignUp}>
+      <Pressable testID="signin-open-signup-link" onPress={onOpenSignUp}>
         <Text style={styles.signUpText}>{t.noAccount}</Text>
       </Pressable>
     </ScrollView>

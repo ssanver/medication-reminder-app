@@ -7,6 +7,7 @@ type FieldState = 'default' | 'focused' | 'disabled' | 'error';
 type TextFieldProps = {
   label: string;
   value: string;
+  testID?: string;
   placeholder?: string;
   helperText?: string;
   errorText?: string;
@@ -22,6 +23,7 @@ type TextFieldProps = {
 export function TextField({
   label,
   value,
+  testID,
   placeholder,
   helperText,
   errorText,
@@ -50,6 +52,7 @@ export function TextField({
       <View style={[styles.inputShell, shellStateStyles[state]]}>
         {leadingIcon ? <Text style={styles.leadingIcon}>{leadingIcon}</Text> : null}
         <TextInput
+          testID={testID}
           value={value}
           editable={editable}
           placeholder={placeholder}

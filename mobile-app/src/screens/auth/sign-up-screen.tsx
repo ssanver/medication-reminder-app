@@ -82,7 +82,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable style={styles.backButton} onPress={onBack}>
+      <Pressable testID="signup-back-button" style={styles.backButton} onPress={onBack}>
         <Text style={styles.backIcon}>{'<'}</Text>
       </Pressable>
       <Text style={styles.title}>{t.signUpTitle}</Text>
@@ -98,9 +98,10 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
       {socialMessage ? <Text style={styles.successInline}>{socialMessage}</Text> : null}
 
       <View style={styles.form}>
-        <TextField label={t.name} value={name} placeholder={t.enterYourName} onChangeText={setName} />
-        <TextField label={t.email} value={email} placeholder={t.enterYourEmail} onChangeText={setEmail} />
+        <TextField testID="signup-name-input" label={t.name} value={name} placeholder={t.enterYourName} onChangeText={setName} />
+        <TextField testID="signup-email-input" label={t.email} value={email} placeholder={t.enterYourEmail} onChangeText={setEmail} />
         <TextField
+          testID="signup-password-input"
           label={t.password}
           value={password}
           secureTextEntry={isPasswordHidden}
@@ -112,6 +113,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
       </View>
 
       <Button
+        testID="signup-submit-button"
         label={t.createAccount}
         onPress={() => void handleSignUp()}
         disabled={isLoading}
@@ -137,7 +139,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         onPress={() => void handleSocialAuth('Google')}
         disabled={isSocialLoading}
       />
-      <Pressable onPress={onOpenSignIn}>
+      <Pressable testID="signup-open-signin-link" onPress={onOpenSignIn}>
         <Text style={styles.signInText}>{t.alreadyHaveAccount}</Text>
       </Pressable>
     </ScrollView>

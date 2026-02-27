@@ -108,7 +108,7 @@ export function SettingsScreen({
         </View>
 
         <Section title={t.reminderAlarm}>
-          <MenuRow label={t.notificationSettings} value={t.defaultAppSound} onPress={onOpenNotificationSettings} />
+          <MenuRow testID="settings-notification-settings-row" label={t.notificationSettings} value={t.defaultAppSound} onPress={onOpenNotificationSettings} />
           <View style={styles.switchRow}>
             <View>
               <Text style={styles.rowTitle}>{t.appNotifications}</Text>
@@ -144,7 +144,7 @@ export function SettingsScreen({
               }}
             />
           </View>
-          <MenuRow label={t.snoozeDuration} value={`${snoozeMinutes} min`} onPress={onOpenReminderPreferences} />
+          <MenuRow testID="settings-snooze-duration-row" label={t.snoozeDuration} value={`${snoozeMinutes} min`} onPress={onOpenReminderPreferences} />
         </Section>
 
         <Section title={t.general}>
@@ -178,16 +178,16 @@ export function SettingsScreen({
         </Section>
 
         <Section title={t.reporting}>
-          <MenuRow label={t.changePassword} onPress={onOpenChangePassword} />
-          <MenuRow label={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} onPress={onOpenFeedback} />
+          <MenuRow testID="settings-change-password-row" label={t.changePassword} onPress={onOpenChangePassword} />
+          <MenuRow testID="settings-contact-us-row" label={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} onPress={onOpenFeedback} />
           <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
             <Text style={styles.logoutText}>{locale === 'tr' ? 'Çıkış Yap' : 'Log Out'}</Text>
           </Pressable>
         </Section>
 
         <Section title={t.aboutUs}>
-          <MenuRow label={locale === 'tr' ? 'Bağış Yap' : 'Donate'} onPress={onOpenDonate} />
-          <MenuRow label={locale === 'tr' ? 'Uygulamayı Paylaş' : 'Share App'} onPress={onShareApp} />
+          <MenuRow testID="settings-donate-row" label={locale === 'tr' ? 'Bağış Yap' : 'Donate'} onPress={onOpenDonate} />
+          <MenuRow testID="settings-share-app-row" label={locale === 'tr' ? 'Uygulamayı Paylaş' : 'Share App'} onPress={onShareApp} />
           <View style={styles.versionRow}>
             <Text style={styles.rowTitle}>{locale === 'tr' ? 'Sürüm' : 'Version'}</Text>
             <Text style={styles.rowSubtitle}>{version}</Text>
@@ -195,7 +195,7 @@ export function SettingsScreen({
         </Section>
 
         <Section title={locale === 'tr' ? 'Hesap' : 'Account'}>
-          <Pressable style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
+          <Pressable testID="settings-cancel-account-row" style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
             <Text style={styles.dangerText}>{locale === 'tr' ? 'Kaydı İptal Et' : 'Cancel Account'}</Text>
           </Pressable>
         </Section>
@@ -263,6 +263,7 @@ export function SettingsScreen({
             {cancelErrorText ? <Text style={styles.cancelErrorText}>{cancelErrorText}</Text> : null}
             <View style={styles.confirmActions}>
               <Button
+                testID="cancel-account-dismiss-button"
                 label={locale === 'tr' ? 'Vazgeç' : 'Cancel'}
                 variant="outlined"
                 onPress={() => {
@@ -272,6 +273,7 @@ export function SettingsScreen({
                 }}
               />
               <Button
+                testID="cancel-account-confirm-button"
                 label={locale === 'tr' ? 'Onayla' : 'Confirm'}
                 variant="danger"
                 disabled={isCancelLoading}
@@ -319,14 +321,15 @@ function Section({ title, children }: SectionProps) {
 }
 
 type MenuRowProps = {
+  testID?: string;
   label: string;
   value?: string;
   onPress?: () => void;
 };
 
-function MenuRow({ label, value, onPress }: MenuRowProps) {
+function MenuRow({ testID, label, value, onPress }: MenuRowProps) {
   return (
-    <Pressable style={styles.menuRow} onPress={onPress} disabled={!onPress}>
+    <Pressable testID={testID} style={styles.menuRow} onPress={onPress} disabled={!onPress}>
       <View>
         <Text style={styles.rowTitle}>{label}</Text>
         {value ? <Text style={styles.rowSubtitle}>{value}</Text> : null}

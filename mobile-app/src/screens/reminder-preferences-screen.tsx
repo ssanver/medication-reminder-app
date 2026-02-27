@@ -37,7 +37,7 @@ export function ReminderPreferencesScreen({ locale, snoozeMinutes, onSnoozeMinut
         </View>
       </View>
 
-      <Pressable style={styles.doneBtn} onPress={onBack}>
+      <Pressable testID="reminder-preferences-done-button" style={styles.doneBtn} onPress={onBack}>
         <Text style={styles.doneText}>{t.done}</Text>
       </Pressable>
     </ScrollView>

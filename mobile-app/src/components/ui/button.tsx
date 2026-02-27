@@ -8,6 +8,7 @@ type ButtonSize = 'xs' | 's' | 'm' | 'l';
 
 type ButtonProps = {
   label: string;
+  testID?: string;
   leadingIcon?: string;
   leadingNode?: ReactNode;
   disabled?: boolean;
@@ -19,6 +20,7 @@ type ButtonProps = {
 
 export function Button({
   label,
+  testID,
   leadingIcon,
   leadingNode,
   disabled = false,
@@ -37,6 +39,7 @@ export function Button({
 
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       disabled={disabled}
       style={[

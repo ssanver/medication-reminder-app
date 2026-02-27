@@ -25,7 +25,7 @@ export function OnboardingScreen({ locale, stepIndex, onNextStep, onSkip, onOpen
       <View style={styles.topRow}>
         <View style={styles.sideSpacer} />
         <View style={styles.sideSpacer}>
-          <Pressable onPress={onSkip}>
+          <Pressable testID="onboarding-skip-button" onPress={onSkip}>
             <Text style={styles.skip}>Skip</Text>
           </Pressable>
         </View>

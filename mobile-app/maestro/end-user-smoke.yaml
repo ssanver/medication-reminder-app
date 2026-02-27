@@ -5,60 +5,59 @@ appId: com.suleymansanver.medicationreminder
 
 - runFlow:
     when:
-      visible: "Skip"
+      visible:
+        id: "onboarding-skip-button"
     commands:
-      - tapOn: "Skip"
+      - tapOn:
+          id: "onboarding-skip-button"
 
 - runFlow:
     when:
       visible:
-        text: "^(Sign Up|Kayıt Ol)$"
+        id: "signup-open-signin-link"
     commands:
       - tapOn:
-          text: '(Already have an account\? Sign in|Zaten hesabın var mı\? Giriş yap)'
+          id: "signup-open-signin-link"
 
 - extendedWaitUntil:
     visible:
-      text: "^(Sign In|Giriş Yap)$"
+      id: "signin-submit-button"
     timeout: 15000
 - tapOn:
-    point: "50%,28%"
-- inputText: "123456"
-- tapOn:
-    point: "50%,35%"
+    id: "signin-submit-button"
 
 - extendedWaitUntil:
     visible:
-      text: "^(Today|Bugün)$"
+      id: "tab-today"
     timeout: 25000
 
 - tapOn:
-    text: "^(My Meds|İlaçlarım)$"
+    id: "tab-my-meds"
 - assertVisible:
-    text: "(İlaçlarım|My Meds|No medications found|İlacınız bulunmamaktadır)"
+    text: "(İlaçlarım|My Meds|My medication|No medications found|İlacınız bulunmamaktadır)"
 
 - tapOn:
-    text: "^(Add Meds|İlaç Ekle)$"
+    id: "tab-add-meds"
 - assertVisible:
     text: "^(Medication Name|İlaç Adı)$"
 
 - tapOn:
-    text: "^(Settings|Ayarlar)$"
+    id: "tab-settings"
 - assertVisible:
     text: "^(Settings|Ayarlar)$"
 
 - scrollUntilVisible:
     element:
-      text: "^(Cancel Account|Kaydı İptal Et)$"
+      id: "settings-cancel-account-row"
     direction: DOWN
 - tapOn:
-    text: "^(Cancel Account|Kaydı İptal Et)$"
+    id: "settings-cancel-account-row"
 - assertVisible:
-    text: "(cannot be recovered|geri dönüşü yoktur)"
+    id: "cancel-account-dismiss-button"
 - tapOn:
-    text: "^(Cancel|Vazgeç)$"
+    id: "cancel-account-dismiss-button"
 
 - tapOn:
-    text: "^(Today|Bugün)$"
+    id: "tab-today"
 - assertVisible:
-    text: "(Today's Medication|Bugünün İlaçları)"
+    id: "tab-today"

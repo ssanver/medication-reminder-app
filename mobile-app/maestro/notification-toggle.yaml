@@ -5,61 +5,60 @@ appId: com.suleymansanver.medicationreminder
 
 - runFlow:
     when:
-      visible: "Skip"
+      visible:
+        id: "onboarding-skip-button"
     commands:
-      - tapOn: "Skip"
+      - tapOn:
+          id: "onboarding-skip-button"
 
 - runFlow:
     when:
       visible:
-        text: "^(Sign Up|Kayıt Ol)$"
+        id: "signup-open-signin-link"
     commands:
       - tapOn:
-          text: '(Already have an account\? Sign in|Zaten hesabın var mı\? Giriş yap)'
+          id: "signup-open-signin-link"
 
 - extendedWaitUntil:
     visible:
-      text: "^(Sign In|Giriş Yap)$"
+      id: "signin-submit-button"
     timeout: 15000
 - tapOn:
-    point: "50%,28%"
-- inputText: "123456"
-- tapOn:
-    point: "50%,35%"
+    id: "signin-submit-button"
 
 - extendedWaitUntil:
     visible:
-      text: "^(Settings|Ayarlar)$"
+      id: "tab-settings"
     timeout: 25000
 - tapOn:
-    text: "^(Settings|Ayarlar)$"
+    id: "tab-settings"
 - assertVisible:
     text: "^(Settings|Ayarlar)$"
 
 - scrollUntilVisible:
     element:
-      text: "^(Notification settings|Bildirim ayarları)$"
+      id: "settings-notification-settings-row"
     direction: DOWN
 - tapOn:
-    text: "^(Notification settings|Bildirim ayarları)$"
+    id: "settings-notification-settings-row"
 - assertVisible:
-    text: "^(Notification settings|Bildirim ayarları)$"
+    id: "notification-settings-done-button"
 - assertVisible:
     text: "^(App Notifications|Uygulama bildirimleri)$"
 - assertVisible:
     text: "^(Medication reminders|İlaç hatırlatmaları)$"
-
 - tapOn:
-    text: "^(Done|Tamam)$"
-- assertVisible:
-    text: "^(Settings|Ayarlar)$"
+    id: "notification-settings-done-button"
 
-- tapOn:
-    text: "^(Snooze duration|Erteleme süresi)$"
 - assertVisible:
-    text: "^(Reminder Preferences|Hatırlatma Tercihleri)$"
+    id: "settings-snooze-duration-row"
+- tapOn:
+    id: "settings-snooze-duration-row"
+- assertVisible:
+    id: "reminder-preferences-done-button"
 - tapOn: "15 min"
 - tapOn:
-    text: "^(Done|Tamam)$"
+    id: "reminder-preferences-done-button"
+
 - assertVisible:
     text: "^(Settings|Ayarlar)$"

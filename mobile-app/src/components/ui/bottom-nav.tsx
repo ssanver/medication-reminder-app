@@ -24,7 +24,13 @@ export function BottomNav({ items, activeKey, onChange }: BottomNavProps) {
       {items.map((item) => {
         const active = item.key === activeKey;
         return (
-          <Pressable key={item.key} style={styles.item} onPress={() => onChange(item.key)}>
+          <Pressable
+            key={item.key}
+            testID={`tab-${item.key}`}
+            accessibilityLabel={`tab-${item.key}`}
+            style={styles.item}
+            onPress={() => onChange(item.key)}
+          >
             <AppIcon
               name={item.icon}
               size={18}

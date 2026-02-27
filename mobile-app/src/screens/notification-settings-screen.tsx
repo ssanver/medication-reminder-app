@@ -44,7 +44,7 @@ export function NotificationSettingsScreen({
       </View>
 
       {!notificationsEnabled ? <Text style={styles.warning}>{t.notificationPermissionRequired}</Text> : null}
-      <Pressable style={styles.doneBtn} onPress={onBack}>
+      <Pressable testID="notification-settings-done-button" style={styles.doneBtn} onPress={onBack}>
         <Text style={styles.doneText}>{t.done}</Text>
       </Pressable>
     </ScrollView>
@@ -102,4 +102,3 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-

@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e:ios": "bash scripts/run-maestro-ios.sh"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
