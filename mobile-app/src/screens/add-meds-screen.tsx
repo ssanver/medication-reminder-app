@@ -32,18 +32,46 @@ import {
   weekIntervalOptions,
 } from '../features/medications/add-medication-use-case';
 import { searchMedicineCatalog } from '../features/medications/medicine-catalog-service';
-import { addMedication } from '../features/medications/medication-store';
+import { addMedication, getMedicationById, updateMedication } from '../features/medications/medication-store';
 import { theme } from '../theme';
 
 type AddMedsScreenProps = {
   locale: Locale;
   fontScale: number;
   onMedicationSaved: () => void;
+  mode?: 'create' | 'edit';
+  medicationId?: string;
+  onBack?: () => void;
 };
 
 type SheetType = 'none' | 'date' | 'time' | 'interval' | 'form';
 
-export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved }: AddMedsScreenProps) {
+function resolveIntervalFromFrequencyLabel(label: string, startDate: string): { intervalUnit: IntervalUnit; intervalCount: number; selectedWeekday: number } {
+  const parsedCount = Number(label.match(/\d+/)?.[0] ?? '1');
+  const dayCount = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 1;
+  if (dayCount === 7 || dayCount === 14) {
+    return {
+      intervalUnit: 'week',
+      intervalCount: dayCount === 14 ? 2 : 1,
+      selectedWeekday: parseDateKey(startDate).getDay(),
+    };
+  }
+
+  return {
+    intervalUnit: 'day',
+    intervalCount: [1, 2, 3].includes(dayCount) ? dayCount : 1,
+    selectedWeekday: parseDateKey(startDate).getDay(),
+  };
+}
+
+export function AddMedsScreen({
+  locale,
+  fontScale: _fontScale,
+  onMedicationSaved,
+  mode = 'create',
+  medicationId,
+  onBack: onNavigateBack,
+}: AddMedsScreenProps) {
   const t = getTranslations(locale);
   const [step, setStep] = useState<WizardStep>('name');
   const [sheet, setSheet] = useState<SheetType>('none');
@@ -66,6 +94,10 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const [draftHour, setDraftHour] = useState('09');
   const [draftMinute, setDraftMinute] = useState('00');
   const [editingTimeIndex, setEditingTimeIndex] = useState(0);
+  const editingMedication = useMemo(
+    () => (mode === 'edit' && medicationId ? getMedicationById(medicationId) : undefined),
+    [medicationId, mode],
+  );
 
   const stepIndex = steps.indexOf(step);
   const progress = (stepIndex + 1) / steps.length;
@@ -122,6 +154,31 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   }, [intervalUnit, selectedWeekday, startDate]);
 
   useEffect(() => {
+    if (mode !== 'edit' || !editingMedication) {
+      return;
+    }
+
+    const intervalPreset = resolveIntervalFromFrequencyLabel(editingMedication.frequencyLabel, editingMedication.startDate);
+    const presetTimes =
+      Array.isArray(editingMedication.times) && editingMedication.times.length > 0
+        ? editingMedication.times
+        : [editingMedication.time ?? defaultDoseTimes[0]];
+
+    setName(editingMedication.name);
+    setForm(editingMedication.form);
+    setIconEmoji(editingMedication.iconEmoji || resolveFormDefaultIcon(editingMedication.form));
+    setDosage(editingMedication.dosage || '1');
+    setIntervalUnit(intervalPreset.intervalUnit);
+    setIntervalCount(intervalPreset.intervalCount);
+    setSelectedWeekday(intervalPreset.selectedWeekday);
+    setDosesPerDay(Math.min(3, Math.max(1, presetTimes.length)));
+    setStartDate(editingMedication.startDate);
+    setDoseTimes([...presetTimes, ...defaultDoseTimes].slice(0, 3));
+    setNote(editingMedication.note ?? '');
+    setStep('name');
+  }, [editingMedication, mode]);
+
+  useEffect(() => {
     const query = name.trim();
     const timer = setTimeout(() => {
       void (async () => {
@@ -158,31 +215,46 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       return;
     }
 
-    await addMedication({
-      name: normalizedName,
-      form,
-      iconEmoji,
-      dosage,
-      frequencyLabel: toFrequencyLabel(dayInterval),
-      note: shouldSkipNote ? '' : note.trim(),
-      startDate: effectiveStartDate,
-      time: selectedDoseTimes[0],
-      times: selectedDoseTimes,
-      active: true,
-    });
+    if (mode === 'edit' && medicationId) {
+      await updateMedication(medicationId, {
+        name: normalizedName,
+        form,
+        iconEmoji,
+        dosage,
+        frequencyLabel: toFrequencyLabel(dayInterval),
+        note: note.trim(),
+        startDate: effectiveStartDate,
+        time: selectedDoseTimes[0],
+        times: selectedDoseTimes,
+      });
+    } else {
+      await addMedication({
+        name: normalizedName,
+        form,
+        iconEmoji,
+        dosage,
+        frequencyLabel: toFrequencyLabel(dayInterval),
+        note: shouldSkipNote ? '' : note.trim(),
+        startDate: effectiveStartDate,
+        time: selectedDoseTimes[0],
+        times: selectedDoseTimes,
+        active: true,
+      });
 
-    setName('');
-    setForm('');
-    setIconEmoji('💊');
-    setDosage('0.5');
-    setIntervalUnit('day');
-    setIntervalCount(1);
-    setSelectedWeekday(1);
-    setDosesPerDay(1);
-    setStartDate(formatDate(new Date()));
-    setDoseTimes(defaultDoseTimes);
-    setNote('');
-    setStep('name');
+      setName('');
+      setForm('');
+      setIconEmoji('💊');
+      setDosage('0.5');
+      setIntervalUnit('day');
+      setIntervalCount(1);
+      setSelectedWeekday(1);
+      setDosesPerDay(1);
+      setStartDate(formatDate(new Date()));
+      setDoseTimes(defaultDoseTimes);
+      setNote('');
+      setStep('name');
+    }
+
     onMedicationSaved();
   }
 
@@ -199,8 +271,9 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
     setStep(steps[stepIndex + 1]);
   }
 
-  function onBack() {
+  function handleBack() {
     if (stepIndex === 0) {
+      onNavigateBack?.();
       return;
     }
     setStep(steps[stepIndex - 1]);
@@ -432,6 +505,20 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
   const calendarCells = buildCalendarCells(calendarMonth);
   const dayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+  if (mode === 'edit' && !editingMedication) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.headerRow}>
+          <Pressable onPress={onNavigateBack} style={styles.headerIconButton}>
+            <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} />
+          </Pressable>
+          <Text style={styles.headerTitle}>{t.medicationNotFound}</Text>
+          <View style={styles.headerIconButton} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <View style={styles.topProgressTrack}>
@@ -439,12 +526,12 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       </View>
 
       <View style={styles.headerRow}>
-        <Pressable onPress={onBack} disabled={stepIndex === 0} style={styles.headerIconButton}>
-          {stepIndex > 0 ? <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} /> : null}
+        <Pressable onPress={handleBack} disabled={stepIndex === 0 && !onNavigateBack} style={styles.headerIconButton}>
+          {stepIndex > 0 || onNavigateBack ? <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} /> : null}
         </Pressable>
         <Text style={[styles.headerTitle, { fontSize: theme.typography.heading.h8Semibold.fontSize * _fontScale }]}>{headerTitle}</Text>
         <View style={styles.headerIconButton}>
-          {step === 'note' ? (
+          {step === 'note' && mode === 'create' ? (
             <Pressable onPress={() => void handleSave(true)} hitSlop={8}>
               <Text style={styles.skipText}>{locale === 'tr' ? 'Atla' : 'Skip'}</Text>
             </Pressable>
@@ -457,7 +544,7 @@ export function AddMedsScreen({ locale, fontScale: _fontScale, onMedicationSaved
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label={step === 'note' ? t.done : t.next} onPress={onNext} disabled={!canProceed} size="m" />
+        <Button label={step === 'note' ? (mode === 'edit' ? t.saveChanges : t.done) : t.next} onPress={onNext} disabled={!canProceed} size="m" />
       </View>
 
       <Modal transparent visible={sheet !== 'none'} animationType="slide" onRequestClose={() => setSheet('none')}>

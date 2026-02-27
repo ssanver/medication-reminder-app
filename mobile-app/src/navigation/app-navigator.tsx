@@ -45,7 +45,6 @@ import { ChangePasswordScreen } from '../screens/change-password-screen';
 import { FeedbackScreen } from '../screens/feedback-screen';
 import { EmailVerificationScreen } from '../screens/email-verification-screen';
 import { SplashScreen } from '../screens/auth/splash-screen';
-import { MedicationDetailsScreen } from '../screens/medication-details-screen';
 import { MyMedsScreen } from '../screens/my-meds-screen';
 import { NotificationHistoryScreen } from '../screens/notification-history-screen';
 import { NotificationSettingsScreen } from '../screens/notification-settings-screen';
@@ -334,7 +333,14 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <MedicationDetailsScreen locale={locale} medicationId={selectedMedicationId} onBack={() => setOverlayScreen('none')} />
+          <AddMedsScreen
+            locale={locale}
+            fontScale={fontScale}
+            mode="edit"
+            medicationId={selectedMedicationId}
+            onBack={() => setOverlayScreen('none')}
+            onMedicationSaved={() => setOverlayScreen('none')}
+          />
         </View>
       </View>
     );
