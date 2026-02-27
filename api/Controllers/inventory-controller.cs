@@ -10,19 +10,6 @@ namespace api.Controllers;
 [Route("api/inventory")]
 public sealed class InventoryController(AppDbContext dbContext) : ControllerBase
 {
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyCollection<InventoryResponse>>> List()
-    {
-        var records = await dbContext
-            .InventoryRecords
-            .AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAt)
-            .Take(500)
-            .ToListAsync();
-
-        return Ok(records.Select(ToResponse).ToArray());
-    }
-
     [HttpPost("update")]
     public async Task<ActionResult<InventoryResponse>> Update([FromBody] InventoryUpdateRequest request)
     {

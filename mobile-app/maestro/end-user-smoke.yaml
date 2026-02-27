@@ -1,7 +1,7 @@
 appId: com.suleymansanver.medicationreminder
 ---
 - launchApp:
-    clearState: true
+    clearState: false
 
 - runFlow:
     when:
