@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
 
 namespace api.data;
 
@@ -8,10 +9,19 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
     public AppDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile("appsettings.Production.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
         var connectionString =
             Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
             ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Server=localhost,1433;Database=medication-reminder-db;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True";
+            ?? configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "DB connection must be configured via DB_CONNECTION_STRING, ConnectionStrings__DefaultConnection, or ConnectionStrings:DefaultConnection.");
 
         optionsBuilder.UseSqlServer(connectionString);
 

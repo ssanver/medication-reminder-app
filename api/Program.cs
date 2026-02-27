@@ -14,8 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString =
     Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("DefaultConnection is not configured.");
+    ?? throw new InvalidOperationException(
+        "DB connection must be configured via DB_CONNECTION_STRING, ConnectionStrings__DefaultConnection, or ConnectionStrings:DefaultConnection.");
 const string WebCorsPolicy = "web-cors";
 
 builder.Services.AddControllers();
