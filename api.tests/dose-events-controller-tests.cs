@@ -56,6 +56,8 @@ public sealed class DoseEventsControllerTests
             Id = Guid.NewGuid(),
             MedicationId = medication.Id,
             ActionType = "taken",
+            DateKey = "2026-02-20",
+            ScheduledTime = "08:00",
             ActionAt = DateTimeOffset.UtcNow,
             CreatedAt = DateTimeOffset.UtcNow,
         });
@@ -80,6 +82,8 @@ public sealed class DoseEventsControllerTests
                 Id = Guid.NewGuid(),
                 MedicationId = medication.Id,
                 ActionType = "taken",
+                DateKey = "2026-02-20",
+                ScheduledTime = "08:00",
                 ActionAt = DateTimeOffset.UtcNow,
                 CreatedAt = DateTimeOffset.UtcNow,
             },
@@ -88,6 +92,8 @@ public sealed class DoseEventsControllerTests
                 Id = Guid.NewGuid(),
                 MedicationId = medication.Id,
                 ActionType = "missed",
+                DateKey = "2026-02-20",
+                ScheduledTime = "21:00",
                 ActionAt = DateTimeOffset.UtcNow,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
@@ -130,6 +136,8 @@ public sealed class DoseEventsControllerTests
             Id = Guid.NewGuid(),
             MedicationId = medication.Id,
             ActionType = "taken",
+            DateKey = "2026-02-20",
+            ScheduledTime = "08:00",
             ActionAt = new DateTimeOffset(new DateTime(2026, 2, 20, 8, 0, 0), TimeSpan.Zero),
             CreatedAt = DateTimeOffset.UtcNow,
         });
