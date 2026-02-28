@@ -85,7 +85,7 @@ type SwipeToDeleteRowProps = {
 };
 
 function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: SwipeToDeleteRowProps) {
-  const actionWidth = 92;
+  const actionWidth = 116;
   const [isOpen, setIsOpen] = useState(false);
   const translateX = useState(() => new Animated.Value(0))[0];
   const actionButtonColor = actionVariant === 'deactivate' ? theme.colors.neutral[500] : theme.colors.primaryBlue[500];
@@ -109,9 +109,10 @@ function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: Sw
           const base = isOpen ? -actionWidth : 0;
           const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
           const shouldOpen = next < -actionWidth * 0.08 || gesture.vx < -0.03;
-          Animated.timing(translateX, {
+          Animated.spring(translateX, {
             toValue: shouldOpen ? -actionWidth : 0,
-            duration: 120,
+            bounciness: 0,
+            speed: 24,
             useNativeDriver: true,
           }).start(() => setIsOpen(shouldOpen));
         },
@@ -123,7 +124,7 @@ function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: Sw
     <View style={styles.swipeContainer}>
       <View style={styles.swipeDeleteAction}>
         <Pressable style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }]} onPress={onAction} hitSlop={8}>
-          <AppIcon name={actionIconName} size={14} color="#FFFFFF" />
+          <AppIcon name={actionIconName} size={18} color="#FFFFFF" />
           <Text style={styles.swipeDeleteButtonText}>{actionLabel}</Text>
         </Pressable>
       </View>
@@ -162,17 +163,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   swipeDeleteButton: {
-    width: 92,
+    width: 116,
     height: '100%',
     borderRadius: theme.radius[16],
-    backgroundColor: theme.colors.error[500],
+    paddingHorizontal: theme.spacing[8],
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing[4],
+    gap: theme.spacing[8],
   },
   swipeDeleteButtonText: {
-    ...theme.typography.bodyScale.xmMedium,
+    ...theme.typography.bodyScale.mMedium,
     color: '#FFFFFF',
+    textAlign: 'center',
   },
   emptyCard: {
     borderRadius: theme.radius[16],
