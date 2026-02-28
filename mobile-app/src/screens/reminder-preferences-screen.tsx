@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
+import { loadAppDefinitions } from '../features/definitions/definitions-service';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
@@ -10,10 +12,29 @@ type ReminderPreferencesScreenProps = {
   onBack: () => void;
 };
 
-const snoozeOptions = [5, 10, 15, 30, 60];
-
 export function ReminderPreferencesScreen({ locale, snoozeMinutes, onSnoozeMinutesChange, onBack }: ReminderPreferencesScreenProps) {
   const t = getTranslations(locale);
+  const [snoozeOptions, setSnoozeOptions] = useState<number[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    void (async () => {
+      try {
+        const definitions = await loadAppDefinitions();
+        if (isMounted) {
+          setSnoozeOptions(definitions.snoozeOptions);
+        }
+      } catch {
+        if (isMounted) {
+          setSnoozeOptions([]);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>

@@ -6,32 +6,7 @@ export type IntervalUnit = 'day' | 'week' | 'hour' | 'cycle' | 'as-needed';
 export type WeekStartsOn = 'monday' | 'sunday';
 export type FrequencyPreset = 'once-daily' | 'twice-daily' | 'custom';
 
-export type FormOption = {
-  key: string;
-  emoji: string;
-};
-
 export const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
-export const defaultDoseTimes = ['08:00', '12:00', '16:00', '20:00', '22:00', '23:00'];
-export const dayIntervalOptions = [1, 2, 3] as const;
-export const weekIntervalOptions = [1, 2] as const;
-export const hourIntervalOptions = [1, 2, 3, 4, 6, 8, 12] as const;
-export const cycleOnDayOptions = [7, 14, 21, 28] as const;
-export const cycleOffDayOptions = [3, 5, 7, 14] as const;
-export const dosesPerDayOptions = [1, 2, 3, 4, 5, 6] as const;
-export const weekdayOptions = [1, 2, 3, 4, 5, 6, 0] as const;
-export const hourOptions = Array.from({ length: 24 }, (_, hour) => `${hour}`.padStart(2, '0'));
-export const minuteOptions = Array.from({ length: 60 }, (_, minute) => `${minute}`.padStart(2, '0'));
-export const medicationIconOptions = ['💊', '🧴', '💉', '🫙', '🩹', '🌿', '🟡', '🔵'];
-
-export const formOptions: FormOption[] = [
-  { key: 'Capsule', emoji: '💊' },
-  { key: 'Pill', emoji: '💊' },
-  { key: 'Drop', emoji: '🫙' },
-  { key: 'Syrup', emoji: '🧴' },
-  { key: 'Injection', emoji: '💉' },
-  { key: 'Other', emoji: '•••' },
-];
 
 export function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -48,8 +23,20 @@ export function shiftMonth(base: Date, delta: number): Date {
   return new Date(base.getFullYear(), base.getMonth() + delta, 1);
 }
 
-export function getOrderedWeekdayOptions(weekStartsOn: WeekStartsOn): number[] {
-  return weekStartsOn === 'sunday' ? [0, 1, 2, 3, 4, 5, 6] : [...weekdayOptions];
+export function getOrderedWeekdayOptions(weekStartsOn: WeekStartsOn, weekdayOptions: number[]): number[] {
+  if (weekStartsOn === 'sunday') {
+    return [...weekdayOptions].sort((a, b) => {
+      if (a === 0) {
+        return -1;
+      }
+      if (b === 0) {
+        return 1;
+      }
+      return a - b;
+    });
+  }
+
+  return [...weekdayOptions];
 }
 
 export function buildCalendarCells(month: Date, weekStartsOn: WeekStartsOn = 'monday'): Array<Date | null> {
@@ -128,7 +115,7 @@ export function getAdvancedFrequencySummary(input: {
   const t = getTranslations(locale);
 
   if (intervalUnit === 'as-needed') {
-    return t.asNeededNoReminder;
+    return getFrequencySummary(1, Math.max(1, dosesPerDay), locale);
   }
 
   if (intervalUnit === 'hour') {
@@ -187,8 +174,4 @@ export function splitTime(value: string): { hour: string; minute: string } {
   const hour = `${Math.min(23, Math.max(0, Number(rawHour)))}`.padStart(2, '0');
   const minute = `${Math.min(59, Math.max(0, Number(rawMinute)))}`.padStart(2, '0');
   return { hour, minute };
-}
-
-export function resolveFormDefaultIcon(formKey: string): string {
-  return formOptions.find((item) => item.key === formKey)?.emoji ?? '🧴';
 }

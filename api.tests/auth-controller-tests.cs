@@ -17,12 +17,12 @@ public sealed class AuthControllerTests
     [Theory]
     [InlineData("apple")]
     [InlineData("google")]
-    public void SocialLogin_ShouldReturnOk_WhenProviderIsSupported(string provider)
+    public async Task SocialLogin_ShouldReturnOk_WhenProviderIsSupported(string provider)
     {
         using var dbContext = CreateInMemoryContext();
         var controller = CreateController(dbContext);
 
-        var result = controller.SocialLogin(new SocialLoginRequest
+        var result = await controller.SocialLogin(new SocialLoginRequest
         {
             Provider = provider,
             ProviderToken = "provider-token",
@@ -38,12 +38,12 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
-    public void SocialLogin_ShouldReturnBadRequest_WhenProviderIsUnsupported()
+    public async Task SocialLogin_ShouldReturnBadRequest_WhenProviderIsUnsupported()
     {
         using var dbContext = CreateInMemoryContext();
         var controller = CreateController(dbContext);
 
-        var result = controller.SocialLogin(new SocialLoginRequest
+        var result = await controller.SocialLogin(new SocialLoginRequest
         {
             Provider = "facebook",
             ProviderToken = "provider-token",
@@ -54,12 +54,12 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
-    public void SocialLogin_ShouldReturnBadRequest_WhenProviderTokenIsMissing()
+    public async Task SocialLogin_ShouldReturnBadRequest_WhenProviderTokenIsMissing()
     {
         using var dbContext = CreateInMemoryContext();
         var controller = CreateController(dbContext);
 
-        var result = controller.SocialLogin(new SocialLoginRequest
+        var result = await controller.SocialLogin(new SocialLoginRequest
         {
             Provider = "google",
             ProviderToken = "",
@@ -267,11 +267,13 @@ public sealed class AuthControllerTests
 
     private static AuthController CreateController(AppDbContext dbContext, IEmailDispatchService? dispatchService = null)
     {
+        var configuration = CreateConfiguration();
         return new AuthController(
             dbContext,
             new FakeHostEnvironment(),
-            CreateConfiguration(),
+            configuration,
             dispatchService ?? new FakeEmailDispatchService(),
+            new JwtTokenService(configuration),
             NullLogger<AuthController>.Instance);
     }
 
@@ -281,6 +283,10 @@ public sealed class AuthControllerTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Defaults:UserReference"] = "suleymansanver@gmail.com",
+                ["Authentication:Jwt:SecretKey"] = "test-secret-key-minimum-32-characters",
+                ["Authentication:Jwt:Issuer"] = "pillmind-api-tests",
+                ["Authentication:Jwt:Audience"] = "pillmind-mobile-tests",
+                ["Authentication:Jwt:AccessTokenMinutes"] = "60",
             })
             .Build();
     }

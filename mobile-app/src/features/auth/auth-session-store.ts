@@ -104,3 +104,18 @@ export async function clearSessionForLogout(): Promise<void> {
     AsyncStorage.removeItem(KEY_EMAIL_VERIFIED),
   ]);
 }
+
+export async function loadAccessToken(): Promise<string | null> {
+  let token: string | null = null;
+  try {
+    token = await AsyncStorage.getItem(KEY_ACCESS_TOKEN);
+  } catch {
+    return null;
+  }
+
+  if (!token || token.trim().length === 0) {
+    return null;
+  }
+
+  return token.trim();
+}

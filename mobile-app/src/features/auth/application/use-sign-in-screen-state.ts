@@ -2,8 +2,13 @@ import { useMemo, useState } from 'react';
 import { signInWithEmail } from '../email-auth-service';
 import { loginWithSocial, type SocialLoginResult } from '../social-auth';
 
+type AuthSessionTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 type UseSignInScreenStateInput = {
-  onSuccess: (payload: { session?: SocialLoginResult; email: string; emailVerified: boolean }) => void;
+  onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean }) => void;
   t: {
     pleaseFillAllFields: string;
     socialSignInSuccessPrefix: string;
@@ -35,7 +40,14 @@ export function useSignInScreenState({ onSuccess, t }: UseSignInScreenStateInput
         email: email.trim().toLowerCase(),
         password,
       });
-      onSuccess({ email: response.email, emailVerified: response.isEmailVerified });
+      onSuccess({
+        session: {
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+        },
+        email: response.email,
+        emailVerified: response.isEmailVerified,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sign-in failed.';
       setErrorText(message);

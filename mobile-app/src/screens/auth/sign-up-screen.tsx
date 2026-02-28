@@ -8,9 +8,14 @@ import { getTranslations, type Locale } from '../../features/localization/locali
 import { type SocialLoginResult } from '../../features/auth/social-auth';
 import { theme } from '../../theme';
 
+type AuthSessionTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 type SignUpScreenProps = {
   locale: Locale;
-  onSuccess: (payload: { session?: SocialLoginResult; email: string; emailVerified: boolean }) => void;
+  onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean }) => void;
   onOpenSignIn: () => void;
   onBack: () => void;
 };

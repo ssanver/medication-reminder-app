@@ -3,35 +3,24 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
 import { Button } from '../components/ui/button';
+import { loadAppDefinitions, type AppDefinitions, type FormOption } from '../features/definitions/definitions-service';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { localizeFormLabel } from '../features/localization/medication-localization';
 import {
   alignDateToWeekday,
   buildCalendarCells,
-  dayIntervalOptions,
-  defaultDoseTimes,
-  dosesPerDayOptions,
-  formOptions,
   formatDate,
   getAdvancedFrequencySummary,
   getOrderedWeekdayOptions,
-  resolveFrequencyPreset,
   getWeekdayLabel,
-  hourOptions,
-  hourIntervalOptions,
-  medicationIconOptions,
-  minuteOptions,
   parseDateKey,
-  resolveFormDefaultIcon,
+  resolveFrequencyPreset,
   shiftMonth,
   splitTime,
   steps,
   type FrequencyPreset,
   type IntervalUnit,
   type WizardStep,
-  weekIntervalOptions,
-  cycleOnDayOptions,
-  cycleOffDayOptions,
   type WeekStartsOn,
 } from '../features/medications/add-medication-use-case';
 import { searchMedicineCatalog } from '../features/medications/medicine-catalog-service';
@@ -51,6 +40,10 @@ type AddMedsScreenProps = {
 type SheetType = 'none' | 'date' | 'time' | 'interval' | 'form';
 type DateField = 'start' | 'end';
 
+function resolveFormDefaultIcon(formKey: string, formOptions: FormOption[]): string {
+  return formOptions.find((item) => item.key === formKey)?.emoji ?? (formOptions[0]?.emoji ?? '');
+}
+
 export function AddMedsScreen({
   locale,
   fontScale: _fontScale,
@@ -63,24 +56,25 @@ export function AddMedsScreen({
   const t = getTranslations(locale);
   const [step, setStep] = useState<WizardStep>('name');
   const [sheet, setSheet] = useState<SheetType>('none');
+  const [definitions, setDefinitions] = useState<AppDefinitions | null>(null);
 
   const [name, setName] = useState('');
   const [form, setForm] = useState('');
-  const [iconEmoji, setIconEmoji] = useState('💊');
+  const [iconEmoji, setIconEmoji] = useState('');
   const [dosage, setDosage] = useState('0.5');
   const [isBeforeMeal, setIsBeforeMeal] = useState(false);
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
   const [intervalCount, setIntervalCount] = useState<number>(1);
   const [cycleOffDays, setCycleOffDays] = useState<number>(7);
   const [advancedMode, setAdvancedMode] = useState<'interval' | 'multi' | 'weekdays' | 'cycle'>('interval');
-  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1]);
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
   const [forceCustomFrequency, setForceCustomFrequency] = useState(false);
   const [startDate, setStartDate] = useState(formatDate(new Date()));
   const [endDate, setEndDate] = useState(formatDate(new Date()));
   const [useEndDate, setUseEndDate] = useState(false);
   const [totalQuantity, setTotalQuantity] = useState('');
-  const [doseTimes, setDoseTimes] = useState<string[]>(defaultDoseTimes);
+  const [doseTimes, setDoseTimes] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>([]);
 
@@ -97,6 +91,22 @@ export function AddMedsScreen({
 
   const stepIndex = steps.indexOf(step);
   const progress = (stepIndex + 1) / steps.length;
+  const defaultDoseTimes = definitions?.defaultDoseTimes ?? [];
+  const dayIntervalOptions = definitions?.dayIntervalOptions ?? [];
+  const hourIntervalOptions = definitions?.hourIntervalOptions ?? [];
+  const cycleOnDayOptions = definitions?.cycleOnDayOptions ?? [];
+  const cycleOffDayOptions = definitions?.cycleOffDayOptions ?? [];
+  const dosesPerDayOptions = definitions?.dosesPerDayOptions ?? [];
+  const hourOptions = definitions?.hourOptions ?? [];
+  const minuteOptions = definitions?.minuteOptions ?? [];
+  const medicationIconOptions = definitions?.medicationIconOptions ?? [];
+  const formOptions = definitions?.formOptions ?? [];
+  const weekdayOptions = definitions?.weekdayOptions ?? [];
+  const preferredDayInterval = dayIntervalOptions.find((item) => item > 1) ?? dayIntervalOptions[0] ?? 1;
+  const preferredHourInterval = hourIntervalOptions.find((item) => item > 1) ?? hourIntervalOptions[0] ?? 1;
+  const preferredCycleOnDays = cycleOnDayOptions[0] ?? 1;
+  const preferredCycleOffDays = cycleOffDayOptions[0] ?? 1;
+  const multiDoseOptions = dosesPerDayOptions.filter((item) => item >= 3);
 
   const filteredSuggestions = useMemo(() => {
     const query = name.trim().toLowerCase();
@@ -116,16 +126,22 @@ export function AddMedsScreen({
     });
   }, [locale, startDate]);
   const selectedDoseTimes = useMemo(
-    () => Array.from({ length: dosesPerDay }, (_, index) => doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00'),
-    [doseTimes, dosesPerDay],
+    () => Array.from({ length: dosesPerDay }, (_, index) => doseTimes[index] ?? defaultDoseTimes[index] ?? ''),
+    [defaultDoseTimes, doseTimes, dosesPerDay],
   );
-  const orderedWeekdays = useMemo(() => getOrderedWeekdayOptions(weekStartsOn), [weekStartsOn]);
-  const selectedWeekday = selectedWeekdays[0] ?? 1;
+  const orderedWeekdays = useMemo(() => getOrderedWeekdayOptions(weekStartsOn, weekdayOptions), [weekStartsOn, weekdayOptions]);
+  const selectedWeekday = selectedWeekdays[0] ?? orderedWeekdays[0] ?? 0;
   const resolvedFrequencyPreset = useMemo<FrequencyPreset>(
     () => resolveFrequencyPreset(intervalUnit, intervalCount, dosesPerDay),
     [dosesPerDay, intervalCount, intervalUnit],
   );
   const isCustomFrequency = forceCustomFrequency || resolvedFrequencyPreset === 'custom';
+  const isIntervalAdvancedMode = isCustomFrequency && advancedMode === 'interval';
+  const isWeekdaysAdvancedMode = isCustomFrequency && advancedMode === 'weekdays';
+  const isCycleAdvancedMode = isCustomFrequency && advancedMode === 'cycle';
+  const isHourlyIntervalMode = isIntervalAdvancedMode && intervalUnit === 'hour';
+  const usesSingleDoseTime = isIntervalAdvancedMode || isWeekdaysAdvancedMode || isCycleAdvancedMode;
+  const singleIntervalDoseTime = selectedDoseTimes[0] ?? '--:--';
   const frequencySummary = useMemo(
     () =>
       getAdvancedFrequencySummary({
@@ -150,14 +166,6 @@ export function AddMedsScreen({
 
     return alignDateToWeekday(startDate, selectedWeekday);
   }, [intervalUnit, selectedWeekday, selectedWeekdays, startDate]);
-  const localizedEffectiveStartDate = useMemo(() => {
-    const parsed = parseDateKey(effectiveStartDate);
-    return parsed.toLocaleDateString(getLocaleTag(locale), {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  }, [effectiveStartDate, locale]);
   const hasDuplicateTimes = useMemo(
     () => new Set(selectedDoseTimes.map((item) => item.trim())).size !== selectedDoseTimes.length,
     [selectedDoseTimes],
@@ -168,6 +176,46 @@ export function AddMedsScreen({
     }
     return parseDateKey(endDate).getTime() >= parseDateKey(startDate).getTime();
   }, [endDate, startDate, useEndDate]);
+
+  useEffect(() => {
+    let isMounted = true;
+    void (async () => {
+      try {
+        const loaded = await loadAppDefinitions();
+        if (!isMounted) {
+          return;
+        }
+
+        setDefinitions(loaded);
+        setDoseTimes((prev) => (prev.length > 0 ? prev : loaded.defaultDoseTimes));
+        setSelectedWeekdays((prev) => (prev.length > 0 ? prev : (loaded.weekdayOptions[0] !== undefined ? [loaded.weekdayOptions[0]] : [])));
+        setIconEmoji((prev) => (prev || loaded.medicationIconOptions[0] || ''));
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+        setDefinitions({
+          defaultDoseTimes: [],
+          dayIntervalOptions: [],
+          weekIntervalOptions: [],
+          hourIntervalOptions: [],
+          cycleOnDayOptions: [],
+          cycleOffDayOptions: [],
+          dosesPerDayOptions: [],
+          weekdayOptions: [],
+          hourOptions: [],
+          minuteOptions: [],
+          medicationIconOptions: [],
+          formOptions: [],
+          snoozeOptions: [],
+        });
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (intervalUnit !== 'week') {
@@ -196,7 +244,7 @@ export function AddMedsScreen({
       if (unique.length > 0) {
         return unique;
       }
-      return [orderedWeekdays[0] ?? 1];
+      return orderedWeekdays[0] !== undefined ? [orderedWeekdays[0]] : [];
     });
   }, [intervalCount, intervalUnit, orderedWeekdays]);
 
@@ -208,15 +256,15 @@ export function AddMedsScreen({
     const presetTimes =
       Array.isArray(editingMedication.times) && editingMedication.times.length > 0
         ? editingMedication.times
-        : [editingMedication.time ?? defaultDoseTimes[0]];
+        : [editingMedication.time ?? defaultDoseTimes[0] ?? ''];
 
     setName(editingMedication.name);
     setForm(editingMedication.form);
-    setIconEmoji(editingMedication.iconEmoji || resolveFormDefaultIcon(editingMedication.form));
+    setIconEmoji(editingMedication.iconEmoji || resolveFormDefaultIcon(editingMedication.form, formOptions));
     setDosage(editingMedication.dosage || '1');
     setIsBeforeMeal(Boolean(editingMedication.isBeforeMeal));
     setIntervalCount(Math.max(1, editingMedication.intervalCount ?? 1));
-    setCycleOffDays(Math.max(0, editingMedication.cycleOffDays ?? 7));
+    setCycleOffDays(Math.max(0, editingMedication.cycleOffDays ?? preferredCycleOffDays));
     setSelectedWeekdays(
       Array.isArray(editingMedication.weeklyDays) && editingMedication.weeklyDays.length > 0
         ? editingMedication.weeklyDays
@@ -231,7 +279,7 @@ export function AddMedsScreen({
         ? `${editingMedication.totalQuantity}`
         : '',
     );
-    setDoseTimes([...presetTimes, ...defaultDoseTimes].slice(0, 6));
+    setDoseTimes([...presetTimes, ...defaultDoseTimes].slice(0, Math.max(1, defaultDoseTimes.length, presetTimes.length)));
     setNote(editingMedication.note ?? '');
     const normalizedIntervalUnit = editingMedication.intervalUnit === 'as-needed' ? 'day' : editingMedication.intervalUnit;
     setIntervalUnit(normalizedIntervalUnit ?? 'day');
@@ -345,14 +393,14 @@ export function AddMedsScreen({
 
       setName('');
       setForm('');
-      setIconEmoji('💊');
+      setIconEmoji(medicationIconOptions[0] ?? '');
       setDosage('0.5');
       setIsBeforeMeal(false);
       setIntervalUnit('day');
       setIntervalCount(1);
-      setCycleOffDays(7);
+      setCycleOffDays(preferredCycleOffDays);
       setAdvancedMode('interval');
-      setSelectedWeekdays([1]);
+      setSelectedWeekdays(orderedWeekdays[0] !== undefined ? [orderedWeekdays[0]] : []);
       setDosesPerDay(1);
       setStartDate(formatDate(new Date()));
       setUseEndDate(false);
@@ -405,7 +453,7 @@ export function AddMedsScreen({
 
   function openTimeSheet(index: number) {
     setEditingTimeIndex(index);
-    const initialTime = doseTimes[index] ?? defaultDoseTimes[index] ?? '09:00';
+    const initialTime = doseTimes[index] ?? defaultDoseTimes[index] ?? '';
     const { hour, minute } = splitTime(initialTime);
     setDraftHour(hour);
     setDraftMinute(minute);
@@ -534,7 +582,8 @@ export function AddMedsScreen({
                   setForceCustomFrequency(true);
                   setAdvancedMode('interval');
                   setIntervalUnit('day');
-                  setIntervalCount(3);
+                  setIntervalCount(preferredDayInterval);
+                  setDosesPerDay(1);
                 }}
               >
                 <Text style={[styles.frequencyPresetChipText, isCustomFrequency && styles.frequencyPresetChipTextSelected]}>
@@ -552,8 +601,9 @@ export function AddMedsScreen({
                     setAdvancedMode('interval');
                     if (intervalUnit !== 'day' && intervalUnit !== 'hour') {
                       setIntervalUnit('day');
-                      setIntervalCount(3);
+                      setIntervalCount(preferredDayInterval);
                     }
+                    setDosesPerDay(1);
                   }}
                   style={[styles.frequencyPresetChip, advancedMode === 'interval' && styles.frequencyPresetChipSelected]}
                 >
@@ -579,6 +629,7 @@ export function AddMedsScreen({
                     setAdvancedMode('weekdays');
                     setIntervalUnit('week');
                     setIntervalCount(1);
+                    setDosesPerDay(1);
                   }}
                   style={[styles.frequencyPresetChip, advancedMode === 'weekdays' && styles.frequencyPresetChipSelected]}
                 >
@@ -590,8 +641,9 @@ export function AddMedsScreen({
                   onPress={() => {
                     setAdvancedMode('cycle');
                     setIntervalUnit('cycle');
-                    setIntervalCount(21);
-                    setCycleOffDays(7);
+                    setIntervalCount(preferredCycleOnDays);
+                    setCycleOffDays(preferredCycleOffDays);
+                    setDosesPerDay(1);
                   }}
                   style={[styles.frequencyPresetChip, advancedMode === 'cycle' && styles.frequencyPresetChipSelected]}
                 >
@@ -606,32 +658,30 @@ export function AddMedsScreen({
                   <View style={styles.doseCountRow}>
                     <Text style={styles.selectionLabel}>{t.interval}</Text>
                     <Text style={styles.selectionHint}>{t.intervalHint}</Text>
-                    <View style={styles.doseCountChipRow}>
+                    <View style={styles.intervalUnitRow}>
                       <Pressable
                         onPress={() => {
                           setIntervalUnit('hour');
-                          setIntervalCount(6);
+                          setIntervalCount(preferredHourInterval);
+                          setDosesPerDay(1);
                         }}
-                        style={[styles.doseCountChip, intervalUnit === 'hour' && styles.doseCountChipSelected]}
+                        style={[styles.intervalUnitCard, intervalUnit === 'hour' && styles.intervalUnitCardSelected]}
                       >
-                        <Text style={[styles.doseCountChipText, intervalUnit === 'hour' && styles.doseCountChipTextSelected]}>
-                          {t.everyXHours}
-                        </Text>
+                        <Text style={[styles.intervalUnitTitle, intervalUnit === 'hour' && styles.intervalUnitTitleSelected]}>{t.everyXHours}</Text>
                       </Pressable>
                       <Pressable
                         onPress={() => {
                           setIntervalUnit('day');
-                          setIntervalCount(3);
+                          setIntervalCount(preferredDayInterval);
+                          setDosesPerDay(1);
                         }}
-                        style={[styles.doseCountChip, intervalUnit === 'day' && styles.doseCountChipSelected]}
+                        style={[styles.intervalUnitCard, intervalUnit === 'day' && styles.intervalUnitCardSelected]}
                       >
-                        <Text style={[styles.doseCountChipText, intervalUnit === 'day' && styles.doseCountChipTextSelected]}>
-                          {t.everyXDays}
-                        </Text>
+                        <Text style={[styles.intervalUnitTitle, intervalUnit === 'day' && styles.intervalUnitTitleSelected]}>{t.everyXDays}</Text>
                       </Pressable>
                     </View>
                     <View style={styles.doseCountChipRow}>
-                      {(intervalUnit === 'hour' ? hourIntervalOptions : [...dayIntervalOptions, 5, 7, 14, 21]).map((count) => {
+                      {(intervalUnit === 'hour' ? hourIntervalOptions : dayIntervalOptions).map((count) => {
                         const selected = count === intervalCount;
                         return (
                           <Pressable
@@ -652,7 +702,7 @@ export function AddMedsScreen({
                     <Text style={styles.selectionLabel}>{t.multipleDosesPerDay}</Text>
                     <Text style={styles.selectionHint}>{t.multipleDosesPerDayHint}</Text>
                     <View style={styles.doseCountChipRow}>
-                      {[3, 4, 5, 6].map((count) => {
+                      {multiDoseOptions.map((count) => {
                         const selected = count === dosesPerDay;
                         return (
                           <Pressable key={`multi-${count}`} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
@@ -728,17 +778,19 @@ export function AddMedsScreen({
 
           <Text style={styles.frequencySummary}>{frequencySummary}</Text>
 
-          <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{t.totalQuantity}</Text>
-            <TextInput
-              value={totalQuantity}
-              onChangeText={(value) => setTotalQuantity(value.replace(/[^0-9]/g, ''))}
-              keyboardType="number-pad"
-              placeholder={t.quantityExample}
-              placeholderTextColor={theme.colors.neutral[400]}
-              style={styles.quantityInput}
-            />
-          </View>
+          {!isWeekdaysAdvancedMode ? (
+            <View style={styles.doseCountRow}>
+              <Text style={styles.selectionLabel}>{t.totalQuantity}</Text>
+              <TextInput
+                value={totalQuantity}
+                onChangeText={(value) => setTotalQuantity(value.replace(/[^0-9]/g, ''))}
+                keyboardType="number-pad"
+                placeholder={t.quantityExample}
+                placeholderTextColor={theme.colors.neutral[400]}
+                style={styles.quantityInput}
+              />
+            </View>
+          ) : null}
 
           <Pressable style={styles.selectionRow} onPress={() => openDateSheet('start')}>
             <View style={styles.selectionLeft}>
@@ -750,6 +802,19 @@ export function AddMedsScreen({
               <Text style={styles.selectionChevron}>›</Text>
             </View>
           </Pressable>
+
+          {usesSingleDoseTime ? (
+            <Pressable style={styles.selectionRow} onPress={() => openTimeSheet(0)}>
+              <View style={styles.selectionLeft}>
+                <Text style={styles.selectionIcon}>⏰</Text>
+                <Text style={styles.selectionLabel}>{isHourlyIntervalMode ? t.startTime : t.doseTime}</Text>
+              </View>
+              <View style={styles.selectionRight}>
+                <Text style={styles.selectionValue}>{singleIntervalDoseTime}</Text>
+                <Text style={styles.selectionChevron}>›</Text>
+              </View>
+            </Pressable>
+          ) : null}
 
           <Pressable
             style={styles.selectionRow}
@@ -797,18 +862,20 @@ export function AddMedsScreen({
             </Text>
           ) : null}
 
-          {selectedDoseTimes.map((slotTime, index) => (
-            <Pressable key={`${index}-${slotTime}`} style={styles.selectionRow} onPress={() => openTimeSheet(index)}>
-              <View style={styles.selectionLeft}>
-                <Text style={styles.selectionIcon}>⏰</Text>
-                <Text style={styles.selectionLabel}>{t.doseTimeLabel.replace('{{index}}', `${index + 1}`)}</Text>
-              </View>
-              <View style={styles.selectionRight}>
-                <Text style={styles.selectionValue}>{slotTime || '--:--'}</Text>
-                <Text style={styles.selectionChevron}>›</Text>
-              </View>
-            </Pressable>
-          ))}
+          {!usesSingleDoseTime
+            ? selectedDoseTimes.map((slotTime, index) => (
+                <Pressable key={`${index}-${slotTime}`} style={styles.selectionRow} onPress={() => openTimeSheet(index)}>
+                  <View style={styles.selectionLeft}>
+                    <Text style={styles.selectionIcon}>⏰</Text>
+                    <Text style={styles.selectionLabel}>{t.doseTimeLabel.replace('{{index}}', `${index + 1}`)}</Text>
+                  </View>
+                  <View style={styles.selectionRight}>
+                    <Text style={styles.selectionValue}>{slotTime || '--:--'}</Text>
+                    <Text style={styles.selectionChevron}>›</Text>
+                  </View>
+                </Pressable>
+              ))
+            : null}
 
           {hasDuplicateTimes ? (
             <Text style={styles.timeWarning}>
@@ -941,7 +1008,7 @@ export function AddMedsScreen({
                       style={[styles.intervalOption, selected && styles.intervalOptionSelected]}
                       onPress={() => {
                         setForm(item.key);
-                        setIconEmoji(resolveFormDefaultIcon(item.key));
+                        setIconEmoji(resolveFormDefaultIcon(item.key, formOptions));
                         setSheet('none');
                       }}
                     >
@@ -1292,6 +1359,34 @@ const styles = StyleSheet.create({
   doseCountChipRow: {
     flexDirection: 'row',
     gap: theme.spacing[8],
+  },
+  intervalUnitRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[8],
+  },
+  intervalUnitCard: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[8],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  intervalUnitCardSelected: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  intervalUnitTitle: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
+  },
+  intervalUnitTitleSelected: {
+    color: theme.colors.primaryBlue[600],
+    fontWeight: '700',
   },
   mealPreferenceRow: {
     flexDirection: 'row',

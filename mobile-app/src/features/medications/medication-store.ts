@@ -71,7 +71,7 @@ function toFrequencyLabel(
   cycleOffDays = 0,
 ): string {
   if (intervalUnit === 'as-needed') {
-    return 'As Needed';
+    return 'Every 1 Day';
   }
 
   if (intervalUnit === 'hour') {
@@ -280,14 +280,12 @@ function toApiSchedules(medication: Medication): ApiSaveMedicationRequest['sched
     : undefined;
 
   if (medication.intervalUnit === 'as-needed') {
-    return [
-      {
-        repeatType: 'as-needed',
-        intervalCount: 1,
-        reminderTime: formatReminderTime(times[0] ?? '09:00'),
-        daysOfWeek: null,
-      },
-    ];
+    return times.map((time) => ({
+      repeatType: 'daily',
+      intervalCount: 1,
+      reminderTime: formatReminderTime(time),
+      daysOfWeek: null,
+    }));
   }
 
   if (medication.intervalUnit === 'hour') {
@@ -356,7 +354,7 @@ function fromApiMedication(item: ApiMedication): Medication {
       ).sort((a, b) => a - b)
     : undefined;
   const intervalUnit: Medication['intervalUnit'] = isAsNeededSchedule
-    ? 'as-needed'
+    ? 'day'
     : isHourlySchedule
       ? 'hour'
       : isCycleSchedule

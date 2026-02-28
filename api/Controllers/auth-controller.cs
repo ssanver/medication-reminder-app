@@ -5,18 +5,21 @@ using api.data;
 using api.models;
 using api.services.auth;
 using api.services.security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Controllers;
 
 [ApiController]
+[AllowAnonymous]
 [Route("api/[controller]")]
 public sealed class AuthController(
     AppDbContext dbContext,
     IWebHostEnvironment hostEnvironment,
     IConfiguration configuration,
     IEmailDispatchService emailDispatchService,
+    IJwtTokenService jwtTokenService,
     ILogger<AuthController> logger) : ControllerBase
 {
     private const int ResendCooldownSeconds = 60;
@@ -29,7 +32,7 @@ public sealed class AuthController(
     private const int MaxAttempts = 5;
 
     [HttpPost("social-login")]
-    public ActionResult<SocialLoginResponse> SocialLogin([FromBody] SocialLoginRequest request)
+    public async Task<ActionResult<SocialLoginResponse>> SocialLogin([FromBody] SocialLoginRequest request)
     {
         var provider = request.Provider.Trim().ToLowerInvariant();
 
@@ -46,15 +49,45 @@ public sealed class AuthController(
         var now = DateTimeOffset.UtcNow;
         var providerName = provider == "apple" ? "Apple" : "Google";
         var defaultUserEmail = DefaultUserReference.Resolve(configuration);
+        var user = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == defaultUserEmail);
+        if (user is null)
+        {
+            user = new UserAccount
+            {
+                Id = Guid.NewGuid(),
+                FirstName = providerName,
+                LastName = "User",
+                Email = defaultUserEmail,
+                PasswordHash = $"social-{provider}",
+                FullName = $"{providerName} User",
+                BirthDate = string.Empty,
+                Gender = string.Empty,
+                PhotoUri = string.Empty,
+                IsEmailVerified = true,
+                EmailVerifiedAt = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                LastLoginAt = now,
+            };
+
+            dbContext.UserAccounts.Add(user);
+            await dbContext.SaveChangesAsync();
+        }
+        else
+        {
+            user.LastLoginAt = now;
+            user.UpdatedAt = now;
+            await dbContext.SaveChangesAsync();
+        }
 
         return Ok(new SocialLoginResponse
         {
             Provider = providerName,
-            AccessToken = $"{provider}-at-{Guid.NewGuid():N}",
+            AccessToken = jwtTokenService.CreateAccessToken(user, now),
             RefreshToken = $"{provider}-rt-{Guid.NewGuid():N}",
-            ExpiresAt = now.AddHours(1),
+            ExpiresAt = jwtTokenService.GetAccessTokenExpiry(now),
             DisplayName = providerName == "Apple" ? "Apple User" : "Google User",
-            Email = defaultUserEmail,
+            Email = user.Email,
         });
     }
 
@@ -102,7 +135,7 @@ public sealed class AuthController(
         dbContext.UserAccounts.Add(user);
         await dbContext.SaveChangesAsync();
 
-        return Ok(CreateEmailAuthResponse(user, now, false));
+        return Ok(CreateEmailAuthResponse(user, now, false, jwtTokenService));
     }
 
     [HttpPost("email/sign-in")]
@@ -125,7 +158,7 @@ public sealed class AuthController(
         user.UpdatedAt = now;
         await dbContext.SaveChangesAsync();
 
-        return Ok(CreateEmailAuthResponse(user, now, user.IsEmailVerified));
+        return Ok(CreateEmailAuthResponse(user, now, user.IsEmailVerified, jwtTokenService));
     }
 
     [HttpPost("email/change-password")]
@@ -502,7 +535,7 @@ public sealed class AuthController(
         return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
     }
 
-    private static EmailAuthResponse CreateEmailAuthResponse(UserAccount user, DateTimeOffset now, bool isEmailVerified)
+    private static EmailAuthResponse CreateEmailAuthResponse(UserAccount user, DateTimeOffset now, bool isEmailVerified, IJwtTokenService jwtTokenService)
     {
         return new EmailAuthResponse
         {
@@ -511,9 +544,9 @@ public sealed class AuthController(
             LastName = user.LastName,
             Email = user.Email,
             IsEmailVerified = isEmailVerified,
-            AccessToken = $"email-at-{Guid.NewGuid():N}",
+            AccessToken = jwtTokenService.CreateAccessToken(user, now),
             RefreshToken = $"email-rt-{Guid.NewGuid():N}",
-            ExpiresAt = now.AddHours(1),
+            ExpiresAt = jwtTokenService.GetAccessTokenExpiry(now),
         };
     }
 

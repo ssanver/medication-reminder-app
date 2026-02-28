@@ -3,8 +3,13 @@ import { signUpWithEmail } from '../email-auth-service';
 import { loginWithSocial, type SocialLoginResult } from '../social-auth';
 import { isSignUpFormValid } from '../signup-validation';
 
+type AuthSessionTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 type UseSignUpScreenStateInput = {
-  onSuccess: (payload: { session?: SocialLoginResult; email: string; emailVerified: boolean }) => void;
+  onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean }) => void;
   t: {
     pleaseFillAllFields: string;
     socialSignInSuccessPrefix: string;
@@ -51,7 +56,18 @@ export function useSignUpScreenState({ onSuccess, t }: UseSignUpScreenStateInput
         password,
       });
       setShowSuccess(true);
-      setTimeout(() => onSuccess({ email: response.email, emailVerified: false }), 800);
+      setTimeout(
+        () =>
+          onSuccess({
+            session: {
+              accessToken: response.accessToken,
+              refreshToken: response.refreshToken,
+            },
+            email: response.email,
+            emailVerified: false,
+          }),
+        800,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sign-up failed.';
       setErrorText(message);

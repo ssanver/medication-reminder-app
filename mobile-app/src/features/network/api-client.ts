@@ -1,4 +1,5 @@
 import { createCorrelationId } from './correlation-id';
+import { loadAccessToken } from '../auth/auth-session-store';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -25,11 +26,13 @@ export function getApiBaseUrl(): string {
 }
 
 export async function apiRequestJson<TResponse>(path: string, options: ApiRequestOptions = {}): Promise<TResponse> {
+  const accessToken = await loadAccessToken();
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: options.method ?? 'GET',
     headers: {
       ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
       ...(options.correlationPrefix ? { 'X-Correlation-ID': createCorrelationId(options.correlationPrefix) } : undefined),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined),
       ...options.headers,
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
@@ -44,11 +47,13 @@ export async function apiRequestJson<TResponse>(path: string, options: ApiReques
 }
 
 export async function apiRequestVoid(path: string, options: ApiRequestOptions = {}): Promise<void> {
+  const accessToken = await loadAccessToken();
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: options.method ?? 'GET',
     headers: {
       ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
       ...(options.correlationPrefix ? { 'X-Correlation-ID': createCorrelationId(options.correlationPrefix) } : undefined),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined),
       ...options.headers,
     },
     body: options.body ? JSON.stringify(options.body) : undefined,

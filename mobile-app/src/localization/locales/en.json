@@ -294,6 +294,8 @@
   "clear": "Clear",
   "endDateBeforeStart": "End date cannot be earlier than start date.",
   "doseTimeLabel": "Dose {{index}} time",
+  "doseTime": "Dose time",
+  "startTime": "Start time",
   "duplicateTimeWarning": "You cannot select the same time more than once.",
   "skipLabel": "Skip",
   "selectEndDate": "Select end date",
