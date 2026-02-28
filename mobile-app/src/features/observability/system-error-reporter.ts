@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { currentUser } from '../profile/current-user';
+import { resolveUserReference } from '../auth/user-reference';
 import { apiRequestVoid } from '../network/api-client';
 
 type ReportSystemErrorInput = {
@@ -24,11 +24,12 @@ function getLocale(): string {
 
 export async function reportSystemError(input: ReportSystemErrorInput): Promise<void> {
   try {
+    const userReference = await resolveUserReference();
     await apiRequestVoid('/api/system-errors', {
       method: 'POST',
       correlationPrefix: 'sys-err',
       body: {
-        userReference: currentUser.email,
+        userReference,
         appVersion: getAppVersion(),
         platform: Platform.OS,
         device: `${Platform.OS}-${Platform.Version}`,

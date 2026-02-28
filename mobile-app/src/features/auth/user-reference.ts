@@ -1,5 +1,4 @@
 import { loadAuthSession } from './auth-session-store';
-import { currentUser } from '../profile/current-user';
 
 export async function resolveUserReference(): Promise<string> {
   const session = await loadAuthSession();
@@ -8,7 +7,7 @@ export async function resolveUserReference(): Promise<string> {
     return sessionEmail;
   }
 
-  return currentUser.email.trim().toLowerCase();
+  throw new Error('Authenticated user reference is missing.');
 }
 
 export async function buildUserReferenceQuery(): Promise<string> {

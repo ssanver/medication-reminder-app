@@ -7,6 +7,7 @@ import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibilit
 import { resolveInitialPhase } from '../features/auth/auth-flow';
 import {
   clearSessionForLogout,
+  subscribeAuthSession,
   loadAuthSession,
   markAuthenticated,
   setEmailVerified,
@@ -217,6 +218,24 @@ export function AppNavigator() {
 
     return () => clearInterval(timer);
   }, [phase, locale, notificationsEnabled, medicationRemindersEnabled, medicationStore.isHydrated, medicationStore.medications, medicationStore.events]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeAuthSession(() => {
+      void (async () => {
+        const session = await loadAuthSession();
+        if (!session.isLoggedIn && phase === 'app') {
+          await clearMedicationStore();
+          setAccountEmail('');
+          setEmailVerifiedState(true);
+          setOverlayScreen('none');
+          setActiveTab('today');
+          setPhase('signin');
+        }
+      })();
+    });
+
+    return unsubscribe;
+  }, [phase]);
 
   if (!isOnboardingStepCountValid(steps)) {
     return (
@@ -562,6 +581,7 @@ export function AppNavigator() {
           () => setOverlayScreen('feedback'),
           () => {
             void (async () => {
+              await clearMedicationStore();
               await clearSessionForLogout();
               setAccountEmail('');
               setEmailVerifiedState(true);

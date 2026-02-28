@@ -1,5 +1,6 @@
 import { type ReactNode, useMemo, useState } from 'react';
-import { Alert, Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppIcon } from '../components/ui/app-icon';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
 import { getTranslations, type Locale } from '../features/localization/localization';
@@ -17,32 +18,7 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
   const t = getTranslations(locale);
-  const { filter, setFilter, filtered, counts, removeMedication, toggleMedicationActive } = useMyMedsScreenState({ locale });
-
-  function confirmDelete(medicationId: string) {
-    Alert.alert(
-      t.deleteMedicationTitle,
-      t.deleteMedicationConfirm,
-      [
-        {
-          text: t.cancel,
-          style: 'cancel',
-        },
-        {
-          text: t.confirm,
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              const errorText = await removeMedication(medicationId);
-              if (errorText) {
-                Alert.alert(t.deleteFailed, errorText);
-              }
-            })();
-          },
-        },
-      ],
-    );
-  }
+  const { filter, setFilter, filtered, counts, toggleMedicationActive } = useMyMedsScreenState({ locale });
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -69,7 +45,12 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
       ) : (
         <View style={styles.list}>
           {filtered.map((item) => (
-            <SwipeToDeleteRow key={item.id} locale={locale} onDelete={() => confirmDelete(item.id)}>
+            <SwipeToDeleteRow
+              key={item.id}
+              actionLabel={item.active ? t.makeInactive : t.makeActive}
+              actionVariant={item.active ? 'deactivate' : 'activate'}
+              onAction={() => void toggleMedicationActive(item.id, !item.active)}
+            >
               <MedicationCard
                 locale={locale}
                 name={item.name}
@@ -93,21 +74,28 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
 }
 
 type SwipeToDeleteRowProps = {
-  locale: Locale;
-  onDelete: () => void;
+  actionLabel: string;
+  actionVariant: 'activate' | 'deactivate';
+  onAction: () => void;
   children: ReactNode;
 };
 
-function SwipeToDeleteRow({ locale, onDelete, children }: SwipeToDeleteRowProps) {
-  const t = getTranslations(locale);
-  const actionWidth = 96;
+function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: SwipeToDeleteRowProps) {
+  const actionWidth = 92;
   const [isOpen, setIsOpen] = useState(false);
   const translateX = useState(() => new Animated.Value(0))[0];
+  const actionButtonColor = actionVariant === 'deactivate' ? theme.colors.neutral[500] : theme.colors.primaryBlue[500];
+  const actionIconName = actionVariant === 'deactivate' ? 'close' : 'check';
 
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 8 && Math.abs(gesture.dy) < 16,
+        onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > 2 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.8,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > 2 &&
+          Math.abs(gesture.dy) < 32 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.8,
+        onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_, gesture) => {
           const base = isOpen ? -actionWidth : 0;
           const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
@@ -116,11 +104,11 @@ function SwipeToDeleteRow({ locale, onDelete, children }: SwipeToDeleteRowProps)
         onPanResponderRelease: (_, gesture) => {
           const base = isOpen ? -actionWidth : 0;
           const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
-          const shouldOpen = next < -actionWidth * 0.45 || gesture.vx < -0.35;
-          Animated.spring(translateX, {
+          const shouldOpen = next < -actionWidth * 0.08 || gesture.vx < -0.03;
+          Animated.timing(translateX, {
             toValue: shouldOpen ? -actionWidth : 0,
+            duration: 120,
             useNativeDriver: true,
-            bounciness: 0,
           }).start(() => setIsOpen(shouldOpen));
         },
       }),
@@ -130,8 +118,9 @@ function SwipeToDeleteRow({ locale, onDelete, children }: SwipeToDeleteRowProps)
   return (
     <View style={styles.swipeContainer}>
       <View style={styles.swipeDeleteAction}>
-        <Pressable style={styles.swipeDeleteButton} onPress={onDelete}>
-          <Text style={styles.swipeDeleteButtonText}>{t.delete}</Text>
+        <Pressable style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }]} onPress={onAction} hitSlop={8}>
+          <AppIcon name={actionIconName} size={14} color="#FFFFFF" />
+          <Text style={styles.swipeDeleteButtonText}>{actionLabel}</Text>
         </Pressable>
       </View>
       <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
@@ -169,12 +158,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   swipeDeleteButton: {
-    width: 96,
+    width: 92,
     height: '100%',
     borderRadius: theme.radius[16],
     backgroundColor: theme.colors.error[500],
     alignItems: 'center',
     justifyContent: 'center',
+    gap: theme.spacing[4],
   },
   swipeDeleteButtonText: {
     ...theme.typography.bodyScale.xmMedium,

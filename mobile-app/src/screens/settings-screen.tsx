@@ -72,6 +72,7 @@ export function SettingsScreen({
     draftWeekStartsOn,
     setDraftWeekStartsOn,
     shortDisplayName,
+    profileLoadError,
     profileAvatarEmoji,
     isAppearanceDirty,
     version,
@@ -85,7 +86,11 @@ export function SettingsScreen({
         <View style={styles.profileCard}>
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{profileAvatarEmoji}</Text></View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
+            {profileLoadError ? (
+              <Text style={styles.profileError}>{profileLoadError}</Text>
+            ) : (
+              <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
+            )}
             <Pressable onPress={onOpenProfile}>
               <Text style={styles.editLink}>{t.editProfile}</Text>
             </Pressable>
@@ -346,6 +351,10 @@ const styles = StyleSheet.create({
   profileName: {
     ...theme.typography.bodyScale.mBold,
     color: theme.colors.semantic.textPrimary,
+  },
+  profileError: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.error[500],
   },
   editLink: {
     ...theme.typography.captionScale.lRegular,

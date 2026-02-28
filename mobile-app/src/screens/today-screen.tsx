@@ -45,6 +45,7 @@ export function TodayScreen({
     showFutureActionPopup,
     setShowFutureActionPopup,
     shortDisplayName,
+    profileLoadError,
     avatarEmoji,
     filtered,
     counts,
@@ -75,7 +76,11 @@ export function TodayScreen({
         <View style={styles.profileLeft}>
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{avatarEmoji}</Text></View>
           <View>
-            <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
+            {profileLoadError ? (
+              <Text style={styles.profileError}>{profileLoadError}</Text>
+            ) : (
+              <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
+            )}
             <Text style={styles.welcome}>{t.welcome}</Text>
           </View>
         </View>
@@ -338,6 +343,10 @@ const styles = StyleSheet.create({
   hello: {
     ...theme.typography.bodyScale.mBold,
     color: theme.colors.semantic.textPrimary,
+  },
+  profileError: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.error[500],
   },
   welcome: {
     ...theme.typography.captionScale.lRegular,

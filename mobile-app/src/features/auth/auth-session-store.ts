@@ -19,6 +19,17 @@ export type AuthSession = {
   emailVerified: boolean;
 };
 
+const authSessionListeners = new Set<() => void>();
+
+function emitAuthSessionChanged(): void {
+  authSessionListeners.forEach((listener) => listener());
+}
+
+export function subscribeAuthSession(listener: () => void): () => void {
+  authSessionListeners.add(listener);
+  return () => authSessionListeners.delete(listener);
+}
+
 function parseFlag(value: string | null): boolean {
   return value === 'true';
 }
@@ -45,14 +56,17 @@ export async function loadAuthSession(): Promise<AuthSession> {
 
 export async function setOnboardingCompleted(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_HAS_COMPLETED_ONBOARDING, value ? 'true' : 'false');
+  emitAuthSessionChanged();
 }
 
 export async function setPermissionScreenSeen(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_HAS_SEEN_PERMISSION_SCREEN, value ? 'true' : 'false');
+  emitAuthSessionChanged();
 }
 
 export async function setLoggedIn(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_IS_LOGGED_IN, value ? 'true' : 'false');
+  emitAuthSessionChanged();
 }
 
 export async function markAuthenticated(payload: {
@@ -61,7 +75,11 @@ export async function markAuthenticated(payload: {
   email?: string;
   emailVerified?: boolean;
 } = {}): Promise<void> {
-  const writes: Array<Promise<void>> = [setLoggedIn(true), setOnboardingCompleted(true)];
+  const hasValidSession = Boolean(payload.accessToken && payload.email);
+  const writes: Array<Promise<void>> = [
+    AsyncStorage.setItem(KEY_IS_LOGGED_IN, hasValidSession ? 'true' : 'false'),
+    AsyncStorage.setItem(KEY_HAS_COMPLETED_ONBOARDING, 'true'),
+  ];
 
   if (payload.accessToken) {
     writes.push(AsyncStorage.setItem(KEY_ACCESS_TOKEN, payload.accessToken));
@@ -84,25 +102,29 @@ export async function markAuthenticated(payload: {
   writes.push(AsyncStorage.setItem(KEY_EMAIL_VERIFIED, payload.emailVerified ? 'true' : 'false'));
 
   await Promise.all(writes);
+  emitAuthSessionChanged();
 }
 
 export async function setEmailVerified(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_EMAIL_VERIFIED, value ? 'true' : 'false');
+  emitAuthSessionChanged();
 }
 
 export async function setSplashSeen(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_HAS_SEEN_SPLASH_ONCE, value ? 'true' : 'false');
+  emitAuthSessionChanged();
 }
 
 export async function clearSessionForLogout(): Promise<void> {
   await Promise.all([
-    setLoggedIn(false),
+    AsyncStorage.setItem(KEY_IS_LOGGED_IN, 'false'),
     AsyncStorage.removeItem(KEY_ACCESS_TOKEN),
     AsyncStorage.removeItem(KEY_REFRESH_TOKEN),
     AsyncStorage.removeItem(KEY_CACHED_USER),
     AsyncStorage.removeItem(KEY_EMAIL),
     AsyncStorage.removeItem(KEY_EMAIL_VERIFIED),
   ]);
+  emitAuthSessionChanged();
 }
 
 export async function loadAccessToken(): Promise<string | null> {

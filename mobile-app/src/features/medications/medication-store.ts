@@ -161,7 +161,7 @@ export async function clearMedicationStore(): Promise<void> {
   state = {
     medications: [],
     events: [],
-    isHydrated: true,
+    isHydrated: false,
   };
   emit();
 }

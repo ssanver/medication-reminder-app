@@ -21,6 +21,7 @@ export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseS
   const [isCancelLoading, setIsCancelLoading] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('');
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
   const [draftWeekStartsOn, setDraftWeekStartsOn] = useState<'monday' | 'sunday'>(weekStartsOn);
@@ -39,13 +40,20 @@ export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseS
 
   useEffect(() => {
     void (async () => {
-      const profile = await loadProfile();
-      setProfileName(profile.fullName);
-      setProfileGender(profile.gender);
+      try {
+        const profile = await loadProfile();
+        setProfileName(profile.fullName);
+        setProfileGender(profile.gender);
+        setProfileLoadError(null);
+      } catch {
+        setProfileName('');
+        setProfileGender('');
+        setProfileLoadError(t.profileDataMissing);
+      }
     })();
-  }, []);
+  }, [t.profileDataMissing]);
 
-  const shortDisplayName = toShortDisplayName(profileName) || t.user;
+  const shortDisplayName = toShortDisplayName(profileName);
   const profileAvatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
   const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale || draftWeekStartsOn !== weekStartsOn;
 
@@ -77,6 +85,7 @@ export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseS
     draftWeekStartsOn,
     setDraftWeekStartsOn,
     shortDisplayName,
+    profileLoadError,
     profileAvatarEmoji,
     isAppearanceDirty,
     version,

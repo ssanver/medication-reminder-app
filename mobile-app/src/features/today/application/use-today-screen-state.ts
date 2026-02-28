@@ -24,9 +24,10 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const [showFutureActionPopup, setShowFutureActionPopup] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('');
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [doses, setDoses] = useState<Awaited<ReturnType<typeof getScheduledDosesForDate>>>([]);
 
-  const shortDisplayName = toShortDisplayName(profileName) || t.user;
+  const shortDisplayName = toShortDisplayName(profileName);
   const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
 
   useEffect(() => {
@@ -94,11 +95,18 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
 
   useEffect(() => {
     void (async () => {
-      const profile = await loadProfile();
-      setProfileName(profile.fullName);
-      setProfileGender(profile.gender);
+      try {
+        const profile = await loadProfile();
+        setProfileName(profile.fullName);
+        setProfileGender(profile.gender);
+        setProfileLoadError(null);
+      } catch {
+        setProfileName('');
+        setProfileGender('');
+        setProfileLoadError(t.profileDataMissing);
+      }
     })();
-  }, []);
+  }, [t.profileDataMissing]);
 
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale, weekStartsOn), [selectedDate, locale, weekStartsOn]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
@@ -122,6 +130,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
     showFutureActionPopup,
     setShowFutureActionPopup,
     shortDisplayName,
+    profileLoadError,
     avatarEmoji,
     filtered,
     counts,

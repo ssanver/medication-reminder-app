@@ -1,74 +1,52 @@
 using api.contracts;
 using api.data;
 using api.models;
-using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/user-profile")]
-public sealed class UserProfileController(AppDbContext dbContext, IConfiguration configuration) : ControllerBase
+public sealed class UserProfileController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<UserProfileResponse>> Get([FromQuery] string? userReference)
     {
-        var resolvedUserReference = ResolveUserReference(userReference);
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         var userAccount = await dbContext.UserAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
         if (userAccount is null)
         {
-            return Ok(new UserProfileResponse
-            {
-                FullName = string.Empty,
-                Email = resolvedUserReference,
-                BirthDate = string.Empty,
-                Gender = string.Empty,
-                PhotoUri = string.Empty,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            });
+            return NotFound("User account not found.");
         }
+
+        if (string.IsNullOrWhiteSpace(userAccount.FullName))
+        {
+            return UnprocessableEntity("User profile full name is missing.");
+        }
+
         return Ok(ToResponse(userAccount));
     }
 
     [HttpPut]
     public async Task<ActionResult<UserProfileResponse>> Upsert([FromBody] UpsertUserProfileRequest request, [FromQuery] string? userReference)
     {
-        var resolvedUserReference = ResolveUserReference(userReference);
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         var userAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
-        var isDefaultGuest = IsDefaultGuestReference(resolvedUserReference);
         if (userAccount is null)
         {
-            if (isDefaultGuest)
-            {
-                var fallbackResponse = new UserProfileResponse
-                {
-                    FullName = request.FullName?.Trim() ?? string.Empty,
-                    Email = resolvedUserReference,
-                    BirthDate = request.BirthDate?.Trim() ?? string.Empty,
-                    Gender = request.Gender?.Trim() ?? string.Empty,
-                    PhotoUri = request.PhotoUri?.Trim() ?? string.Empty,
-                    UpdatedAt = DateTimeOffset.UtcNow,
-                };
-                return Ok(fallbackResponse);
-            }
-
-            userAccount = new UserAccount
-            {
-                Id = Guid.NewGuid(),
-                FirstName = "User",
-                LastName = "Profile",
-                Email = resolvedUserReference,
-                PasswordHash = "profile-only-account",
-                FullName = "User Profile",
-                BirthDate = string.Empty,
-                Gender = string.Empty,
-                PhotoUri = string.Empty,
-                IsEmailVerified = false,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            };
-            dbContext.UserAccounts.Add(userAccount);
+            return NotFound("User account not found.");
         }
 
         if (request.FullName is not null)
@@ -78,7 +56,7 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
 
         if (request.Email is not null)
         {
-            var normalizedEmail = ResolveUserReference(request.Email);
+            var normalizedEmail = NormalizeUserReference(request.Email);
             var isUsedByAnother = await dbContext.UserAccounts.AnyAsync(x => x.Email == normalizedEmail && x.Id != userAccount.Id);
             if (isUsedByAnother)
             {
@@ -104,9 +82,12 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
             userAccount.PhotoUri = request.PhotoUri.Trim();
         }
 
-        userAccount.FullName = string.IsNullOrWhiteSpace(userAccount.FullName)
-            ? BuildFallbackFullName(userAccount)
-            : userAccount.FullName.Trim();
+        if (string.IsNullOrWhiteSpace(userAccount.FullName))
+        {
+            return UnprocessableEntity("User profile full name is missing.");
+        }
+
+        userAccount.FullName = userAccount.FullName.Trim();
         userAccount.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync();
 
@@ -116,7 +97,12 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
     [HttpDelete]
     public async Task<IActionResult> Delete([FromQuery] string? userReference)
     {
-        var resolvedUserReference = ResolveUserReference(userReference);
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         var userAccount = await dbContext.UserAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
         if (userAccount is null)
         {
@@ -127,7 +113,6 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
         {
             return NoContent();
         }
-        item.FullName = BuildFallbackFullName(item);
         item.BirthDate = string.Empty;
         item.Gender = string.Empty;
         item.PhotoUri = string.Empty;
@@ -137,41 +122,55 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
         return NoContent();
     }
 
-    private string ResolveUserReference(string? userReference)
+    private string ResolveUserReference(string? userReference, out ActionResult? errorResult)
     {
-        return string.IsNullOrWhiteSpace(userReference)
-            ? DefaultUserReference.Resolve(configuration)
-            : userReference.Trim().ToLowerInvariant();
+        var principal = HttpContext?.User;
+        var claimedEmail =
+            principal?.FindFirstValue(ClaimTypes.Email)
+            ?? principal?.FindFirstValue("email");
+
+        if (!string.IsNullOrWhiteSpace(claimedEmail))
+        {
+            var normalizedClaimedEmail = NormalizeUserReference(claimedEmail);
+            if (!string.IsNullOrWhiteSpace(userReference))
+            {
+                var normalizedQueryEmail = NormalizeUserReference(userReference);
+                if (!string.Equals(normalizedClaimedEmail, normalizedQueryEmail, StringComparison.Ordinal))
+                {
+                    errorResult = Forbid();
+                    return string.Empty;
+                }
+            }
+
+            errorResult = null;
+            return normalizedClaimedEmail;
+        }
+
+        if (string.IsNullOrWhiteSpace(userReference))
+        {
+            errorResult = BadRequest("userReference query parameter is required.");
+            return string.Empty;
+        }
+
+        errorResult = null;
+        return NormalizeUserReference(userReference);
     }
 
-    private bool IsDefaultGuestReference(string userReference)
+    private static string NormalizeUserReference(string userReference)
     {
-        var fallback = DefaultUserReference.Resolve(configuration);
-        return userReference.Equals(fallback, StringComparison.OrdinalIgnoreCase);
+        return userReference.Trim().ToLowerInvariant();
     }
 
     private static UserProfileResponse ToResponse(UserAccount userAccount)
     {
-        var fullName = string.IsNullOrWhiteSpace(userAccount.FullName)
-            ? BuildFallbackFullName(userAccount)
-            : userAccount.FullName.Trim();
-
         return new UserProfileResponse
         {
-            FullName = fullName,
+            FullName = userAccount.FullName.Trim(),
             Email = userAccount.Email,
             BirthDate = userAccount.BirthDate,
             Gender = userAccount.Gender,
             PhotoUri = userAccount.PhotoUri,
             UpdatedAt = userAccount.UpdatedAt,
         };
-    }
-
-    private static string BuildFallbackFullName(UserAccount userAccount)
-    {
-        var firstName = userAccount.FirstName?.Trim() ?? string.Empty;
-        var lastName = userAccount.LastName?.Trim() ?? string.Empty;
-        var fullName = $"{firstName} {lastName}".Trim();
-        return string.IsNullOrWhiteSpace(fullName) ? "User" : fullName;
     }
 }

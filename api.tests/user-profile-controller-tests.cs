@@ -4,14 +4,13 @@ using api.data;
 using api.models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace api.tests;
 
 public sealed class UserProfileControllerTests
 {
     [Fact]
-    public async Task Get_ShouldFallbackToAccountName_WhenProfileDoesNotExist()
+    public async Task Get_ShouldReturnUnprocessableEntity_WhenFullNameIsMissing()
     {
         await using var dbContext = CreateInMemoryContext();
         dbContext.UserAccounts.Add(new UserAccount
@@ -30,13 +29,11 @@ public sealed class UserProfileControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new UserProfileController(dbContext, CreateConfiguration());
+        var controller = new UserProfileController(dbContext);
         var result = await controller.Get("suleyman@example.com");
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var payload = Assert.IsType<UserProfileResponse>(ok.Value);
-        Assert.Equal("Suleyman Sanver", payload.FullName);
-        Assert.Equal("suleyman@example.com", payload.Email);
+        var unprocessable = Assert.IsType<UnprocessableEntityObjectResult>(result.Result);
+        Assert.Equal("User profile full name is missing.", unprocessable.Value);
     }
 
     [Fact]
@@ -60,7 +57,7 @@ public sealed class UserProfileControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new UserProfileController(dbContext, CreateConfiguration());
+        var controller = new UserProfileController(dbContext);
         var result = await controller.Upsert(new UpsertUserProfileRequest
         {
             FullName = "Suleyman Sanver",
@@ -81,10 +78,10 @@ public sealed class UserProfileControllerTests
     }
 
     [Fact]
-    public async Task Upsert_ShouldNotCreateUserAccount_WhenUsingDefaultGuestReference()
+    public async Task Upsert_ShouldReturnNotFound_WhenAccountDoesNotExist()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new UserProfileController(dbContext, CreateConfiguration());
+        var controller = new UserProfileController(dbContext);
 
         var result = await controller.Upsert(new UpsertUserProfileRequest
         {
@@ -92,12 +89,10 @@ public sealed class UserProfileControllerTests
             BirthDate = "1990-01-01",
             Gender = "unknown",
             PhotoUri = "https://example.com/guest.jpg",
-        }, null);
+        }, "missing@example.com");
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var payload = Assert.IsType<UserProfileResponse>(ok.Value);
-        Assert.Equal("guest@pillmind.local", payload.Email);
-        Assert.Equal("Guest User", payload.FullName);
+        var notFound = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal("User account not found.", notFound.Value);
         Assert.Equal(0, await dbContext.UserAccounts.CountAsync());
     }
 
@@ -108,15 +103,5 @@ public sealed class UserProfileControllerTests
             .Options;
 
         return new AppDbContext(options);
-    }
-
-    private static IConfiguration CreateConfiguration()
-    {
-        return new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Defaults:UserReference"] = "guest@pillmind.local",
-            })
-            .Build();
     }
 }

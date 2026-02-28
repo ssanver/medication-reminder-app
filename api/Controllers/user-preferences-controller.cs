@@ -1,33 +1,29 @@
 using api.contracts;
 using api.data;
 using api.models;
-using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/user-preferences")]
-public sealed class UserPreferencesController(AppDbContext dbContext, IConfiguration configuration) : ControllerBase
+public sealed class UserPreferencesController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<UserPreferenceResponse>> Get([FromQuery] string? userReference)
     {
-        var resolvedUserReference = ResolveUserReference(userReference);
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         var userAccount = await dbContext.UserAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
         if (userAccount is null)
         {
-            return Ok(new UserPreferenceResponse
-            {
-                Locale = "tr",
-                FontScale = 1.0m,
-                NotificationsEnabled = true,
-                MedicationRemindersEnabled = true,
-                SnoozeMinutes = 10,
-                WeekStartsOn = "monday",
-                UpdatedAt = DateTimeOffset.UtcNow,
-            });
+            return NotFound("User account not found.");
         }
 
         var item = await dbContext
@@ -56,56 +52,29 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
     [HttpPut]
     public async Task<ActionResult<UserPreferenceResponse>> Update([FromBody] UpdateUserPreferenceRequest request, [FromQuery] string? userReference)
     {
-        var resolvedUserReference = ResolveUserReference(userReference);
-        var userAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
-        var isDefaultGuest = IsDefaultGuestReference(resolvedUserReference);
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
 
-        UserPreference? transientPreference = null;
+        var userAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
         if (userAccount is null)
         {
-            if (isDefaultGuest)
-            {
-                transientPreference = CreateDefaultPreference();
-            }
-            else
-            {
-                userAccount = new UserAccount
-                {
-                    Id = Guid.NewGuid(),
-                    FirstName = "User",
-                    LastName = "Preference",
-                    Email = resolvedUserReference,
-                    PasswordHash = "preference-only-account",
-                    FullName = "User Preference",
-                    BirthDate = string.Empty,
-                    Gender = string.Empty,
-                    PhotoUri = string.Empty,
-                    IsEmailVerified = false,
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    UpdatedAt = DateTimeOffset.UtcNow,
-                };
-                dbContext.UserAccounts.Add(userAccount);
-            }
+            return NotFound("User account not found.");
         }
 
-        var item = transientPreference;
-        if (item is null)
-        {
-            item = await dbContext
-                .UserPreferences
-                .Include(x => x.UserAccount)
-                .FirstOrDefaultAsync(x => x.UserAccountId == userAccount!.Id);
-        }
+        var item = await dbContext
+            .UserPreferences
+            .Include(x => x.UserAccount)
+            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
 
         if (item is null)
         {
             item = CreateDefaultPreference();
-            item.UserAccountId = userAccount!.Id;
+            item.UserAccountId = userAccount.Id;
             item.UserAccount = userAccount;
-            if (!isDefaultGuest)
-            {
-                dbContext.UserPreferences.Add(item);
-            }
+            dbContext.UserPreferences.Add(item);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Locale))
@@ -161,25 +130,48 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
         }
 
         item.UpdatedAt = DateTimeOffset.UtcNow;
-        if (!isDefaultGuest)
-        {
-            await dbContext.SaveChangesAsync();
-        }
+        await dbContext.SaveChangesAsync();
 
         return Ok(ToResponse(item));
     }
 
-    private string ResolveUserReference(string? userReference)
+    private string ResolveUserReference(string? userReference, out ActionResult? errorResult)
     {
-        return string.IsNullOrWhiteSpace(userReference)
-            ? DefaultUserReference.Resolve(configuration)
-            : userReference.Trim().ToLowerInvariant();
+        var principal = HttpContext?.User;
+        var claimedEmail =
+            principal?.FindFirstValue(ClaimTypes.Email)
+            ?? principal?.FindFirstValue("email");
+
+        if (!string.IsNullOrWhiteSpace(claimedEmail))
+        {
+            var normalizedClaimedEmail = NormalizeEmail(claimedEmail);
+            if (!string.IsNullOrWhiteSpace(userReference))
+            {
+                var normalizedQueryEmail = NormalizeEmail(userReference);
+                if (!string.Equals(normalizedClaimedEmail, normalizedQueryEmail, StringComparison.Ordinal))
+                {
+                    errorResult = Forbid();
+                    return string.Empty;
+                }
+            }
+
+            errorResult = null;
+            return normalizedClaimedEmail;
+        }
+
+        if (string.IsNullOrWhiteSpace(userReference))
+        {
+            errorResult = BadRequest("userReference query parameter is required.");
+            return string.Empty;
+        }
+
+        errorResult = null;
+        return NormalizeEmail(userReference);
     }
 
-    private bool IsDefaultGuestReference(string userReference)
+    private static string NormalizeEmail(string value)
     {
-        var fallback = DefaultUserReference.Resolve(configuration);
-        return userReference.Equals(fallback, StringComparison.OrdinalIgnoreCase);
+        return value.Trim().ToLowerInvariant();
     }
 
     private static string NormalizeWeekStartsOn(string value)

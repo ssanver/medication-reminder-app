@@ -9,6 +9,13 @@ export type ProfileState = {
   photoUri: string;
 };
 
+export class ProfileDataError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProfileDataError';
+  }
+}
+
 type UserProfileApiResponse = {
   fullName: string;
   email: string;
@@ -18,34 +25,31 @@ type UserProfileApiResponse = {
   updatedAt: string;
 };
 
-const defaultProfile: ProfileState = {
-  fullName: '',
-  email: '',
-  birthDate: '',
-  gender: '',
-  photoUri: '',
-};
-
 function fromApi(response: UserProfileApiResponse): ProfileState {
+  const fullName = typeof response.fullName === 'string' ? response.fullName.trim() : '';
+  const email = typeof response.email === 'string' ? response.email.trim().toLowerCase() : '';
+  if (!fullName) {
+    throw new ProfileDataError('Profile full name is missing.');
+  }
+  if (!email) {
+    throw new ProfileDataError('Profile email is missing.');
+  }
+
   return {
-    fullName: typeof response.fullName === 'string' ? response.fullName : defaultProfile.fullName,
-    email: typeof response.email === 'string' ? response.email : defaultProfile.email,
-    birthDate: typeof response.birthDate === 'string' ? response.birthDate : defaultProfile.birthDate,
-    gender: typeof response.gender === 'string' ? response.gender : defaultProfile.gender,
-    photoUri: typeof response.photoUri === 'string' ? response.photoUri : defaultProfile.photoUri,
+    fullName,
+    email,
+    birthDate: typeof response.birthDate === 'string' ? response.birthDate : '',
+    gender: typeof response.gender === 'string' ? response.gender : '',
+    photoUri: typeof response.photoUri === 'string' ? response.photoUri : '',
   };
 }
 
 export async function loadProfile(): Promise<ProfileState> {
-  try {
-    const query = await buildUserReferenceQuery();
-    const response = await apiRequestJson<UserProfileApiResponse>(`/api/user-profile${query}`, {
-      correlationPrefix: 'user-profile-get',
-    });
-    return fromApi(response);
-  } catch {
-    return defaultProfile;
-  }
+  const query = await buildUserReferenceQuery();
+  const response = await apiRequestJson<UserProfileApiResponse>(`/api/user-profile${query}`, {
+    correlationPrefix: 'user-profile-get',
+  });
+  return fromApi(response);
 }
 
 export async function saveProfile(nextProfile: ProfileState): Promise<void> {

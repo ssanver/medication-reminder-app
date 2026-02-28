@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { loadAuthSession } from '../auth/auth-session-store';
+import { resolveUserReference } from '../auth/user-reference';
 import { apiRequestJson } from '../network/api-client';
-import { currentUser } from '../profile/current-user';
 
 export type NotificationActionType = 'shown' | 'open' | 'take-now' | 'skip' | 'snooze';
 
@@ -163,16 +162,6 @@ function toScheduledAt(dateKey: string, scheduledTime: string): string {
 
   date.setHours(Number(hours), Number(minutes), 0, 0);
   return date.toISOString();
-}
-
-async function resolveUserReference(): Promise<string> {
-  const session = await loadAuthSession();
-  const sessionEmail = session.email.trim().toLowerCase();
-  if (sessionEmail.length > 0) {
-    return sessionEmail;
-  }
-
-  return currentUser.email.trim().toLowerCase();
 }
 
 async function readDeliveryMap(): Promise<Record<string, string>> {

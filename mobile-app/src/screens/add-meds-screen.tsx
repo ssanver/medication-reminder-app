@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
 import { Button } from '../components/ui/button';
@@ -1099,29 +1100,23 @@ export function AddMedsScreen({
 
             {sheet === 'time' ? (
               <View style={styles.timeWrap}>
-                <Text style={styles.timeSectionLabel}>{t.hour}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeHorizontalList}>
-                  {hourOptions.map((option) => {
-                    const selected = draftHour === option;
-                    return (
-                      <Pressable key={`hour-${option}`} onPress={() => setDraftHour(option)} style={[styles.timeUnitChip, selected && styles.timeUnitChipSelected]}>
-                        <Text style={[styles.timeUnitChipText, selected && styles.timeUnitChipTextSelected]}>{option}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
-                <Text style={styles.timeSectionLabel}>{t.minute}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeHorizontalList}>
-                  {minuteOptions.map((option) => {
-                    const selected = draftMinute === option;
-                    return (
-                      <Pressable key={`minute-${option}`} onPress={() => setDraftMinute(option)} style={[styles.timeUnitChip, selected && styles.timeUnitChipSelected]}>
-                        <Text style={[styles.timeUnitChipText, selected && styles.timeUnitChipTextSelected]}>{option}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
+                <View style={styles.timePickerWrap}>
+                  <DateTimePicker
+                    value={new Date(2000, 0, 1, Number(draftHour), Number(draftMinute), 0)}
+                    mode="time"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'spinner'}
+                    locale={getLocaleTag(locale)}
+                    onChange={(_, date) => {
+                      if (!date) {
+                        return;
+                      }
+                      const hours = `${date.getHours()}`.padStart(2, '0');
+                      const minutes = `${date.getMinutes()}`.padStart(2, '0');
+                      setDraftHour(hours);
+                      setDraftMinute(minutes);
+                    }}
+                  />
+                </View>
 
                 <Button
                   label={t.done}
@@ -1639,6 +1634,14 @@ const styles = StyleSheet.create({
   },
   timeWrap: {
     gap: theme.spacing[16],
+  },
+  timePickerWrap: {
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: theme.spacing[8],
+    paddingHorizontal: theme.spacing[8],
   },
   timeSectionLabel: {
     ...theme.typography.captionScale.lRegular,
