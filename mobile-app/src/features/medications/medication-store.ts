@@ -1,4 +1,5 @@
 import { apiRequestJson, apiRequestVoid } from '../network/api-client';
+import { loadAccessToken } from '../auth/auth-session-store';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { type Locale } from '../localization/localization';
 
@@ -413,6 +414,12 @@ async function listDoseEvents(): Promise<ApiDoseEvent[]> {
 
 export async function hydrateMedicationStore(): Promise<void> {
   if (state.isHydrated) {
+    return;
+  }
+
+  const accessToken = await loadAccessToken();
+  if (!accessToken) {
+    // Auth yokken hydrate edilmez; login sonrası tekrar denenecek.
     return;
   }
 

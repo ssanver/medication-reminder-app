@@ -40,6 +40,9 @@ export function useSignInScreenState({ onSuccess, t }: UseSignInScreenStateInput
         email: email.trim().toLowerCase(),
         password,
       });
+      if (!response.accessToken?.trim() || !response.refreshToken?.trim() || !response.email?.trim()) {
+        throw new Error('Oturum oluşturulamadı. Lütfen tekrar giriş yapın.');
+      }
       onSuccess({
         session: {
           accessToken: response.accessToken,

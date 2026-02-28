@@ -300,6 +300,7 @@ export function AppNavigator() {
                   email: payload.email,
                   emailVerified: payload.emailVerified,
                 });
+                await clearMedicationStore();
                 setAccountEmail(payload.email);
                 setEmailVerifiedState(payload.emailVerified);
                 if (!payload.emailVerified) {
@@ -350,6 +351,7 @@ export function AppNavigator() {
                   email: payload.email,
                   emailVerified: isEmailVerified,
                 });
+                await clearMedicationStore();
                 setAccountEmail(payload.email);
                 setEmailVerifiedState(isEmailVerified);
                 setPhase('app');

@@ -55,6 +55,9 @@ export function useSignUpScreenState({ onSuccess, t }: UseSignUpScreenStateInput
         email: email.trim().toLowerCase(),
         password,
       });
+      if (!response.accessToken?.trim() || !response.refreshToken?.trim() || !response.email?.trim()) {
+        throw new Error('Oturum oluşturulamadı. Lütfen tekrar kayıt olun.');
+      }
       setShowSuccess(true);
       setTimeout(
         () =>

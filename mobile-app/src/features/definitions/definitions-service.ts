@@ -19,6 +19,11 @@ export type AppDefinitions = {
   medicationIconOptions: string[];
   formOptions: FormOption[];
   snoozeOptions: number[];
+  sponsoredAd?: {
+    id: string;
+    ctaUrl: string;
+    localized: Record<string, { title: string; body: string; ctaLabel: string }>;
+  };
 };
 
 type AppDefinitionsApiResponse = {
@@ -88,6 +93,26 @@ function parseFormOptions(value: string | undefined): FormOption[] {
 
 function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
   const source = response.definitions ?? {};
+  let sponsoredAd: AppDefinitions['sponsoredAd'] | undefined;
+  try {
+    const raw = source.sponsoredAd ? JSON.parse(source.sponsoredAd) : null;
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      typeof raw.id === 'string' &&
+      typeof raw.ctaUrl === 'string' &&
+      raw.localized &&
+      typeof raw.localized === 'object'
+    ) {
+      sponsoredAd = {
+        id: raw.id,
+        ctaUrl: raw.ctaUrl,
+        localized: raw.localized as Record<string, { title: string; body: string; ctaLabel: string }>,
+      };
+    }
+  } catch {
+    sponsoredAd = undefined;
+  }
 
   return {
     defaultDoseTimes: parseStringArray(source.defaultDoseTimes),
@@ -103,6 +128,7 @@ function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
     medicationIconOptions: parseStringArray(source.medicationIconOptions),
     formOptions: parseFormOptions(source.formOptions),
     snoozeOptions: parseNumberArray(source.snoozeOptions),
+    sponsoredAd,
   };
 }
 

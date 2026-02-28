@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getDateTitle, getWeekStrip } from '../../date/week-strip';
+import { loadAppDefinitions, type AppDefinitions } from '../../definitions/definitions-service';
 import { getLocaleTag, getTranslations, type Locale } from '../../localization/localization';
-import { getSponsoredAd } from '../../monetization/monetization-service';
 import { getScheduledDosesForDate } from '../../medications/medication-store';
 import { useMedicationStore } from '../../medications/use-medication-store';
 import { toShortDisplayName } from '../../profile/display-name';
@@ -26,6 +26,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const [profileGender, setProfileGender] = useState('');
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [doses, setDoses] = useState<Awaited<ReturnType<typeof getScheduledDosesForDate>>>([]);
+  const [definitions, setDefinitions] = useState<AppDefinitions | null>(null);
 
   const shortDisplayName = toShortDisplayName(profileName);
   const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
@@ -94,6 +95,27 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   }, [selectedDate, filter]);
 
   useEffect(() => {
+    let isMounted = true;
+    void (async () => {
+      try {
+        const loaded = await loadAppDefinitions();
+        if (!isMounted) {
+          return;
+        }
+        setDefinitions(loaded);
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+        setDefinitions(null);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     void (async () => {
       try {
         const profile = await loadProfile();
@@ -110,7 +132,23 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
 
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale, weekStartsOn), [selectedDate, locale, weekStartsOn]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
-  const sponsoredAd = useMemo(() => getSponsoredAd(locale), [locale]);
+  const sponsoredAd = useMemo(() => {
+    const definition = definitions?.sponsoredAd;
+    if (!definition) {
+      return null;
+    }
+    const localized = definition.localized[locale] ?? definition.localized.en ?? Object.values(definition.localized)[0];
+    if (!localized || !localized.title || !localized.body || !localized.ctaLabel || !definition.ctaUrl) {
+      return null;
+    }
+    return {
+      id: definition.id,
+      title: localized.title,
+      body: localized.body,
+      ctaLabel: localized.ctaLabel,
+      ctaUrl: definition.ctaUrl,
+    };
+  }, [definitions, locale]);
   const sectionTitle = useMemo(() => {
     const localeTag = getLocaleTag(locale);
     const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);

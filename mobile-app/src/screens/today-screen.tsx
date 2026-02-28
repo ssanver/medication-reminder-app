@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Linking, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
@@ -62,6 +62,22 @@ export function TodayScreen({
     sponsoredAd,
     sectionTitle,
   } = useTodayScreenState({ locale, weekStartsOn });
+  const daySwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.2,
+        onPanResponderRelease: (_, gesture) => {
+          if (gesture.dx <= -22 || gesture.vx <= -0.2) {
+            setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1));
+            return;
+          }
+          if (gesture.dx >= 22 || gesture.vx >= 0.2) {
+            setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1));
+          }
+        },
+      }),
+    [setSelectedDate],
+  );
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -97,27 +113,33 @@ export function TodayScreen({
       </View>
 
       <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{dateTitle}</Text>
-      <SponsoredBanner
-        title={sponsoredAd.title}
-        body={sponsoredAd.body}
-        ctaLabel={sponsoredAd.ctaLabel}
-        onPress={() => {
-          // Non-blocking ad action. Failures must not block the user flow.
-          void (async () => {
-            try {
-              const supported = await Linking.canOpenURL(sponsoredAd.ctaUrl);
-              if (!supported) {
-                return;
+      {sponsoredAd ? (
+        <SponsoredBanner
+          title={sponsoredAd.title}
+          body={sponsoredAd.body}
+          ctaLabel={sponsoredAd.ctaLabel}
+          onPress={() => {
+            // Non-blocking ad action. Failures must not block the user flow.
+            void (async () => {
+              try {
+                const supported = await Linking.canOpenURL(sponsoredAd.ctaUrl);
+                if (!supported) {
+                  return;
+                }
+                await Linking.openURL(sponsoredAd.ctaUrl);
+              } catch {
+                // Swallow ad CTA failures.
               }
-              await Linking.openURL(sponsoredAd.ctaUrl);
-            } catch {
-              // Swallow ad CTA failures.
-            }
-          })();
-        }}
-      />
-      <View style={styles.calendarStrip}>
-        <Pressable onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 7))}>
+            })();
+          }}
+        />
+      ) : null}
+      <View style={styles.calendarStrip} {...daySwipeResponder.panHandlers}>
+        <Pressable
+          style={styles.arrowButton}
+          hitSlop={10}
+          onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1))}
+        >
           <Text style={styles.arrow}>{'<'}</Text>
         </Pressable>
         {weekStrip.map((day) => {
@@ -132,7 +154,11 @@ export function TodayScreen({
             </Pressable>
           );
         })}
-        <Pressable onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 7))}>
+        <Pressable
+          style={styles.arrowButton}
+          hitSlop={10}
+          onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1))}
+        >
           <Text style={styles.arrow}>{'>'}</Text>
         </Pressable>
       </View>
@@ -371,12 +397,20 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
+  arrowButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.neutral[50],
+  },
   dayCell: {
-    width: 28,
+    width: 36,
     borderRadius: theme.radius[8],
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 2,
+    paddingVertical: 4,
   },
   dayCellActive: {
     borderWidth: 1,

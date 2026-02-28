@@ -5,9 +5,10 @@ export function useMedicationStore() {
   const snapshot = useSyncExternalStore(subscribeMedicationStore, getMedicationStoreSnapshot, getMedicationStoreSnapshot);
 
   useEffect(() => {
-    void hydrateMedicationStore();
-  }, []);
+    if (!snapshot.isHydrated) {
+      void hydrateMedicationStore();
+    }
+  }, [snapshot.isHydrated]);
 
   return snapshot;
 }
-
