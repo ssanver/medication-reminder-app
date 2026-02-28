@@ -21,24 +21,21 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
 
   function confirmDelete(medicationId: string) {
     Alert.alert(
-      locale === 'tr' ? 'İlacı sil' : 'Delete medication',
-      locale === 'tr' ? 'Bu işlem geri alınamaz. Devam edilsin mi?' : 'This action cannot be undone. Continue?',
+      t.deleteMedicationTitle,
+      t.deleteMedicationConfirm,
       [
         {
-          text: locale === 'tr' ? 'Vazgeç' : 'Cancel',
+          text: t.cancel,
           style: 'cancel',
         },
         {
-          text: locale === 'tr' ? 'Onayla' : 'Confirm',
+          text: t.confirm,
           style: 'destructive',
           onPress: () => {
             void (async () => {
               const errorText = await removeMedication(medicationId);
               if (errorText) {
-                Alert.alert(
-                  locale === 'tr' ? 'Silme başarısız' : 'Delete failed',
-                  errorText,
-                );
+                Alert.alert(t.deleteFailed, errorText);
               }
             })();
           },
@@ -64,7 +61,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
       {filtered.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>💊</Text>
-          <Text style={styles.emptyTitle}>{locale === 'tr' ? 'İlacınız bulunmamaktadır.' : 'No medications found.'}</Text>
+          <Text style={styles.emptyTitle}>{t.noMedicationsFound}</Text>
           <Pressable style={styles.emptyButton} onPress={onOpenAddMedication}>
             <Text style={styles.emptyButtonText}>{t.addMedication}</Text>
           </Pressable>
@@ -74,6 +71,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
           {filtered.map((item) => (
             <SwipeToDeleteRow key={item.id} locale={locale} onDelete={() => confirmDelete(item.id)}>
               <MedicationCard
+                locale={locale}
                 name={item.name}
                 details={item.details}
                 schedule={item.schedule}
@@ -101,6 +99,7 @@ type SwipeToDeleteRowProps = {
 };
 
 function SwipeToDeleteRow({ locale, onDelete, children }: SwipeToDeleteRowProps) {
+  const t = getTranslations(locale);
   const actionWidth = 96;
   const [isOpen, setIsOpen] = useState(false);
   const translateX = useState(() => new Animated.Value(0))[0];
@@ -132,7 +131,7 @@ function SwipeToDeleteRow({ locale, onDelete, children }: SwipeToDeleteRowProps)
     <View style={styles.swipeContainer}>
       <View style={styles.swipeDeleteAction}>
         <Pressable style={styles.swipeDeleteButton} onPress={onDelete}>
-          <Text style={styles.swipeDeleteButtonText}>{locale === 'tr' ? 'Sil' : 'Delete'}</Text>
+          <Text style={styles.swipeDeleteButtonText}>{t.delete}</Text>
         </Pressable>
       </View>
       <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>

@@ -36,8 +36,23 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
     {
         var resolvedUserReference = ResolveUserReference(userReference);
         var userAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
+        var isDefaultGuest = IsDefaultGuestReference(resolvedUserReference);
         if (userAccount is null)
         {
+            if (isDefaultGuest)
+            {
+                var fallbackResponse = new UserProfileResponse
+                {
+                    FullName = request.FullName?.Trim() ?? string.Empty,
+                    Email = resolvedUserReference,
+                    BirthDate = request.BirthDate?.Trim() ?? string.Empty,
+                    Gender = request.Gender?.Trim() ?? string.Empty,
+                    PhotoUri = request.PhotoUri?.Trim() ?? string.Empty,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                };
+                return Ok(fallbackResponse);
+            }
+
             userAccount = new UserAccount
             {
                 Id = Guid.NewGuid(),
@@ -127,6 +142,12 @@ public sealed class UserProfileController(AppDbContext dbContext, IConfiguration
         return string.IsNullOrWhiteSpace(userReference)
             ? DefaultUserReference.Resolve(configuration)
             : userReference.Trim().ToLowerInvariant();
+    }
+
+    private bool IsDefaultGuestReference(string userReference)
+    {
+        var fallback = DefaultUserReference.Resolve(configuration);
+        return userReference.Equals(fallback, StringComparison.OrdinalIgnoreCase);
     }
 
     private static UserProfileResponse ToResponse(UserAccount userAccount)

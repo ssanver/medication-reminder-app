@@ -14,7 +14,7 @@ export const supportedLocales = ['tr', 'en', 'de', 'fr', 'es', 'it', 'pt', 'ar',
 export type Locale = (typeof supportedLocales)[number];
 export type AppTranslations = typeof en;
 
-const translationsByLocale: Record<Locale, AppTranslations> = {
+const translationsByLocale: Record<Locale, Partial<AppTranslations>> = {
   tr,
   en,
   de,
@@ -26,6 +26,30 @@ const translationsByLocale: Record<Locale, AppTranslations> = {
   ru,
   zh,
 };
+
+function deepMergeWithFallback<T extends Record<string, unknown>>(base: T, override: Record<string, unknown>): T {
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(override)) {
+    const baseValue = result[key];
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      baseValue &&
+      typeof baseValue === 'object' &&
+      !Array.isArray(baseValue)
+    ) {
+      result[key] = deepMergeWithFallback(baseValue as Record<string, unknown>, value as Record<string, unknown>);
+      continue;
+    }
+
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+
+  return result as T;
+}
 
 export function isSupportedLocale(value: string): value is Locale {
   return supportedLocales.includes(value as Locale);
@@ -49,7 +73,12 @@ export function getLocaleTag(locale: Locale): string {
 }
 
 export function getTranslations(locale: Locale): AppTranslations {
-  return translationsByLocale[locale] ?? translationsByLocale.en;
+  const selected = translationsByLocale[locale] ?? translationsByLocale.en;
+  if (selected === translationsByLocale.en) {
+    return translationsByLocale.en as AppTranslations;
+  }
+
+  return deepMergeWithFallback(translationsByLocale.en as AppTranslations, selected as Record<string, unknown>);
 }
 
 export function getLocaleOptions(currentLocale: Locale): Array<{ code: Locale; label: string }> {

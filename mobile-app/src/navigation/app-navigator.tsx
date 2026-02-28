@@ -475,12 +475,12 @@ export function AppNavigator() {
                 if (response.isVerified) {
                   await setEmailVerified(true);
                   setEmailVerifiedState(true);
-                  return { ok: true, message: locale === 'tr' ? 'E-posta doğrulandı.' : 'Email verified.' };
+                  return { ok: true, message: t.emailVerified };
                 }
 
-                return { ok: false, message: locale === 'tr' ? 'Kod doğrulanamadı.' : 'Code could not be verified.' };
+                return { ok: false, message: t.emailVerificationCodeInvalid };
               } catch (error) {
-                const message = error instanceof Error ? error.message : locale === 'tr' ? 'Doğrulama başarısız.' : 'Verification failed.';
+                const message = error instanceof Error ? error.message : t.emailVerificationFailed;
                 return { ok: false, message };
               }
             }}
@@ -490,26 +490,17 @@ export function AppNavigator() {
                 const nextCooldown = response.resendAvailableInSeconds ?? 60;
                 return {
                   ok: true,
-                  message: locale === 'tr' ? 'Onay e-postası yeniden gönderildi.' : 'Verification email sent again.',
+                  message: t.emailVerificationResent,
                   cooldownSeconds: nextCooldown,
                 };
               } catch (error) {
-                const message = error instanceof Error ? error.message : locale === 'tr' ? 'Yeniden gönderim başarısız.' : 'Resend failed.';
+                const message = error instanceof Error ? error.message : t.emailVerificationResendFailed;
                 return {
                   ok: false,
                   message,
                   cooldownSeconds: 60,
                 };
               }
-            }}
-            onCancelSignUp={() => {
-              void (async () => {
-                await clearSessionForLogout();
-                setAccountEmail('');
-                setEmailVerifiedState(true);
-                setOverlayScreen('none');
-                setPhase('signin');
-              })();
             }}
           />
         </View>
@@ -546,10 +537,7 @@ export function AppNavigator() {
           fontScale,
           setFontScale,
           weekStartsOn,
-          (nextWeekStartsOn) => {
-            setWeekStartsOn(nextWeekStartsOn);
-            void saveWeekStartPreference(nextWeekStartsOn);
-          },
+          setWeekStartsOn,
           notificationsEnabled,
           medicationRemindersEnabled,
           snoozeMinutes,
@@ -604,12 +592,12 @@ export function AppNavigator() {
               setPhase('signin');
               return {
                 ok: true,
-                message: locale === 'tr' ? 'Hesap silindi.' : 'Account deleted.',
+                message: t.accountDeleted,
               };
             } catch (error) {
               return {
                 ok: false,
-                message: error instanceof Error ? error.message : locale === 'tr' ? 'Hesap silme başarısız.' : 'Account cancellation failed.',
+                message: error instanceof Error ? error.message : t.accountDeleteFailed,
               };
             }
           },
@@ -717,12 +705,13 @@ function renderTab(
           locale={locale}
           fontScale={fontScale}
           weekStartsOn={weekStartsOn}
-          onWeekStartsOnChange={onWeekStartsOnChange}
-          onSaveAppearance={(nextLocale, nextFontScale) => {
+          onSaveAppearance={(nextLocale, nextFontScale, nextWeekStartsOn) => {
             onLocaleChange(nextLocale);
             if (isFontScaleLevelValid(nextFontScale)) {
               onFontScaleChange(nextFontScale);
             }
+            onWeekStartsOnChange(nextWeekStartsOn);
+            void saveWeekStartPreference(nextWeekStartsOn);
           }}
           onOpenProfile={onOpenProfile}
           onOpenNotificationSettings={onOpenNotificationSettings}

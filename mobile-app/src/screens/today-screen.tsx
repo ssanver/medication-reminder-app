@@ -154,6 +154,7 @@ export function TodayScreen({
         <View style={styles.list}>
           {filtered.map((item) => (
             <MedicationCard
+              locale={locale}
               key={item.id}
               name={item.name}
               details={item.details}
@@ -241,11 +242,9 @@ export function TodayScreen({
             <View style={styles.popupBadge}>
               <Text style={styles.popupBadgeIcon}>!</Text>
             </View>
-            <Text style={styles.popupTitle}>{locale === 'tr' ? 'İleri Tarihli İşlem' : 'Future Date Action'}</Text>
-            <Text style={styles.popupDescription}>
-              {locale === 'tr' ? 'Tarihi gelmeden ilacınızı alamazsınız' : 'You cannot take your medication before its date.'}
-            </Text>
-            <Button label={locale === 'tr' ? 'Tamam' : 'Okay'} onPress={() => setShowFutureActionPopup(false)} />
+            <Text style={styles.popupTitle}>{t.futureDateActionTitle}</Text>
+            <Text style={styles.popupDescription}>{t.futureDateActionDescription}</Text>
+            <Button label={t.okay} onPress={() => setShowFutureActionPopup(false)} />
           </Pressable>
         </Pressable>
       </Modal>

@@ -11,8 +11,7 @@ type SettingsScreenProps = {
   locale: Locale;
   fontScale: number;
   weekStartsOn: 'monday' | 'sunday';
-  onWeekStartsOnChange: (value: 'monday' | 'sunday') => void;
-  onSaveAppearance: (locale: Locale, fontScale: number) => void;
+  onSaveAppearance: (locale: Locale, fontScale: number, weekStartsOn: 'monday' | 'sunday') => void;
   onOpenProfile: () => void;
   onOpenNotificationSettings: () => void;
   onOpenReminderPreferences: () => void;
@@ -34,7 +33,6 @@ export function SettingsScreen({
   locale,
   fontScale,
   weekStartsOn,
-  onWeekStartsOnChange,
   onSaveAppearance,
   onOpenProfile,
   onOpenNotificationSettings,
@@ -71,11 +69,13 @@ export function SettingsScreen({
     setDraftLocale,
     draftFontScale,
     setDraftFontScale,
+    draftWeekStartsOn,
+    setDraftWeekStartsOn,
     shortDisplayName,
     profileAvatarEmoji,
     isAppearanceDirty,
     version,
-  } = useSettingsScreenState({ locale, fontScale });
+  } = useSettingsScreenState({ locale, fontScale, weekStartsOn });
 
   return (
     <>
@@ -118,53 +118,54 @@ export function SettingsScreen({
                 );
               })}
             </View>
-            <Button
-              label={t.save}
-              onPress={() => onSaveAppearance(draftLocale, draftFontScale)}
-              disabled={!isAppearanceDirty}
-              size="s"
-            />
           </View>
 
           <View style={styles.weekStartBlock}>
-            <Text style={styles.rowTitle}>{locale === 'tr' ? 'Hafta başlangıcı' : 'Week starts on'}</Text>
+            <Text style={styles.rowTitle}>{t.weekStartsOn}</Text>
             <View style={styles.weekStartRow}>
               <Pressable
-                style={[styles.weekStartChip, weekStartsOn === 'monday' && styles.weekStartChipActive]}
-                onPress={() => onWeekStartsOnChange('monday')}
+                style={[styles.weekStartChip, draftWeekStartsOn === 'monday' && styles.weekStartChipActive]}
+                onPress={() => setDraftWeekStartsOn('monday')}
               >
-                <Text style={[styles.weekStartChipText, weekStartsOn === 'monday' && styles.weekStartChipTextActive]}>
-                  {locale === 'tr' ? 'Pazartesi' : 'Monday'}
+                <Text style={[styles.weekStartChipText, draftWeekStartsOn === 'monday' && styles.weekStartChipTextActive]}>
+                  {t.weekStartsOnMonday}
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.weekStartChip, weekStartsOn === 'sunday' && styles.weekStartChipActive]}
-                onPress={() => onWeekStartsOnChange('sunday')}
+                style={[styles.weekStartChip, draftWeekStartsOn === 'sunday' && styles.weekStartChipActive]}
+                onPress={() => setDraftWeekStartsOn('sunday')}
               >
-                <Text style={[styles.weekStartChipText, weekStartsOn === 'sunday' && styles.weekStartChipTextActive]}>
-                  {locale === 'tr' ? 'Pazar' : 'Sunday'}
+                <Text style={[styles.weekStartChipText, draftWeekStartsOn === 'sunday' && styles.weekStartChipTextActive]}>
+                  {t.weekStartsOnSunday}
                 </Text>
               </Pressable>
             </View>
           </View>
+
+          <Button
+            label={t.save}
+            onPress={() => onSaveAppearance(draftLocale, draftFontScale, draftWeekStartsOn)}
+            disabled={!isAppearanceDirty}
+            size="s"
+          />
         </Section>
 
-        <Section title={locale === 'tr' ? 'Destek ve Güvenlik' : 'Support & Security'}>
+        <Section title={t.supportAndSecurity}>
           <MenuRow testID="settings-change-password-row" label={t.changePassword} onPress={onOpenChangePassword} />
-          <MenuRow testID="settings-contact-us-row" label={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} onPress={onOpenFeedback} />
+          <MenuRow testID="settings-contact-us-row" label={t.contactUs} onPress={onOpenFeedback} />
           <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
-            <Text style={styles.logoutText}>{locale === 'tr' ? 'Çıkış Yap' : 'Log Out'}</Text>
+            <Text style={styles.logoutText}>{t.logOut}</Text>
           </Pressable>
           <Pressable testID="settings-delete-account-row" style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
-            <Text style={styles.dangerText}>{locale === 'tr' ? 'Hesabı Sil' : 'Delete Account'}</Text>
+            <Text style={styles.dangerText}>{t.deleteAccount}</Text>
           </Pressable>
         </Section>
 
         <Section title={t.aboutUs}>
-          <MenuRow testID="settings-donate-row" label={locale === 'tr' ? 'Bağış Yap' : 'Donate'} onPress={onOpenDonate} />
-          <MenuRow testID="settings-share-app-row" label={locale === 'tr' ? 'Uygulamayı Paylaş' : 'Share App'} onPress={onShareApp} />
+          <MenuRow testID="settings-donate-row" label={t.donate} onPress={onOpenDonate} />
+          <MenuRow testID="settings-share-app-row" label={t.shareApp} onPress={onShareApp} />
           <View style={styles.versionRow}>
-            <Text style={styles.rowTitle}>{locale === 'tr' ? 'Sürüm' : 'Version'}</Text>
+            <Text style={styles.rowTitle}>{t.version}</Text>
             <Text style={styles.rowSubtitle}>{version}</Text>
           </View>
         </Section>
@@ -198,11 +199,11 @@ export function SettingsScreen({
       <Modal transparent visible={logoutConfirmVisible} animationType="fade" onRequestClose={() => setLogoutConfirmVisible(false)}>
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>{locale === 'tr' ? 'Çıkış yapmak istediğinize emin misiniz?' : 'Are you sure you want to log out?'}</Text>
+            <Text style={styles.confirmTitle}>{t.confirmLogout}</Text>
             <View style={styles.confirmActions}>
-              <Button label={locale === 'tr' ? 'İptal' : 'Cancel'} variant="outlined" onPress={() => setLogoutConfirmVisible(false)} />
+              <Button label={t.cancel} variant="outlined" onPress={() => setLogoutConfirmVisible(false)} />
               <Button
-                label={locale === 'tr' ? 'Çıkış Yap' : 'Log Out'}
+                label={t.logOut}
                 variant="danger"
                 onPress={() => {
                   setLogoutConfirmVisible(false);
@@ -218,10 +219,10 @@ export function SettingsScreen({
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmCard}>
             <Text style={styles.confirmTitle}>
-              {locale === 'tr' ? 'Emin misiniz? Bu işlem geri alınamaz.' : 'Are you sure? This action cannot be undone.'}
+              {t.confirmDeleteIrreversible}
             </Text>
             <TextField
-              label={locale === 'tr' ? 'Şifre' : 'Password'}
+              label={t.password}
               value={cancelPassword}
               secureTextEntry
               onChangeText={(value) => {
@@ -233,7 +234,7 @@ export function SettingsScreen({
             <View style={styles.confirmActions}>
               <Button
                 testID="cancel-account-dismiss-button"
-                label={locale === 'tr' ? 'Vazgeç' : 'Cancel'}
+                label={t.cancel}
                 variant="outlined"
                 onPress={() => {
                   setCancelAccountVisible(false);
@@ -243,13 +244,13 @@ export function SettingsScreen({
               />
               <Button
                 testID="cancel-account-confirm-button"
-                label={locale === 'tr' ? 'Onayla' : 'Confirm'}
+                label={t.confirm}
                 variant="danger"
                 disabled={isCancelLoading}
                 onPress={() => {
                   void (async () => {
                     if (cancelPassword.trim().length < 6) {
-                      setCancelErrorText(locale === 'tr' ? 'Şifre zorunludur.' : 'Password is required.');
+                      setCancelErrorText(t.passwordRequired);
                       return;
                     }
 

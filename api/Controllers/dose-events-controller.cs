@@ -454,9 +454,25 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
     private static string BuildFrequencyLabel(MedicationSchedule schedule)
     {
         var intervalCount = Math.Max(1, schedule.IntervalCount);
+        if (schedule.RepeatType.Equals("as-needed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "As Needed";
+        }
+
+        if (schedule.RepeatType.Equals("hourly", StringComparison.OrdinalIgnoreCase))
+        {
+            return intervalCount == 1 ? "Every 1 Hour" : $"Every {intervalCount} Hours";
+        }
+
+        if (schedule.RepeatType.Equals("cycle", StringComparison.OrdinalIgnoreCase))
+        {
+            var offDays = ParseCycleOffDays(schedule.DaysOfWeek);
+            return $"Cycle {intervalCount}/{offDays}";
+        }
+
         if (schedule.RepeatType.Equals("weekly", StringComparison.OrdinalIgnoreCase))
         {
-            return intervalCount == 2 ? "Every 14 Days" : "Every 7 Days";
+            return intervalCount == 1 ? "Every Week" : $"Every {intervalCount} Weeks";
         }
 
         return intervalCount switch
@@ -465,5 +481,22 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
             2 => "Every 2 Days",
             _ => "Every 1 Day",
         };
+    }
+
+    private static int ParseCycleOffDays(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return 0;
+        }
+
+        var value = raw.Trim();
+        if (!value.StartsWith("off:", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        var numberText = value[4..];
+        return int.TryParse(numberText, out var parsed) ? Math.Max(0, parsed) : 0;
     }
 }

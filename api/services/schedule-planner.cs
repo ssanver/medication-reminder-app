@@ -17,6 +17,12 @@ public static class SchedulePlanner
 
         foreach (var schedule in schedules)
         {
+            if (schedule.RepeatType.Equals("hourly", StringComparison.OrdinalIgnoreCase))
+            {
+                AppendHourlyOccurrences(result, schedule, medicationStartDate, startDate, endDate, medicationEndDate);
+                continue;
+            }
+
             for (var date = startDate; date <= endDate; date = date.AddDays(1))
             {
                 if (date < medicationStartDate)
@@ -56,6 +62,24 @@ public static class SchedulePlanner
             return dayDiffFromStart % normalizedIntervalCount == 0;
         }
 
+        if (schedule.RepeatType.Equals("cycle", StringComparison.OrdinalIgnoreCase))
+        {
+            var offDays = ParseCycleOffDays(schedule.DaysOfWeek);
+            var cycleLength = normalizedIntervalCount + offDays;
+            if (cycleLength <= 0)
+            {
+                return false;
+            }
+
+            var cycleIndex = dayDiffFromStart % cycleLength;
+            return cycleIndex < normalizedIntervalCount;
+        }
+
+        if (schedule.RepeatType.Equals("as-needed", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         if (!schedule.RepeatType.Equals("weekly", StringComparison.OrdinalIgnoreCase))
         {
             return false;
@@ -91,5 +115,55 @@ public static class SchedulePlanner
 
         var weekDiffFromStart = dayDiffFromStart / 7;
         return weekDiffFromStart % normalizedIntervalCount == 0;
+    }
+
+    private static void AppendHourlyOccurrences(
+        List<DateTimeOffset> result,
+        MedicationSchedule schedule,
+        DateOnly medicationStartDate,
+        DateOnly fromDate,
+        DateOnly endDate,
+        DateOnly? medicationEndDate)
+    {
+        var intervalHours = Math.Max(1, schedule.IntervalCount);
+        var rangeStart = fromDate.ToDateTime(TimeOnly.MinValue);
+        var rangeEnd = endDate.ToDateTime(TimeOnly.MaxValue);
+        var medicationStart = medicationStartDate.ToDateTime(schedule.ReminderTime);
+        var medicationEnd = medicationEndDate?.ToDateTime(TimeOnly.MaxValue);
+
+        var cursor = medicationStart;
+        if (cursor < rangeStart)
+        {
+            var diffHours = (rangeStart - cursor).TotalHours;
+            var steps = (int)Math.Ceiling(diffHours / intervalHours);
+            cursor = cursor.AddHours(steps * intervalHours);
+        }
+
+        while (cursor <= rangeEnd)
+        {
+            if ((!medicationEnd.HasValue || cursor <= medicationEnd.Value) && cursor >= rangeStart)
+            {
+                result.Add(new DateTimeOffset(cursor, TimeSpan.Zero));
+            }
+
+            cursor = cursor.AddHours(intervalHours);
+        }
+    }
+
+    private static int ParseCycleOffDays(string? daysOfWeek)
+    {
+        if (string.IsNullOrWhiteSpace(daysOfWeek))
+        {
+            return 0;
+        }
+
+        var raw = daysOfWeek.Trim();
+        if (!raw.StartsWith("off:", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        var numberText = raw[4..];
+        return int.TryParse(numberText, out var value) ? Math.Max(0, value) : 0;
     }
 }

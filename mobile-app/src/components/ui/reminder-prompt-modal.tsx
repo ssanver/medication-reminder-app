@@ -1,5 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { Locale } from '../../features/localization/localization';
+import { getTranslations, type Locale } from '../../features/localization/localization';
 import type { ReminderPrompt } from '../../features/notifications/local-notifications';
 import { theme } from '../../theme';
 
@@ -17,11 +17,12 @@ export function ReminderPromptModal({ visible, locale, snoozeMinutes, reminder, 
   if (!visible || !reminder) {
     return null;
   }
+  const t = getTranslations(locale);
 
-  const takeLabel = locale === 'tr' ? 'Şimdi Al' : 'Take Now';
-  const snoozeLabel = locale === 'tr' ? `${snoozeMinutes} dk Ertele` : `Snooze ${snoozeMinutes} min`;
-  const skipLabel = locale === 'tr' ? 'Atla' : 'Skip';
-  const header = locale === 'tr' ? `${reminder.scheduledTime} İlaçları` : `${reminder.scheduledTime} Medicines`;
+  const takeLabel = t.takeNow;
+  const snoozeLabel = t.snoozeInMinutes.replace('15', `${snoozeMinutes}`);
+  const skipLabel = t.skip;
+  const header = t.medicinesAtTime.replace('{{time}}', reminder.scheduledTime);
 
   return (
     <Modal transparent animationType="fade" visible={visible}>

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import { type Locale } from '../localization/localization';
+import { getTranslations, type Locale } from '../localization/localization';
 import { getScheduledDosesForDate, setDoseStatus } from '../medications/medication-store';
 import { loadAppPreferences } from '../settings/app-preferences';
 import { recordNotificationHistory } from './notification-history';
@@ -72,7 +72,7 @@ function toDosePromptKey(payload: Pick<ReminderPrompt, 'medicationId' | 'dateKey
 }
 
 function getReminderTitle(locale: Locale, time: string): string {
-  return locale === 'tr' ? `${time} İlaçları` : `${time} Medicines`;
+  return getTranslations(locale).medicinesAtTime.replace('{{time}}', time);
 }
 
 function buildReminderPayload(
@@ -125,14 +125,10 @@ export async function configureNotificationChannel(): Promise<void> {
   }
 
   try {
-    const actionLabels = {
-      takeNow: 'Take Now',
-      skip: 'Skip',
-    };
     await Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY_ID, [
       {
         identifier: TAKE_NOW_ACTION_ID,
-        buttonTitle: actionLabels.takeNow,
+        buttonTitle: 'Take Now',
         options: {
           isDestructive: false,
           opensAppToForeground: true,
@@ -140,7 +136,7 @@ export async function configureNotificationChannel(): Promise<void> {
       },
       {
         identifier: SKIP_ACTION_ID,
-        buttonTitle: actionLabels.skip,
+        buttonTitle: 'Skip',
         options: {
           isDestructive: true,
           opensAppToForeground: true,
@@ -237,6 +233,30 @@ export async function clearMedicationReminderNotifications(): Promise<void> {
   const ids = await readTrackedNotificationIds();
   await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)));
   await writeTrackedNotificationIds([]);
+}
+
+export async function clearMedicationReminderNotificationsForMedication(medicationId: string): Promise<void> {
+  const normalizedMedicationId = medicationId.trim();
+  if (!normalizedMedicationId) {
+    return;
+  }
+
+  const tracked = await readTrackedReminders();
+  const toCancel = tracked.filter((item) => item.key.startsWith(`${normalizedMedicationId}-`));
+  const remaining = tracked.filter((item) => !item.key.startsWith(`${normalizedMedicationId}-`));
+
+  await Promise.all(toCancel.map((item) => Notifications.cancelScheduledNotificationAsync(item.id).catch(() => undefined)));
+  await writeTrackedReminders(remaining);
+
+  if (reminderPrompt?.medicationId === normalizedMedicationId) {
+    dismissReminderPrompt();
+  }
+
+  for (const key of Array.from(promptedDoseKeys)) {
+    if (key.startsWith(`${normalizedMedicationId}-`)) {
+      promptedDoseKeys.delete(key);
+    }
+  }
 }
 
 export function ensureMedicationNotificationResponseListener(): void {
@@ -406,7 +426,7 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
 
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
-        title: locale === 'tr' ? `${reminder.scheduledTime} İlaçları` : `${reminder.scheduledTime} Medicines`,
+        title: getReminderTitle(locale, reminder.scheduledTime),
         body: `${reminder.name} • ${reminder.details}`,
         sound: 'default',
         categoryIdentifier: REMINDER_CATEGORY_ID,

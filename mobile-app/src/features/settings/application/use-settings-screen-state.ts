@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Constants from 'expo-constants';
-import type { Locale } from '../../localization/localization';
+import { getTranslations, type Locale } from '../../localization/localization';
 import { toShortDisplayName } from '../../profile/display-name';
 import { resolveProfileAvatarEmoji } from '../../profile/profile-avatar';
 import { loadProfile } from '../../profile/profile-store';
@@ -8,9 +8,11 @@ import { loadProfile } from '../../profile/profile-store';
 type UseSettingsScreenStateInput = {
   locale: Locale;
   fontScale: number;
+  weekStartsOn: 'monday' | 'sunday';
 };
 
-export function useSettingsScreenState({ locale, fontScale }: UseSettingsScreenStateInput) {
+export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseSettingsScreenStateInput) {
+  const t = getTranslations(locale);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
   const [cancelAccountVisible, setCancelAccountVisible] = useState(false);
@@ -21,6 +23,7 @@ export function useSettingsScreenState({ locale, fontScale }: UseSettingsScreenS
   const [profileGender, setProfileGender] = useState('');
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
+  const [draftWeekStartsOn, setDraftWeekStartsOn] = useState<'monday' | 'sunday'>(weekStartsOn);
 
   useEffect(() => {
     setDraftLocale(locale);
@@ -31,6 +34,10 @@ export function useSettingsScreenState({ locale, fontScale }: UseSettingsScreenS
   }, [fontScale]);
 
   useEffect(() => {
+    setDraftWeekStartsOn(weekStartsOn);
+  }, [weekStartsOn]);
+
+  useEffect(() => {
     void (async () => {
       const profile = await loadProfile();
       setProfileName(profile.fullName);
@@ -38,9 +45,9 @@ export function useSettingsScreenState({ locale, fontScale }: UseSettingsScreenS
     })();
   }, []);
 
-  const shortDisplayName = toShortDisplayName(profileName) || (locale === 'tr' ? 'Kullanıcı' : 'User');
+  const shortDisplayName = toShortDisplayName(profileName) || t.user;
   const profileAvatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
-  const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale;
+  const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale || draftWeekStartsOn !== weekStartsOn;
 
   const version = useMemo(() => {
     const expoVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -67,6 +74,8 @@ export function useSettingsScreenState({ locale, fontScale }: UseSettingsScreenS
     setDraftLocale,
     draftFontScale,
     setDraftFontScale,
+    draftWeekStartsOn,
+    setDraftWeekStartsOn,
     shortDisplayName,
     profileAvatarEmoji,
     isAppearanceDirty,

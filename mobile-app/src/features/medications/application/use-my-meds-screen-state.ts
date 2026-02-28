@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { localizeFormLabel, localizeFrequencyLabel } from '../../localization/medication-localization';
-import { getLocaleTag, type Locale } from '../../localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../../localization/localization';
 import { deleteMedication, resolveMedicationIcon, setMedicationActive } from '../medication-store';
+import { clearNotificationHistoryForMedication } from '../../notifications/notification-history';
+import { clearMedicationReminderNotificationsForMedication } from '../../notifications/local-notifications';
 import { useMedicationStore } from '../use-medication-store';
 
 export type MyMedsFilter = 'All' | 'Active' | 'Inactive';
@@ -11,6 +13,7 @@ type UseMyMedsScreenStateInput = {
 };
 
 export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
+  const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<MyMedsFilter>('All');
 
@@ -38,13 +41,7 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
 
         const formLabel = localizeFormLabel(item.form, locale);
         const frequencyLabel = localizeFrequencyLabel(item.frequencyLabel, locale);
-        const mealLabel = item.isBeforeMeal
-          ? locale === 'tr'
-            ? 'Aç karnına'
-            : 'Before meal'
-          : locale === 'tr'
-            ? 'Tok karnına'
-            : 'After meal';
+        const mealLabel = item.isBeforeMeal ? t.beforeMeal : t.afterMeal;
         const takenCount = takenCountsByMedication[item.id] ?? 0;
         const remainingCount =
           typeof item.totalQuantity === 'number' && item.totalQuantity > 0 ? Math.max(item.totalQuantity - takenCount, 0) : null;
@@ -52,23 +49,16 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
         return {
           id: item.id,
           name: item.name,
-          details:
-            locale === 'tr'
-              ? `${frequencyLabel} | ${item.dosage} ${formLabel} | ${mealLabel}`
-              : `${frequencyLabel} | ${item.dosage} ${formLabel} | ${mealLabel}`,
+          details: `${frequencyLabel} | ${item.dosage} ${formLabel} | ${mealLabel}`,
           schedule:
             remainingCount === null
-              ? locale === 'tr'
-                ? `${startedLabel} başlangıç`
-                : `Started ${startedLabel}`
-              : locale === 'tr'
-                ? `${startedLabel} başlangıç | ${remainingCount} adet kaldı`
-                : `Started ${startedLabel} | ${remainingCount} left`,
+              ? t.startedOn.replace('{{date}}', startedLabel)
+              : t.startedOnWithRemaining.replace('{{date}}', startedLabel).replace('{{count}}', `${remainingCount}`),
           active: item.active,
           emoji: icon,
         };
       }),
-    [locale, store.medications, takenCountsByMedication],
+    [locale, store.medications, t.afterMeal, t.beforeMeal, t.startedOn, t.startedOnWithRemaining, takenCountsByMedication],
   );
 
   const filtered = useMemo(() => {
@@ -91,11 +81,11 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
   async function removeMedication(medicationId: string) {
     try {
       await deleteMedication(medicationId);
+      await clearMedicationReminderNotificationsForMedication(medicationId);
+      await clearNotificationHistoryForMedication(medicationId);
       return null;
     } catch {
-      return locale === 'tr'
-        ? 'İlaç silinemedi. Lütfen tekrar deneyin.'
-        : 'Medication could not be deleted. Please try again.';
+      return t.medicationDeleteError;
     }
   }
 

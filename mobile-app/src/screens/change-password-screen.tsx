@@ -35,7 +35,7 @@ export function ChangePasswordScreen({ locale, onBack }: ChangePasswordScreenPro
 
       <View style={styles.card}>
         <TextField
-          label={locale === 'tr' ? 'Mevcut şifre' : 'Current password'}
+          label={t.currentPassword}
           value={currentPassword}
           placeholder={t.enterYourPassword}
           secureTextEntry={isHidden}
@@ -44,7 +44,7 @@ export function ChangePasswordScreen({ locale, onBack }: ChangePasswordScreenPro
           onChangeText={setCurrentPassword}
         />
         <TextField
-          label={locale === 'tr' ? 'Yeni şifre' : 'New password'}
+          label={t.newPassword}
           value={newPassword}
           placeholder={t.enterYourDesiredPassword}
           secureTextEntry={isHidden}
@@ -53,9 +53,9 @@ export function ChangePasswordScreen({ locale, onBack }: ChangePasswordScreenPro
           onChangeText={setNewPassword}
         />
         <TextField
-          label={locale === 'tr' ? 'Yeni şifre (tekrar)' : 'Confirm new password'}
+          label={t.confirmNewPassword}
           value={confirmPassword}
-          placeholder={locale === 'tr' ? 'Yeni şifrenizi tekrar girin' : 'Re-enter your new password'}
+          placeholder={t.reenterNewPassword}
           secureTextEntry={isHidden}
           trailingIcon={isHidden ? '👁' : '🙈'}
           onTrailingPress={() => setIsHidden((prev) => !prev)}

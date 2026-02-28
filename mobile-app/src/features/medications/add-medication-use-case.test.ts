@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getFrequencySummary, getWeekdayLabel } from './add-medication-use-case';
+import { getFrequencySummary, getWeekdayLabel, resolveFrequencyPreset } from './add-medication-use-case';
 
 describe('add-medication-use-case/getFrequencySummary', () => {
   it('turkce metni interval ve doz sayisina gore uretir', () => {
@@ -21,5 +21,13 @@ describe('add-medication-use-case/getFrequencySummary', () => {
     expect(getWeekdayLabel(1, 'en')).toMatch(/Mon/i);
     expect(getWeekdayLabel(2, 'en')).toMatch(/Tue/i);
     expect(getWeekdayLabel(0, 'en')).toMatch(/Sun/i);
+  });
+
+  it('hazir siklik secimi kurallarini cozer', () => {
+    expect(resolveFrequencyPreset('day', 1, 1)).toBe('once-daily');
+    expect(resolveFrequencyPreset('day', 1, 2)).toBe('twice-daily');
+    expect(resolveFrequencyPreset('as-needed', 1, 1)).toBe('as-needed');
+    expect(resolveFrequencyPreset('day', 2, 1)).toBe('custom');
+    expect(resolveFrequencyPreset('week', 1, 1)).toBe('custom');
   });
 });

@@ -30,7 +30,7 @@ export function useProfileScreenState({ locale }: UseProfileScreenStateInput) {
 
   const localizedBirthDate = useMemo(() => {
     if (!birthDate) {
-      return locale === 'tr' ? 'Seçiniz' : 'Select';
+      return t.select;
     }
 
     const parsed = parseProfileDate(birthDate);

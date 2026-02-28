@@ -142,6 +142,23 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         var prescriptionReminders = await dbContext.PrescriptionReminders.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
         var healthEvents = await dbContext.HealthEvents.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
         var notificationDeliveries = await dbContext.NotificationDeliveries.Where(x => x.MedicationId == id).ToListAsync(cancellationToken);
+        var notificationActionDeliveryIds = await dbContext.NotificationActions
+            .Where(x => x.MetadataJson != null && x.MetadataJson.Contains($"\"medicationId\":\"{id}\""))
+            .Select(x => x.DeliveryId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (notificationActionDeliveryIds.Count > 0)
+        {
+            var metadataLinkedDeliveries = await dbContext.NotificationDeliveries
+                .Where(x => notificationActionDeliveryIds.Contains(x.Id))
+                .ToListAsync(cancellationToken);
+            notificationDeliveries = notificationDeliveries
+                .Concat(metadataLinkedDeliveries)
+                .GroupBy(x => x.Id)
+                .Select(group => group.First())
+                .ToList();
+        }
 
         if (schedules.Count > 0)
         {

@@ -15,37 +15,21 @@ type NotificationHistoryScreenProps = {
   onBack: () => void;
 };
 
-function actionLabel(item: NotificationHistoryItem, locale: Locale): string {
+function actionLabel(item: NotificationHistoryItem, t: ReturnType<typeof getTranslations>): string {
   const action = item.lastAction;
-  if (locale === 'tr') {
-    if (action === 'take-now') {
-      return 'Alındı';
-    }
-    if (action === 'skip') {
-      return 'Atlandı';
-    }
-    if (action === 'snooze') {
-      return `${item.snoozeMinutes ?? 5} dk ertelendi`;
-    }
-    if (action === 'open') {
-      return 'Açıldı';
-    }
-    return 'Gösterildi';
-  }
-
   if (action === 'take-now') {
-    return 'Taken';
+    return t.notificationActionTaken;
   }
   if (action === 'skip') {
-    return 'Skipped';
+    return t.notificationActionSkipped;
   }
   if (action === 'snooze') {
-    return `Snoozed ${item.snoozeMinutes ?? 5} min`;
+    return t.notificationActionSnoozed.replace('{{minutes}}', `${item.snoozeMinutes ?? 5}`);
   }
   if (action === 'open') {
-    return 'Opened';
+    return t.notificationActionOpened;
   }
-  return 'Shown';
+  return t.notificationActionShown;
 }
 
 export function NotificationHistoryScreen({ locale, onBack }: NotificationHistoryScreenProps) {
@@ -63,11 +47,11 @@ export function NotificationHistoryScreen({ locale, onBack }: NotificationHistor
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={locale === 'tr' ? 'Bildirim Geçmişi' : 'Notification History'} leftAction={{ icon: 'back', onPress: onBack }} />
+      <ScreenHeader title={t.notificationHistory} leftAction={{ icon: 'back', onPress: onBack }} />
 
       {sortedItems.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>{locale === 'tr' ? 'Henüz bildirim geçmişi yok' : 'No notification history yet'}</Text>
+          <Text style={styles.emptyTitle}>{t.notificationHistoryEmpty}</Text>
           <Text style={styles.emptyDescription}>{t.noDetailsAvailable}</Text>
         </View>
       ) : (
@@ -79,7 +63,7 @@ export function NotificationHistoryScreen({ locale, onBack }: NotificationHistor
                 <Text style={styles.subtitle}>{`${item.scheduledTime} • ${item.medicationDetails}`}</Text>
               </View>
               <View style={styles.rowMeta}>
-                <Text style={styles.action}>{actionLabel(item, locale)}</Text>
+                <Text style={styles.action}>{actionLabel(item, t)}</Text>
                 <Text style={styles.time}>{new Date(item.updatedAt).toLocaleString()}</Text>
               </View>
             </View>

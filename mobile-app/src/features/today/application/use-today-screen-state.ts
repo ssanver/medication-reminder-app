@@ -26,7 +26,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const [profileGender, setProfileGender] = useState('');
   const [doses, setDoses] = useState<Awaited<ReturnType<typeof getScheduledDosesForDate>>>([]);
 
-  const shortDisplayName = toShortDisplayName(profileName) || (locale === 'tr' ? 'Kullanıcı' : 'User');
+  const shortDisplayName = toShortDisplayName(profileName) || t.user;
   const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
 
   useEffect(() => {
@@ -77,12 +77,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const isTakenFilter = filter === 'Taken';
   const isMissedFilter = filter === 'Missed';
   const showFilteredEmptyWarningOnly = (isMissedFilter || isTakenFilter) && filtered.length === 0 && hasAnyDoseForSelectedDate;
-  const filteredEmptyTitle =
-    isMissedFilter
-      ? t.noMissedMedicationTitle
-      : locale === 'tr'
-        ? 'Alınan ilacınız bulunmamaktadır'
-        : 'No taken medications were found';
+  const filteredEmptyTitle = isMissedFilter ? t.noMissedMedicationTitle : t.noTakenMedicationTitle;
 
   const dateDelta = useMemo(() => {
     const normalize = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -107,14 +102,14 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
 
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale, weekStartsOn), [selectedDate, locale, weekStartsOn]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
-  const sponsoredAd = useMemo(() => getSponsoredAd(locale === 'tr' ? 'tr' : 'en'), [locale]);
+  const sponsoredAd = useMemo(() => getSponsoredAd(locale), [locale]);
   const sectionTitle = useMemo(() => {
     const localeTag = getLocaleTag(locale);
     const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
     if (dateDelta === 0) {
       return `${dateText} ${t.todaysMedication}`;
     }
-    return locale === 'tr' ? `${dateText} ilaçları` : `${dateText} medications`;
+    return t.medicationsForDate.replace('{{date}}', dateText);
   }, [selectedDate, locale, dateDelta, t.todaysMedication]);
 
   return {

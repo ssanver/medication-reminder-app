@@ -177,5 +177,19 @@
   "selectLanguage": "Select language",
   "notificationTitle": "Medication Reminder",
   "notificationBodyTemplate": "Take {{name}} in {{minutes}} minutes.",
-  "saveChanges": "Save changes"
+  "saveChanges": "Save changes",
+  "weekStartsOn": "Week starts on",
+  "weekStartsOnMonday": "Monday",
+  "weekStartsOnSunday": "Sunday",
+  "intervalType": "Interval type",
+  "frequencyOnceDaily": "Once daily",
+  "frequencyTwiceDaily": "Twice daily",
+  "frequencyMoreOptions": "More options",
+  "repeatEveryDay": "Every day",
+  "repeatEveryNDays": "Every {{count}} days",
+  "repeatEveryWeek": "Every week",
+  "repeatEveryNWeeks": "Every {{count}} weeks",
+  "daysOfWeek": "Days of week",
+  "selectDaysHint": "Select {{count}} day(s). Start date must be one of selected days: {{date}}",
+  "timesPerSelectedDay": "How many times that day"
 }

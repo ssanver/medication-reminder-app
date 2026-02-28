@@ -2,7 +2,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { useFeedbackScreenState } from '../features/feedback/application/use-feedback-screen-state';
-import { type Locale } from '../features/localization/localization';
+import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
 type FeedbackScreenProps = {
@@ -11,6 +11,7 @@ type FeedbackScreenProps = {
 };
 
 export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
+  const t = getTranslations(locale);
   const {
     category,
     setCategory,
@@ -27,35 +28,35 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={locale === 'tr' ? 'Bize Yazın' : 'Contact Us'} leftAction={{ icon: 'back', onPress: onBack }} />
+      <ScreenHeader title={t.contactUs} leftAction={{ icon: 'back', onPress: onBack }} />
 
       <View style={styles.card}>
-        <Text style={styles.label}>{locale === 'tr' ? 'Konu' : 'Subject'}</Text>
+        <Text style={styles.label}>{t.feedbackSubject}</Text>
         <Pressable style={styles.combo} onPress={() => setCategoryPickerOpen(true)}>
           <Text style={styles.comboText}>{selectedCategoryLabel}</Text>
           <Text style={styles.chevron}>{'>'}</Text>
         </Pressable>
 
-        <Text style={styles.label}>{locale === 'tr' ? 'Mesaj' : 'Message'}</Text>
+        <Text style={styles.label}>{t.feedbackMessage}</Text>
         <TextInput
           value={message}
           onChangeText={setMessage}
           multiline
           numberOfLines={6}
           textAlignVertical="top"
-          placeholder={locale === 'tr' ? 'Mesajınızı yazın (min 10 karakter)' : 'Write your message (min 10 chars)'}
+          placeholder={t.feedbackMessagePlaceholder}
           placeholderTextColor={theme.colors.semantic.textMuted}
           style={styles.textArea}
         />
 
         {statusText.length > 0 ? <Text style={styles.status}>{statusText}</Text> : null}
-        <Button label={locale === 'tr' ? 'Gönder' : 'Submit'} onPress={() => void send()} disabled={!canSubmit} />
+        <Button label={t.feedbackSubmit} onPress={() => void send()} disabled={!canSubmit} />
       </View>
 
       <Modal transparent visible={categoryPickerOpen} animationType="slide" onRequestClose={() => setCategoryPickerOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setCategoryPickerOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            <Text style={styles.sheetTitle}>{locale === 'tr' ? 'Konu seçin' : 'Select subject'}</Text>
+            <Text style={styles.sheetTitle}>{t.feedbackSelectSubject}</Text>
             {categories.map((item) => {
               const selected = item.key === category;
               return (

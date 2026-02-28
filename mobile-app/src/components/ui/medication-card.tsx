@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppFontScale } from '../../features/accessibility/app-font-scale';
+import { getTranslations, type Locale } from '../../features/localization/localization';
 import { theme } from '../../theme';
 import { Button } from './button';
 
 type MedicationCardProps = {
+  locale?: Locale;
   name: string;
   details: string;
   schedule: string;
@@ -24,6 +26,7 @@ type MedicationCardProps = {
 };
 
 export function MedicationCard({
+  locale = 'en',
   name,
   details,
   schedule,
@@ -31,7 +34,7 @@ export function MedicationCard({
   active = true,
   showToggle,
   showAction,
-  actionLabel = 'Take',
+  actionLabel,
   actionVariant = 'filled',
   secondaryActionLabel,
   onSecondaryActionPress,
@@ -42,13 +45,15 @@ export function MedicationCard({
   onActionPress,
   onPress,
 }: MedicationCardProps) {
+  const t = getTranslations(locale);
+  const resolvedActionLabel = actionLabel ?? t.take;
   const fontScale = useAppFontScale();
   return (
     <Pressable style={[styles.card, compact && styles.cardCompact, !active && styles.cardDisabled]} onPress={onPress}>
       {statusBadge ? (
         <View style={[styles.badge, statusBadge === 'missed' ? styles.badgeMissed : styles.badgeOnTime]}>
           <Text style={[styles.badgeText, { fontSize: theme.typography.captionScale.mRegular.fontSize * fontScale }]}>
-            {statusBadge === 'missed' ? 'Missed' : '2h 23m'}
+            {statusBadge === 'missed' ? t.missed : t.onTime}
           </Text>
         </View>
       ) : null}
@@ -89,7 +94,7 @@ export function MedicationCard({
             </Pressable>
           ) : null}
           <Button
-            label={actionLabel}
+            label={resolvedActionLabel}
             size="xs"
             variant={actionVariant === 'success' ? 'success' : actionVariant === 'danger' ? 'danger' : 'filled'}
             onPress={onActionPress ?? (() => undefined)}

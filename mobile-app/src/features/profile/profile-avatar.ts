@@ -4,7 +4,7 @@ function normalizeGender(value: string): string {
   return value.trim().toLowerCase();
 }
 
-export function resolveProfileAvatarEmoji(gender: string, locale: Locale): string {
+export function resolveProfileAvatarEmoji(gender: string, _locale: Locale): string {
   const normalized = normalizeGender(gender);
 
   if (normalized === 'male' || normalized === 'erkek') {
@@ -15,5 +15,5 @@ export function resolveProfileAvatarEmoji(gender: string, locale: Locale): strin
     return '👩';
   }
 
-  return locale === 'tr' ? '👤' : '👤';
+  return '👤';
 }

@@ -80,6 +80,27 @@ public sealed class UserProfileControllerTests
         Assert.Equal("https://example.com/me.jpg", account.PhotoUri);
     }
 
+    [Fact]
+    public async Task Upsert_ShouldNotCreateUserAccount_WhenUsingDefaultGuestReference()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = new UserProfileController(dbContext, CreateConfiguration());
+
+        var result = await controller.Upsert(new UpsertUserProfileRequest
+        {
+            FullName = "Guest User",
+            BirthDate = "1990-01-01",
+            Gender = "unknown",
+            PhotoUri = "https://example.com/guest.jpg",
+        }, null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<UserProfileResponse>(ok.Value);
+        Assert.Equal("guest@pillmind.local", payload.Email);
+        Assert.Equal("Guest User", payload.FullName);
+        Assert.Equal(0, await dbContext.UserAccounts.CountAsync());
+    }
+
     private static AppDbContext CreateInMemoryContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

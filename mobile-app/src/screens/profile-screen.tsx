@@ -68,7 +68,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
           <View style={styles.fieldWrap}>
             <Text style={styles.fieldLabel}>{t.gender}</Text>
             <Pressable style={styles.combo} onPress={() => setSheet('gender')}>
-              <Text style={styles.comboText}>{gender || (locale === 'tr' ? 'Seçiniz' : 'Select')}</Text>
+              <Text style={styles.comboText}>{gender || t.select}</Text>
               <Text style={styles.chevron}>{'>'}</Text>
             </Pressable>
           </View>

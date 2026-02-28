@@ -209,6 +209,31 @@ public sealed class MedicationsControllerTests
             CreatedAt = DateTimeOffset.UtcNow,
         });
 
+        var metadataDeliveryId = Guid.NewGuid();
+        dbContext.NotificationDeliveries.Add(new api.models.NotificationDelivery
+        {
+            Id = metadataDeliveryId,
+            UserReference = "user@example.com",
+            MedicationId = null,
+            ScheduledAt = DateTimeOffset.UtcNow,
+            SentAt = DateTimeOffset.UtcNow,
+            Channel = "ios-local",
+            Status = "sent",
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        dbContext.NotificationActions.Add(new api.models.NotificationAction
+        {
+            Id = Guid.NewGuid(),
+            DeliveryId = metadataDeliveryId,
+            UserReference = "user@example.com",
+            ActionType = "open",
+            ActionAt = DateTimeOffset.UtcNow,
+            ClientPlatform = "ios",
+            AppVersion = "1.0.0",
+            MetadataJson = $"{{\"medicationId\":\"{medicationId}\",\"dateKey\":\"2026-02-20\",\"scheduledTime\":\"08:00\"}}",
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+
         await dbContext.SaveChangesAsync();
 
         var result = await controller.Delete(medicationId);
@@ -221,6 +246,7 @@ public sealed class MedicationsControllerTests
         Assert.Equal(0, await dbContext.PrescriptionReminders.CountAsync());
         Assert.Equal(0, await dbContext.HealthEvents.CountAsync());
         Assert.Equal(0, await dbContext.NotificationDeliveries.CountAsync());
+        Assert.Equal(0, await dbContext.NotificationActions.CountAsync());
     }
 
     [Fact]

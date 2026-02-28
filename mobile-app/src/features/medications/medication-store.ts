@@ -12,8 +12,9 @@ export type Medication = {
   dosage: string;
   isBeforeMeal: boolean;
   frequencyLabel: string;
-  intervalUnit: 'day' | 'week';
+  intervalUnit: 'day' | 'week' | 'hour' | 'cycle' | 'as-needed';
   intervalCount: number;
+  cycleOffDays?: number;
   note: string;
   startDate: string;
   endDate?: string | null;
@@ -64,9 +65,25 @@ function parseDateKey(dateKey: string): Date {
   return new Date(`${dateKey}T00:00:00`);
 }
 
-function toFrequencyLabel(intervalUnit: 'day' | 'week', intervalCount: number): string {
+function toFrequencyLabel(
+  intervalUnit: Medication['intervalUnit'],
+  intervalCount: number,
+  cycleOffDays = 0,
+): string {
+  if (intervalUnit === 'as-needed') {
+    return 'As Needed';
+  }
+
+  if (intervalUnit === 'hour') {
+    return `Every ${Math.max(1, intervalCount)} Hour${Math.max(1, intervalCount) > 1 ? 's' : ''}`;
+  }
+
+  if (intervalUnit === 'cycle') {
+    return `Cycle ${Math.max(1, intervalCount)}/${Math.max(0, cycleOffDays)}`;
+  }
+
   if (intervalUnit === 'week') {
-    return intervalCount === 2 ? 'Every 14 Days' : 'Every 7 Days';
+    return intervalCount === 1 ? 'Every Week' : `Every ${intervalCount} Weeks`;
   }
   if (intervalCount === 3) {
     return 'Every 3 Days';
@@ -77,8 +94,23 @@ function toFrequencyLabel(intervalUnit: 'day' | 'week', intervalCount: number): 
   return 'Every 1 Day';
 }
 
-function parseRuleFromFrequencyLabel(label: string): { intervalUnit: Medication['intervalUnit']; intervalCount: number } {
+function parseRuleFromFrequencyLabel(label: string): { intervalUnit: Medication['intervalUnit']; intervalCount: number; cycleOffDays?: number } {
   const normalized = label.trim().toLowerCase();
+  if (normalized.includes('as needed')) {
+    return { intervalUnit: 'as-needed', intervalCount: 1 };
+  }
+  if (normalized.includes('hour')) {
+    const found = normalized.match(/(\d+)/);
+    return { intervalUnit: 'hour', intervalCount: Math.max(1, Number(found?.[1] ?? 1)) };
+  }
+  if (normalized.startsWith('cycle')) {
+    const found = normalized.match(/(\d+)\D+(\d+)/);
+    return {
+      intervalUnit: 'cycle',
+      intervalCount: Math.max(1, Number(found?.[1] ?? 21)),
+      cycleOffDays: Math.max(0, Number(found?.[2] ?? 7)),
+    };
+  }
   if (normalized.includes('14')) {
     return { intervalUnit: 'week', intervalCount: 2 };
   }
@@ -117,6 +149,7 @@ function normalizeMedication(payload: Medication): Medication {
     time: normalizedTimes[0] ?? '09:00',
     times: normalizedTimes,
     weeklyDays,
+    cycleOffDays: Math.max(0, Number(payload.cycleOffDays ?? 0)),
   };
 }
 
@@ -193,22 +226,29 @@ function parseReminderTime(time: string): string {
   return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
 }
 
-function weekdayNumberToName(weekday: number): 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' {
-  const dayNames: Array<'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'> = [
-    'sunday',
-    'monday',
-    'tuesday',
-    'wednesday',
-    'thursday',
-    'friday',
-    'saturday',
+function weekdayNumberToName(weekday: number): 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' {
+  const dayNames: Array<'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat'> = [
+    'sun',
+    'mon',
+    'tue',
+    'wed',
+    'thu',
+    'fri',
+    'sat',
   ];
-  return dayNames[weekday] ?? 'monday';
+  return dayNames[weekday] ?? 'mon';
 }
 
 function parseWeekdayName(name: string): number | null {
   const normalized = name.trim().toLowerCase();
   const map: Record<string, number> = {
+    sun: 0,
+    mon: 1,
+    tue: 2,
+    wed: 3,
+    thu: 4,
+    fri: 5,
+    sat: 6,
     sunday: 0,
     monday: 1,
     tuesday: 2,
@@ -238,10 +278,46 @@ function toApiSchedules(medication: Medication): ApiSaveMedicationRequest['sched
         .map((weekday) => weekdayNumberToName(weekday))
         .join(',')
     : undefined;
+
+  if (medication.intervalUnit === 'as-needed') {
+    return [
+      {
+        repeatType: 'as-needed',
+        intervalCount: 1,
+        reminderTime: formatReminderTime(times[0] ?? '09:00'),
+        daysOfWeek: null,
+      },
+    ];
+  }
+
+  if (medication.intervalUnit === 'hour') {
+    return [
+      {
+        repeatType: 'hourly',
+        intervalCount: Math.max(1, medication.intervalCount),
+        reminderTime: formatReminderTime(times[0] ?? '09:00'),
+        daysOfWeek: null,
+      },
+    ];
+  }
+
+  if (medication.intervalUnit === 'cycle') {
+    const offDays = Math.max(0, Number(medication.cycleOffDays ?? 7));
+    return [
+      {
+        repeatType: 'cycle',
+        intervalCount: Math.max(1, medication.intervalCount),
+        reminderTime: formatReminderTime(times[0] ?? '09:00'),
+        daysOfWeek: `off:${offDays}`,
+      },
+    ];
+  }
+
   const repeatType = isWeekly ? 'weekly' : 'daily';
+  const intervalCount = Math.max(1, medication.intervalCount);
   return times.map((time) => ({
     repeatType,
-    intervalCount: Math.max(1, medication.intervalCount),
+    intervalCount,
     reminderTime: formatReminderTime(time),
     daysOfWeek,
   }));
@@ -262,8 +338,13 @@ function toApiSaveMedicationRequest(medication: Medication): ApiSaveMedicationRe
 function fromApiMedication(item: ApiMedication): Medication {
   const schedules = Array.isArray(item.schedules) ? item.schedules : [];
   const times = schedules.map((schedule) => parseReminderTime(schedule.reminderTime));
-  const hasWeeklySchedule = schedules.some((schedule) => schedule.repeatType?.toLowerCase() === 'weekly');
+  const primaryRepeatType = schedules[0]?.repeatType?.toLowerCase() ?? 'daily';
+  const hasWeeklySchedule = primaryRepeatType === 'weekly';
+  const isHourlySchedule = primaryRepeatType === 'hourly';
+  const isCycleSchedule = primaryRepeatType === 'cycle';
+  const isAsNeededSchedule = primaryRepeatType === 'as-needed';
   const intervalCount = Math.max(1, Number(schedules[0]?.intervalCount ?? 1));
+  const cycleOffDays = isCycleSchedule ? Math.max(0, Number((schedules[0]?.daysOfWeek ?? 'off:0').split(':')[1] ?? 0)) : 0;
   const weeklyDays = hasWeeklySchedule
     ? Array.from(
         new Set(
@@ -274,8 +355,16 @@ function fromApiMedication(item: ApiMedication): Medication {
         ),
       ).sort((a, b) => a - b)
     : undefined;
-  const intervalUnit: Medication['intervalUnit'] = hasWeeklySchedule ? 'week' : 'day';
-  const frequencyLabel = toFrequencyLabel(intervalUnit, intervalCount);
+  const intervalUnit: Medication['intervalUnit'] = isAsNeededSchedule
+    ? 'as-needed'
+    : isHourlySchedule
+      ? 'hour'
+      : isCycleSchedule
+        ? 'cycle'
+        : hasWeeklySchedule
+          ? 'week'
+          : 'day';
+  const frequencyLabel = toFrequencyLabel(intervalUnit, intervalCount, cycleOffDays);
   const form = item.usageType?.trim() ? item.usageType.trim() : 'Capsule';
 
   return normalizeMedication({
@@ -288,6 +377,7 @@ function fromApiMedication(item: ApiMedication): Medication {
     frequencyLabel,
     intervalUnit,
     intervalCount,
+    cycleOffDays,
     note: '',
     startDate: item.startDate,
     endDate: item.endDate ?? null,
@@ -395,6 +485,7 @@ export async function addMedication(payload: {
   iconEmoji?: string;
   intervalUnit: Medication['intervalUnit'];
   intervalCount: number;
+  cycleOffDays?: number;
   dosage: string;
   isBeforeMeal: boolean;
   note: string;
@@ -418,6 +509,7 @@ export async function addMedication(payload: {
     frequencyLabel: toFrequencyLabel(payload.intervalUnit, payload.intervalCount),
     intervalUnit: payload.intervalUnit,
     intervalCount: Math.max(1, payload.intervalCount),
+    cycleOffDays: Math.max(0, Number(payload.cycleOffDays ?? 0)),
     note: payload.note.trim(),
     startDate: payload.startDate ?? today,
     endDate: payload.endDate ?? null,
@@ -456,6 +548,7 @@ export async function updateMedication(
     Pick<
       Medication,
       'name' | 'form' | 'iconEmoji' | 'dosage' | 'isBeforeMeal' | 'frequencyLabel' | 'intervalUnit' | 'intervalCount' | 'note' | 'startDate' | 'endDate' | 'time' | 'times' | 'weeklyDays' | 'totalQuantity' | 'active'
+      | 'cycleOffDays'
     >
   >,
 ): Promise<void> {
@@ -471,11 +564,13 @@ export async function updateMedication(
   const fallbackRuleFromLabel = patch.frequencyLabel ? parseRuleFromFrequencyLabel(patch.frequencyLabel) : null;
   const resolvedIntervalUnit = patch.intervalUnit ?? fallbackRuleFromLabel?.intervalUnit ?? next.intervalUnit;
   const resolvedIntervalCount = Math.max(1, patch.intervalCount ?? fallbackRuleFromLabel?.intervalCount ?? next.intervalCount);
+  const resolvedCycleOffDays = Math.max(0, patch.cycleOffDays ?? fallbackRuleFromLabel?.cycleOffDays ?? next.cycleOffDays ?? 0);
   const nextWithRule: Medication = {
     ...next,
     intervalUnit: resolvedIntervalUnit,
     intervalCount: resolvedIntervalCount,
-    frequencyLabel: toFrequencyLabel(resolvedIntervalUnit, resolvedIntervalCount),
+    cycleOffDays: resolvedCycleOffDays,
+    frequencyLabel: toFrequencyLabel(resolvedIntervalUnit, resolvedIntervalCount, resolvedCycleOffDays),
   };
   try {
     const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {

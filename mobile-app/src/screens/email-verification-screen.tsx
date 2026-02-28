@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { type Locale } from '../features/localization/localization';
+import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
 type EmailVerificationScreenProps = {
@@ -12,7 +12,6 @@ type EmailVerificationScreenProps = {
   onBack: () => void;
   onVerify: (code: string) => Promise<{ ok: boolean; message: string }>;
   onResend: () => Promise<{ ok: boolean; message: string; cooldownSeconds: number }>;
-  onCancelSignUp: () => void;
 };
 
 export function EmailVerificationScreen({
@@ -22,8 +21,8 @@ export function EmailVerificationScreen({
   onBack,
   onVerify,
   onResend,
-  onCancelSignUp,
 }: EmailVerificationScreenProps) {
+  const t = getTranslations(locale);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,7 +47,7 @@ export function EmailVerificationScreen({
 
   async function handleVerify() {
     if (code.trim().length !== 6) {
-      setMessage(locale === 'tr' ? 'Lütfen 6 haneli kod girin.' : 'Please enter a 6-digit code.');
+      setMessage(t.enterSixDigitCode);
       return;
     }
 
@@ -76,7 +75,7 @@ export function EmailVerificationScreen({
   return (
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <ScreenHeader title={locale === 'tr' ? 'E-posta Doğrulama' : 'Email Verification'} leftAction={{ icon: 'back', onPress: onBack }} />
+        <ScreenHeader title={t.emailVerification} leftAction={{ icon: 'back', onPress: onBack }} />
 
         <View style={styles.card}>
           <View style={styles.badgeRow}>
@@ -85,49 +84,42 @@ export function EmailVerificationScreen({
             </View>
             <View style={styles.badgeTextWrap}>
               <Text style={styles.cardTitle}>
-                {locale === 'tr' ? 'Hesabınızı doğrulayın' : 'Verify your account'}
+                {t.verifyYourAccount}
               </Text>
               <Text style={styles.emailText}>{email}</Text>
             </View>
           </View>
 
           <View style={styles.infoBlock}>
-            <Text style={styles.infoLabel}>{locale === 'tr' ? 'Neden gerekli?' : 'Why this is required?'}</Text>
-            <Text style={styles.warningText}>
-              {locale === 'tr'
-                ? 'E-postanızı doğruladığınızda verileriniz güvenli şekilde hesabınıza bağlanır ve cihaz değiştirseniz bile korunur.'
-                : 'When you verify your email, your data is securely linked to your account and stays available across devices.'}
-            </Text>
+            <Text style={styles.infoLabel}>{t.whyRequired}</Text>
+            <Text style={styles.warningText}>{t.emailVerificationWhyBody}</Text>
           </View>
 
-          <Button label={locale === 'tr' ? 'Onay kodunu gir' : 'Enter verification code'} onPress={() => setSheetOpen(true)} />
+          <Button label={t.enterVerificationCode} onPress={() => setSheetOpen(true)} />
           <Button
             label={
               cooldownSeconds > 0
-                ? locale === 'tr'
-                  ? `Onay e-postasını yeniden gönder (${cooldownSeconds}s)`
-                  : `Resend verification email (${cooldownSeconds}s)`
-                : locale === 'tr'
-                  ? 'Onay e-postasını yeniden gönder'
-                  : 'Resend verification email'
+                ? t.resendVerificationEmailCountdown.replace('{{seconds}}', `${cooldownSeconds}`)
+                : t.resendVerificationEmail
             }
             variant="outlined"
             onPress={() => void handleResend()}
             disabled={cooldownSeconds > 0 || busy}
           />
-          <View style={styles.separator} />
-          <Button label={locale === 'tr' ? 'Kaydı iptal et' : 'Cancel sign up'} variant="danger" onPress={onCancelSignUp} />
           {message ? <Text style={styles.message}>{message}</Text> : null}
         </View>
       </ScrollView>
 
       <Modal transparent visible={sheetOpen} animationType="slide" onRequestClose={() => setSheetOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setSheetOpen(false)}>
+        <KeyboardAvoidingView
+          style={styles.overlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
+        >
+          <Pressable style={styles.backdrop} onPress={() => setSheetOpen(false)} />
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            <Text style={styles.sheetTitle}>{locale === 'tr' ? 'E-posta Doğrulama' : 'Email Verification'}</Text>
-            <Text style={styles.sheetDescription}>
-              {locale === 'tr' ? 'Mailinize gönderilen 6 haneli kodu girin.' : 'Enter the 6-digit code sent to your email.'}
-            </Text>
+            <Text style={styles.sheetTitle}>{t.emailVerification}</Text>
+            <Text style={styles.sheetDescription}>{t.emailCodePrompt}</Text>
             <TextInput
               value={code}
               onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, 6))}
@@ -136,21 +128,19 @@ export function EmailVerificationScreen({
               style={styles.codeInput}
               maxLength={6}
               textAlign="center"
+              autoFocus
+              returnKeyType="done"
             />
-            <Button label={locale === 'tr' ? 'Doğrula' : 'Verify'} onPress={() => void handleVerify()} disabled={busy} />
+            <Button label={t.verify} onPress={() => void handleVerify()} disabled={busy} />
             <Pressable onPress={() => void handleResend()} disabled={cooldownSeconds > 0 || busy}>
               <Text style={[styles.resendText, (cooldownSeconds > 0 || busy) && styles.resendTextDisabled]}>
                 {cooldownSeconds > 0
-                  ? locale === 'tr'
-                    ? `Kodu yeniden gönder (${cooldownSeconds}s)`
-                    : `Resend code (${cooldownSeconds}s)`
-                  : locale === 'tr'
-                    ? 'Kodu yeniden gönder'
-                    : 'Resend code'}
+                  ? t.resendCodeCountdown.replace('{{seconds}}', `${cooldownSeconds}`)
+                  : t.resendCode}
               </Text>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -218,10 +208,6 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  separator: {
-    height: 1,
-    backgroundColor: theme.colors.semantic.divider,
-  },
   message: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[600],
@@ -229,15 +215,20 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
     backgroundColor: theme.colors.semantic.overlay,
+  },
+  backdrop: {
+    flex: 1,
   },
   sheet: {
     borderTopLeftRadius: theme.radius[24],
     borderTopRightRadius: theme.radius[24],
     backgroundColor: theme.colors.semantic.cardBackground,
+    minHeight: '50%',
+    maxHeight: '60%',
     padding: theme.spacing[16],
     gap: theme.spacing[8],
+    justifyContent: 'flex-start',
   },
   sheetTitle: {
     ...theme.typography.bodyScale.mMedium,

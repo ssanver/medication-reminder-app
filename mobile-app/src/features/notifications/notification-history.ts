@@ -212,7 +212,7 @@ async function ensureDeliveryId(payload: {
     correlationPrefix: 'notif-delivery',
     body: {
       userReference: payload.userReference,
-      medicationId: null,
+      medicationId: payload.medicationId,
       scheduledAt: toScheduledAt(payload.dateKey, payload.scheduledTime),
       sentAt: new Date().toISOString(),
       channel,
@@ -412,4 +412,21 @@ export async function recordNotificationHistory(payload: {
   } catch {
     // Local-first persistence remains source of truth if backend sync fails.
   }
+}
+
+export async function clearNotificationHistoryForMedication(medicationId: string): Promise<void> {
+  const normalizedMedicationId = medicationId.trim();
+  if (!normalizedMedicationId) {
+    return;
+  }
+
+  state = state.filter((item) => item.medicationId !== normalizedMedicationId);
+  emit();
+  await persist();
+
+  const deliveryMap = await readDeliveryMap();
+  const nextDeliveryMap = Object.fromEntries(
+    Object.entries(deliveryMap).filter(([key]) => !key.startsWith(`${normalizedMedicationId}-`)),
+  );
+  await writeDeliveryMap(nextDeliveryMap);
 }

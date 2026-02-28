@@ -6,6 +6,9 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
     {
         "daily",
         "weekly",
+        "hourly",
+        "cycle",
+        "as-needed",
     };
 
     public Task<IReadOnlyCollection<MedicationRecord>> ListAsync(CancellationToken cancellationToken = default)
@@ -117,6 +120,24 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         {
             throw new ArgumentException("DaysOfWeek is only supported for weekly repeat type.");
         }
+
+        if (schedule.RepeatType.Equals("hourly", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(schedule.DaysOfWeek))
+        {
+            throw new ArgumentException("DaysOfWeek is not supported for hourly repeat type.");
+        }
+
+        if (schedule.RepeatType.Equals("as-needed", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(schedule.DaysOfWeek))
+        {
+            throw new ArgumentException("DaysOfWeek is not supported for as-needed repeat type.");
+        }
+
+        if (schedule.RepeatType.Equals("cycle", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(schedule.DaysOfWeek) || !schedule.DaysOfWeek.Trim().StartsWith("off:", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("Cycle repeat type requires DaysOfWeek format off:<number>.");
+            }
+        }
     }
 
     private static SaveMedicationCommand NormalizeSaveCommand(SaveMedicationCommand command)
@@ -136,15 +157,27 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         {
             RepeatType = schedule.RepeatType.Trim().ToLowerInvariant(),
             IntervalCount = Math.Max(1, schedule.IntervalCount),
-            DaysOfWeek = NormalizeDaysOfWeek(schedule.DaysOfWeek),
+            DaysOfWeek = NormalizeDaysOfWeek(schedule.RepeatType, schedule.DaysOfWeek),
         };
     }
 
-    private static string? NormalizeDaysOfWeek(string? daysOfWeek)
+    private static string? NormalizeDaysOfWeek(string repeatType, string? daysOfWeek)
     {
         if (string.IsNullOrWhiteSpace(daysOfWeek))
         {
             return null;
+        }
+
+        if (repeatType.Trim().Equals("cycle", StringComparison.OrdinalIgnoreCase))
+        {
+            var raw = daysOfWeek.Trim();
+            if (!raw.StartsWith("off:", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var numberText = raw[4..];
+            return int.TryParse(numberText, out var value) ? $"off:{Math.Max(0, value)}" : "off:0";
         }
 
         return string.Join(

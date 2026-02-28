@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { loadAuthSession } from '../auth-session-store';
 import { changePassword } from '../email-auth-service';
-import { type Locale } from '../../localization/localization';
+import { getTranslations, type Locale } from '../../localization/localization';
 
 type UseChangePasswordScreenStateInput = {
   locale: Locale;
@@ -11,6 +11,7 @@ type UseChangePasswordScreenStateInput = {
 };
 
 export function useChangePasswordScreenState({ locale, t }: UseChangePasswordScreenStateInput) {
+  const translations = getTranslations(locale);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,14 +34,14 @@ export function useChangePasswordScreenState({ locale, t }: UseChangePasswordScr
 
     if (newPassword.trim() !== confirmPassword.trim()) {
       setMessage('');
-      setErrorText(locale === 'tr' ? 'Yeni şifre ve tekrar şifre aynı olmalıdır.' : 'New password and confirmation must match.');
+      setErrorText(translations.newPasswordMismatch);
       return;
     }
 
     const session = await loadAuthSession();
     if (!session.email) {
       setMessage('');
-      setErrorText(locale === 'tr' ? 'Oturum e-posta bilgisi bulunamadı.' : 'Session email was not found.');
+      setErrorText(translations.sessionEmailNotFound);
       return;
     }
 
@@ -52,12 +53,12 @@ export function useChangePasswordScreenState({ locale, t }: UseChangePasswordScr
         currentPassword,
         newPassword,
       });
-      setMessage(locale === 'tr' ? 'Şifre başarıyla güncellendi.' : 'Password updated successfully.');
+      setMessage(translations.passwordUpdated);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      const value = error instanceof Error ? error.message : locale === 'tr' ? 'Şifre güncelleme başarısız.' : 'Password update failed.';
+      const value = error instanceof Error ? error.message : translations.passwordUpdateFailed;
       setMessage('');
       setErrorText(value);
     } finally {

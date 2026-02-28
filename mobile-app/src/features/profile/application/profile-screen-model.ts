@@ -1,4 +1,4 @@
-import type { Locale } from '../../localization/localization';
+import { getTranslations, type Locale } from '../../localization/localization';
 
 export function formatProfileDate(date: Date): string {
   const year = date.getFullYear();
@@ -17,9 +17,6 @@ export function parseProfileDate(value: string): Date {
 }
 
 export function getProfileGenderOptions(locale: Locale): string[] {
-  if (locale === 'tr') {
-    return ['Kadın', 'Erkek', 'Belirtmek istemiyorum'];
-  }
-
-  return ['Female', 'Male', 'Prefer not to say'];
+  const t = getTranslations(locale);
+  return [t.genderFemale, t.genderMale, t.genderPreferNotToSay];
 }

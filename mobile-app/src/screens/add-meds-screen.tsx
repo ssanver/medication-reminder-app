@@ -13,10 +13,12 @@ import {
   dosesPerDayOptions,
   formOptions,
   formatDate,
-  getFrequencySummary,
+  getAdvancedFrequencySummary,
   getOrderedWeekdayOptions,
+  resolveFrequencyPreset,
   getWeekdayLabel,
   hourOptions,
+  hourIntervalOptions,
   medicationIconOptions,
   minuteOptions,
   parseDateKey,
@@ -24,9 +26,12 @@ import {
   shiftMonth,
   splitTime,
   steps,
+  type FrequencyPreset,
   type IntervalUnit,
   type WizardStep,
   weekIntervalOptions,
+  cycleOnDayOptions,
+  cycleOffDayOptions,
   type WeekStartsOn,
 } from '../features/medications/add-medication-use-case';
 import { searchMedicineCatalog } from '../features/medications/medicine-catalog-service';
@@ -66,8 +71,11 @@ export function AddMedsScreen({
   const [isBeforeMeal, setIsBeforeMeal] = useState(false);
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
   const [intervalCount, setIntervalCount] = useState<number>(1);
+  const [cycleOffDays, setCycleOffDays] = useState<number>(7);
+  const [advancedMode, setAdvancedMode] = useState<'interval' | 'multi' | 'weekdays' | 'cycle' | 'as-needed'>('interval');
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1]);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
+  const [forceCustomFrequency, setForceCustomFrequency] = useState(false);
   const [startDate, setStartDate] = useState(formatDate(new Date()));
   const [endDate, setEndDate] = useState(formatDate(new Date()));
   const [useEndDate, setUseEndDate] = useState(false);
@@ -113,11 +121,35 @@ export function AddMedsScreen({
   );
   const orderedWeekdays = useMemo(() => getOrderedWeekdayOptions(weekStartsOn), [weekStartsOn]);
   const selectedWeekday = selectedWeekdays[0] ?? 1;
-  const dayInterval = useMemo(() => (intervalUnit === 'week' ? intervalCount * 7 : intervalCount), [intervalUnit, intervalCount]);
-  const effectiveStartDate = useMemo(
-    () => (intervalUnit === 'week' ? alignDateToWeekday(startDate, selectedWeekday) : startDate),
-    [intervalUnit, startDate, selectedWeekday],
+  const resolvedFrequencyPreset = useMemo<FrequencyPreset>(
+    () => resolveFrequencyPreset(intervalUnit, intervalCount, dosesPerDay),
+    [dosesPerDay, intervalCount, intervalUnit],
   );
+  const isCustomFrequency = forceCustomFrequency || resolvedFrequencyPreset === 'custom';
+  const frequencySummary = useMemo(
+    () =>
+      getAdvancedFrequencySummary({
+        intervalUnit,
+        intervalCount,
+        dosesPerDay,
+        cycleOnDays: intervalCount,
+        cycleOffDays,
+        locale,
+      }),
+    [cycleOffDays, dosesPerDay, intervalCount, intervalUnit, locale],
+  );
+  const effectiveStartDate = useMemo(() => {
+    if (intervalUnit !== 'week') {
+      return startDate;
+    }
+
+    const currentWeekday = parseDateKey(startDate).getDay();
+    if (selectedWeekdays.includes(currentWeekday)) {
+      return startDate;
+    }
+
+    return alignDateToWeekday(startDate, selectedWeekday);
+  }, [intervalUnit, selectedWeekday, selectedWeekdays, startDate]);
   const localizedEffectiveStartDate = useMemo(() => {
     const parsed = parseDateKey(effectiveStartDate);
     return parsed.toLocaleDateString(getLocaleTag(locale), {
@@ -142,11 +174,14 @@ export function AddMedsScreen({
       return;
     }
 
-    const aligned = alignDateToWeekday(startDate, selectedWeekday);
-    if (aligned !== startDate) {
-      setStartDate(aligned);
+    const currentWeekday = parseDateKey(startDate).getDay();
+    if (!selectedWeekdays.includes(currentWeekday)) {
+      const aligned = alignDateToWeekday(startDate, selectedWeekday);
+      if (aligned !== startDate) {
+        setStartDate(aligned);
+      }
     }
-  }, [intervalUnit, selectedWeekday, startDate]);
+  }, [intervalUnit, selectedWeekday, selectedWeekdays, startDate]);
 
   useEffect(() => {
     if (intervalUnit !== 'week') {
@@ -182,12 +217,13 @@ export function AddMedsScreen({
     setIsBeforeMeal(Boolean(editingMedication.isBeforeMeal));
     setIntervalUnit(editingMedication.intervalUnit ?? 'day');
     setIntervalCount(Math.max(1, editingMedication.intervalCount ?? 1));
+    setCycleOffDays(Math.max(0, editingMedication.cycleOffDays ?? 7));
     setSelectedWeekdays(
       Array.isArray(editingMedication.weeklyDays) && editingMedication.weeklyDays.length > 0
         ? editingMedication.weeklyDays
         : [parseDateKey(editingMedication.startDate).getDay()],
     );
-    setDosesPerDay(Math.min(3, Math.max(1, presetTimes.length)));
+    setDosesPerDay(Math.min(6, Math.max(1, presetTimes.length)));
     setStartDate(editingMedication.startDate);
     setUseEndDate(Boolean(editingMedication.endDate));
     setEndDate(editingMedication.endDate ?? editingMedication.startDate);
@@ -196,10 +232,34 @@ export function AddMedsScreen({
         ? `${editingMedication.totalQuantity}`
         : '',
     );
-    setDoseTimes([...presetTimes, ...defaultDoseTimes].slice(0, 3));
+    setDoseTimes([...presetTimes, ...defaultDoseTimes].slice(0, 6));
     setNote(editingMedication.note ?? '');
+    setAdvancedMode(
+      editingMedication.intervalUnit === 'as-needed'
+        ? 'as-needed'
+        : editingMedication.intervalUnit === 'cycle'
+          ? 'cycle'
+          : editingMedication.intervalUnit === 'week'
+            ? 'weekdays'
+            : editingMedication.intervalUnit === 'day' && Math.max(1, presetTimes.length) > 2
+              ? 'multi'
+              : 'interval',
+    );
+    setForceCustomFrequency(
+      resolveFrequencyPreset(
+        editingMedication.intervalUnit ?? 'day',
+        Math.max(1, editingMedication.intervalCount ?? 1),
+        Math.min(3, Math.max(1, presetTimes.length)),
+      ) === 'custom',
+    );
     setStep('name');
   }, [editingMedication, mode]);
+
+  useEffect(() => {
+    if (resolvedFrequencyPreset !== 'custom') {
+      setForceCustomFrequency(false);
+    }
+  }, [resolvedFrequencyPreset]);
 
   useEffect(() => {
     const query = name.trim();
@@ -222,7 +282,7 @@ export function AddMedsScreen({
     (step === 'form-dose' && form.length > 0) ||
     (step === 'frequency' &&
       Boolean(startDate) &&
-      (intervalUnit !== 'week' || selectedWeekdays.length === intervalCount) &&
+      (intervalUnit !== 'week' || selectedWeekdays.length >= 1) &&
       selectedDoseTimes.every((item) => item.trim().length > 0) &&
       !hasDuplicateTimes &&
       isEndDateValid) ||
@@ -255,6 +315,7 @@ export function AddMedsScreen({
         isBeforeMeal,
         intervalUnit,
         intervalCount,
+        cycleOffDays,
         note: note.trim(),
         startDate: effectiveStartDate,
         endDate: useEndDate ? endDate : null,
@@ -272,6 +333,7 @@ export function AddMedsScreen({
         isBeforeMeal,
         intervalUnit,
         intervalCount,
+        cycleOffDays,
         note: shouldSkipNote ? '' : note.trim(),
         startDate: effectiveStartDate,
         endDate: useEndDate ? endDate : null,
@@ -289,6 +351,8 @@ export function AddMedsScreen({
       setIsBeforeMeal(false);
       setIntervalUnit('day');
       setIntervalCount(1);
+      setCycleOffDays(7);
+      setAdvancedMode('interval');
       setSelectedWeekdays([1]);
       setDosesPerDay(1);
       setStartDate(formatDate(new Date()));
@@ -334,10 +398,6 @@ export function AddMedsScreen({
     setDraftDate(initialDate);
     setCalendarMonth(parseDateKey(initialDate));
     setSheet('date');
-  }
-
-  function openIntervalSheet() {
-    setSheet('interval');
   }
 
   function openFormSheet() {
@@ -386,18 +446,18 @@ export function AddMedsScreen({
           <Pressable style={styles.selectionRow} onPress={openFormSheet}>
             <View style={styles.selectionLeft}>
               <Text style={styles.selectionIcon}>💊</Text>
-              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Form' : 'Form'}</Text>
+              <Text style={styles.selectionLabel}>{t.form}</Text>
             </View>
             <View style={styles.selectionRight}>
               <Text style={styles.selectionValue}>
-                {form ? localizeFormLabel(form, locale) : locale === 'tr' ? 'Seçin' : 'Select'}
+                {form ? localizeFormLabel(form, locale) : t.select}
               </Text>
               <Text style={styles.selectionChevron}>›</Text>
             </View>
           </Pressable>
 
           <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'İlaç simgesi' : 'Medication icon'}</Text>
+            <Text style={styles.selectionLabel}>{t.medicationIcon}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iconPickerRow}>
               {medicationIconOptions.map((option) => {
                 const selected = iconEmoji === option;
@@ -416,97 +476,289 @@ export function AddMedsScreen({
     if (step === 'frequency') {
       return (
         <View style={styles.stepBody}>
-          <Pressable style={styles.selectionRow} onPress={openIntervalSheet}>
-            <View style={styles.selectionLeft}>
-              <Text style={styles.selectionIcon}>📅</Text>
-              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Interval türü' : 'Interval type'}</Text>
-            </View>
-            <View style={styles.selectionRight}>
-              <Text style={styles.selectionValue}>{locale === 'tr' ? (intervalUnit === 'day' ? 'Gün' : 'Hafta') : intervalUnit}</Text>
-              <Text style={styles.selectionChevron}>›</Text>
-            </View>
-          </Pressable>
-
           <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>
-              {locale === 'tr'
-                ? `Her ${intervalCount} ${intervalUnit === 'day' ? 'günde' : 'haftada'} bir`
-                : `Repeat every ${intervalCount} ${intervalUnit}${intervalCount > 1 ? 's' : ''}`}
-            </Text>
-            <View style={styles.doseCountChipRow}>
-              {(intervalUnit === 'day' ? dayIntervalOptions : weekIntervalOptions).map((count) => {
-                const selected = count === intervalCount;
-                return (
-                  <Pressable key={count} onPress={() => setIntervalCount(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
-                    <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
-                  </Pressable>
-                );
-              })}
+            <Text style={styles.selectionLabel}>{t.frequency}</Text>
+            <View style={styles.frequencyPresetRow}>
+              <Pressable
+                style={[styles.frequencyPresetChip, resolvedFrequencyPreset === 'once-daily' && !isCustomFrequency && styles.frequencyPresetChipSelected]}
+                onPress={() => {
+                  setIntervalUnit('day');
+                  setIntervalCount(1);
+                  setDosesPerDay(1);
+                  setAdvancedMode('interval');
+                  setForceCustomFrequency(false);
+                }}
+              >
+                <Text style={[styles.frequencyPresetChipText, resolvedFrequencyPreset === 'once-daily' && !isCustomFrequency && styles.frequencyPresetChipTextSelected]}>
+                  {t.frequencyOnceDaily}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.frequencyPresetChip, resolvedFrequencyPreset === 'twice-daily' && !isCustomFrequency && styles.frequencyPresetChipSelected]}
+                onPress={() => {
+                  setIntervalUnit('day');
+                  setIntervalCount(1);
+                  setDosesPerDay(2);
+                  setAdvancedMode('multi');
+                  setForceCustomFrequency(false);
+                }}
+              >
+                <Text style={[styles.frequencyPresetChipText, resolvedFrequencyPreset === 'twice-daily' && !isCustomFrequency && styles.frequencyPresetChipTextSelected]}>
+                  {t.frequencyTwiceDaily}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.frequencyPresetChip, intervalUnit === 'as-needed' && !isCustomFrequency && styles.frequencyPresetChipSelected]}
+                onPress={() => {
+                  setIntervalUnit('as-needed');
+                  setIntervalCount(1);
+                  setDosesPerDay(1);
+                  setAdvancedMode('as-needed');
+                  setForceCustomFrequency(false);
+                }}
+              >
+                <Text style={[styles.frequencyPresetChipText, intervalUnit === 'as-needed' && !isCustomFrequency && styles.frequencyPresetChipTextSelected]}>
+                  {t.asNeeded}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.frequencyPresetChip, isCustomFrequency && styles.frequencyPresetChipSelected]}
+                onPress={() => {
+                  setForceCustomFrequency(true);
+                  setAdvancedMode('interval');
+                  setIntervalUnit('day');
+                  setIntervalCount(3);
+                }}
+              >
+                <Text style={[styles.frequencyPresetChipText, isCustomFrequency && styles.frequencyPresetChipTextSelected]}>
+                  {t.frequencyMoreOptions}
+                </Text>
+              </Pressable>
             </View>
           </View>
 
-          {intervalUnit === 'week' ? (
-            <View style={styles.doseCountRow}>
-              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Haftanın günleri' : 'Days of week'}</Text>
-              <View style={styles.weekdayChipRow}>
-                {orderedWeekdays.map((weekday) => {
-                  const selected = selectedWeekdays.includes(weekday);
-                  return (
-                    <Pressable
-                      key={weekday}
-                      onPress={() =>
-                        setSelectedWeekdays((prev) => {
-                          if (prev.includes(weekday)) {
-                            return prev.length === 1 ? prev : prev.filter((item) => item !== weekday);
-                          }
-                          if (prev.length >= intervalCount) {
-                            return [...prev.slice(1), weekday];
-                          }
-                          return [...prev, weekday];
-                        })
+          {isCustomFrequency ? (
+            <View style={styles.advancedModeSection}>
+              <View style={styles.advancedModeCard}>
+                <View style={styles.advancedModeHeader}>
+                  <View>
+                    <Text style={styles.selectionLabel}>{t.interval}</Text>
+                    <Text style={styles.selectionHint}>{t.intervalHint}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      const next = advancedMode === 'interval' ? 'multi' : 'interval';
+                      setAdvancedMode(next);
+                      if (next === 'interval' && intervalUnit !== 'day' && intervalUnit !== 'hour') {
+                        setIntervalUnit('day');
+                        setIntervalCount(3);
                       }
-                      style={[styles.weekdayChip, selected && styles.weekdayChipSelected]}
-                    >
-                      <Text style={[styles.weekdayChipText, selected && styles.weekdayChipTextSelected]}>
-                        {getWeekdayLabel(weekday, locale)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                    }}
+                    style={[styles.modeToggle, advancedMode === 'interval' && styles.modeToggleActive]}
+                  />
+                </View>
+                {advancedMode === 'interval' ? (
+                  <View style={styles.doseCountRow}>
+                    <View style={styles.doseCountChipRow}>
+                      <Pressable
+                        onPress={() => {
+                          setIntervalUnit('hour');
+                          setIntervalCount(6);
+                        }}
+                        style={[styles.doseCountChip, intervalUnit === 'hour' && styles.doseCountChipSelected]}
+                      >
+                        <Text style={[styles.doseCountChipText, intervalUnit === 'hour' && styles.doseCountChipTextSelected]}>
+                          {t.everyXHours}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          setIntervalUnit('day');
+                          setIntervalCount(3);
+                        }}
+                        style={[styles.doseCountChip, intervalUnit === 'day' && styles.doseCountChipSelected]}
+                      >
+                        <Text style={[styles.doseCountChipText, intervalUnit === 'day' && styles.doseCountChipTextSelected]}>
+                          {t.everyXDays}
+                        </Text>
+                      </Pressable>
+                    </View>
+                    <View style={styles.doseCountChipRow}>
+                      {(intervalUnit === 'hour' ? hourIntervalOptions : [...dayIntervalOptions, 5, 7, 14, 21]).map((count) => {
+                        const selected = count === intervalCount;
+                        return (
+                          <Pressable
+                            key={`${intervalUnit}-${count}`}
+                            onPress={() => setIntervalCount(count)}
+                            style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}
+                          >
+                            <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
               </View>
-              <Text style={styles.selectionHint}>
-                {locale === 'tr'
-                  ? `${intervalCount} gün seçin. Başlangıç tarihi ilk seçilen güne hizalanır: ${localizedEffectiveStartDate}`
-                  : `Select ${intervalCount} day(s). Start date aligns to the first selected day: ${localizedEffectiveStartDate}`}
-              </Text>
+
+              <View style={styles.advancedModeCard}>
+                <View style={styles.advancedModeHeader}>
+                  <View>
+                    <Text style={styles.selectionLabel}>{t.multipleDosesPerDay}</Text>
+                    <Text style={styles.selectionHint}>{t.multipleDosesPerDayHint}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      const enabled = advancedMode !== 'multi';
+                      setAdvancedMode(enabled ? 'multi' : 'interval');
+                      if (enabled) {
+                        setIntervalUnit('day');
+                        setIntervalCount(1);
+                        setDosesPerDay(Math.max(3, dosesPerDay));
+                      }
+                    }}
+                    style={[styles.modeToggle, advancedMode === 'multi' && styles.modeToggleActive]}
+                  />
+                </View>
+                {advancedMode === 'multi' ? (
+                  <View style={styles.doseCountChipRow}>
+                    {[3, 4, 5, 6].map((count) => {
+                      const selected = count === dosesPerDay;
+                      return (
+                        <Pressable key={`multi-${count}`} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
+                          <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.advancedModeCard}>
+                <View style={styles.advancedModeHeader}>
+                  <View>
+                    <Text style={styles.selectionLabel}>{t.daysOfWeek}</Text>
+                    <Text style={styles.selectionHint}>{t.weekdaysHint}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      const enabled = advancedMode !== 'weekdays';
+                      setAdvancedMode(enabled ? 'weekdays' : 'interval');
+                      if (enabled) {
+                        setIntervalUnit('week');
+                        setIntervalCount(1);
+                      }
+                    }}
+                    style={[styles.modeToggle, advancedMode === 'weekdays' && styles.modeToggleActive]}
+                  />
+                </View>
+                {advancedMode === 'weekdays' ? (
+                  <View style={styles.weekdayChipRow}>
+                    {orderedWeekdays.map((weekday) => {
+                      const selected = selectedWeekdays.includes(weekday);
+                      return (
+                        <Pressable
+                          key={weekday}
+                          onPress={() =>
+                            setSelectedWeekdays((prev) => {
+                              if (prev.includes(weekday)) {
+                                return prev.length === 1 ? prev : prev.filter((item) => item !== weekday);
+                              }
+                              return [...prev, weekday];
+                            })
+                          }
+                          style={[styles.weekdayChip, selected && styles.weekdayChipSelected]}
+                        >
+                          <Text style={[styles.weekdayChipText, selected && styles.weekdayChipTextSelected]}>
+                            {getWeekdayLabel(weekday, locale)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.advancedModeCard}>
+                <View style={styles.advancedModeHeader}>
+                  <View>
+                    <Text style={styles.selectionLabel}>{t.cycleMode}</Text>
+                    <Text style={styles.selectionHint}>{t.cycleModeHint}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      const enabled = advancedMode !== 'cycle';
+                      setAdvancedMode(enabled ? 'cycle' : 'interval');
+                      if (enabled) {
+                        setIntervalUnit('cycle');
+                        setIntervalCount(21);
+                        setCycleOffDays(7);
+                      }
+                    }}
+                    style={[styles.modeToggle, advancedMode === 'cycle' && styles.modeToggleActive]}
+                  />
+                </View>
+                {advancedMode === 'cycle' ? (
+                  <View style={styles.doseCountRow}>
+                    <Text style={styles.selectionLabel}>{t.cycleOnDays}</Text>
+                    <View style={styles.doseCountChipRow}>
+                      {cycleOnDayOptions.map((count) => {
+                        const selected = count === intervalCount;
+                        return (
+                          <Pressable key={`on-${count}`} onPress={() => setIntervalCount(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
+                            <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.selectionLabel}>{t.cycleOffDays}</Text>
+                    <View style={styles.doseCountChipRow}>
+                      {cycleOffDayOptions.map((count) => {
+                        const selected = count === cycleOffDays;
+                        return (
+                          <Pressable key={`off-${count}`} onPress={() => setCycleOffDays(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
+                            <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.advancedModeCard}>
+                <View style={styles.advancedModeHeader}>
+                  <View>
+                    <Text style={styles.selectionLabel}>{t.asNeeded}</Text>
+                    <Text style={styles.selectionHint}>{t.asNeededHint}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      const enabled = advancedMode !== 'as-needed';
+                      setAdvancedMode(enabled ? 'as-needed' : 'interval');
+                      if (enabled) {
+                        setIntervalUnit('as-needed');
+                        setIntervalCount(1);
+                      }
+                    }}
+                    style={[styles.modeToggle, advancedMode === 'as-needed' && styles.modeToggleActive]}
+                  />
+                </View>
+              </View>
             </View>
           ) : null}
 
-          <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'O gün kaç kere' : 'How many times that day'}</Text>
-            <View style={styles.doseCountChipRow}>
-              {dosesPerDayOptions.map((count) => {
-                const selected = count === dosesPerDay;
-                return (
-                  <Pressable key={count} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
-                    <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <Text style={styles.frequencySummary}>{getFrequencySummary(dayInterval, dosesPerDay, locale)}</Text>
+          <Text style={styles.frequencySummary}>{frequencySummary}</Text>
 
           <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Kullanım tipi' : 'Meal preference'}</Text>
+            <Text style={styles.selectionLabel}>{t.mealPreference}</Text>
             <View style={styles.mealPreferenceRow}>
               <Pressable
                 onPress={() => setIsBeforeMeal(true)}
                 style={[styles.mealPreferenceChip, isBeforeMeal && styles.doseCountChipSelected]}
               >
                 <Text style={[styles.doseCountChipText, isBeforeMeal && styles.doseCountChipTextSelected]}>
-                  {locale === 'tr' ? 'Aç karnına' : 'Before meal'}
+                  {t.beforeMeal}
                 </Text>
               </Pressable>
               <Pressable
@@ -514,19 +766,19 @@ export function AddMedsScreen({
                 style={[styles.mealPreferenceChip, !isBeforeMeal && styles.doseCountChipSelected]}
               >
                 <Text style={[styles.doseCountChipText, !isBeforeMeal && styles.doseCountChipTextSelected]}>
-                  {locale === 'tr' ? 'Tok karnına' : 'After meal'}
+                  {t.afterMeal}
                 </Text>
               </Pressable>
             </View>
           </View>
 
           <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Toplam ilaç adedi' : 'Total quantity'}</Text>
+            <Text style={styles.selectionLabel}>{t.totalQuantity}</Text>
             <TextInput
               value={totalQuantity}
               onChangeText={(value) => setTotalQuantity(value.replace(/[^0-9]/g, ''))}
               keyboardType="number-pad"
-              placeholder={locale === 'tr' ? 'Örn: 30' : 'Ex: 30'}
+              placeholder={t.quantityExample}
               placeholderTextColor={theme.colors.neutral[400]}
               style={styles.quantityInput}
             />
@@ -557,7 +809,7 @@ export function AddMedsScreen({
           >
             <View style={styles.selectionLeft}>
               <Text style={styles.selectionIcon}>📍</Text>
-              <Text style={styles.selectionLabel}>{locale === 'tr' ? 'Bitiş tarihi' : 'End date'}</Text>
+              <Text style={styles.selectionLabel}>{t.endDate}</Text>
             </View>
             <View style={styles.selectionRight}>
               <Text style={styles.selectionValue}>
@@ -567,9 +819,7 @@ export function AddMedsScreen({
                       month: 'short',
                       year: 'numeric',
                     })
-                  : locale === 'tr'
-                    ? 'Süresiz'
-                    : 'Unlimited'}
+                  : t.unlimited}
               </Text>
               {useEndDate ? (
                 <Pressable
@@ -578,7 +828,7 @@ export function AddMedsScreen({
                     setUseEndDate(false);
                   }}
                 >
-                  <Text style={styles.endDateClearText}>{locale === 'tr' ? 'Sıfırla' : 'Clear'}</Text>
+                  <Text style={styles.endDateClearText}>{t.clear}</Text>
                 </Pressable>
               ) : null}
               <Text style={styles.selectionChevron}>›</Text>
@@ -587,7 +837,7 @@ export function AddMedsScreen({
 
           {useEndDate && !isEndDateValid ? (
             <Text style={styles.timeWarning}>
-              {locale === 'tr' ? 'Bitiş tarihi başlangıç tarihinden önce olamaz.' : 'End date cannot be earlier than start date.'}
+              {t.endDateBeforeStart}
             </Text>
           ) : null}
 
@@ -595,7 +845,7 @@ export function AddMedsScreen({
             <Pressable key={`${index}-${slotTime}`} style={styles.selectionRow} onPress={() => openTimeSheet(index)}>
               <View style={styles.selectionLeft}>
                 <Text style={styles.selectionIcon}>⏰</Text>
-                <Text style={styles.selectionLabel}>{locale === 'tr' ? `${index + 1}. doz saati` : `Dose ${index + 1} time`}</Text>
+                <Text style={styles.selectionLabel}>{t.doseTimeLabel.replace('{{index}}', `${index + 1}`)}</Text>
               </View>
               <View style={styles.selectionRight}>
                 <Text style={styles.selectionValue}>{slotTime || '--:--'}</Text>
@@ -606,7 +856,7 @@ export function AddMedsScreen({
 
           {hasDuplicateTimes ? (
             <Text style={styles.timeWarning}>
-              {locale === 'tr' ? 'Aynı saat birden fazla kez seçilemez.' : 'You cannot select the same time more than once.'}
+              {t.duplicateTimeWarning}
             </Text>
           ) : null}
         </View>
@@ -661,7 +911,7 @@ export function AddMedsScreen({
         <View style={styles.headerIconButton}>
           {step === 'note' && mode === 'create' ? (
             <Pressable onPress={() => void handleSave(true)} hitSlop={8}>
-              <Text style={styles.skipText}>{locale === 'tr' ? 'Atla' : 'Skip'}</Text>
+              <Text style={styles.skipText}>{t.skipLabel}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -683,19 +933,13 @@ export function AddMedsScreen({
               <Text style={styles.sheetTitle}>
                 {sheet === 'date'
                   ? dateField === 'end'
-                    ? locale === 'tr'
-                      ? 'Bitiş tarihi seçin'
-                      : 'Select end date'
+                    ? t.selectEndDate
                     : t.selectDate
                   : sheet === 'time'
                     ? t.setTime
-                    : sheet === 'form'
-                      ? locale === 'tr'
-                        ? 'Form seçin'
-                        : 'Select form'
-                    : locale === 'tr'
-                      ? 'Interval türü seçin'
-                      : 'Select interval type'}
+                  : sheet === 'form'
+                      ? t.selectForm
+                    : t.selectIntervalType}
               </Text>
               <Pressable onPress={() => setSheet('none')} hitSlop={8}>
                 <Text style={styles.sheetClose}>✕</Text>
@@ -713,7 +957,7 @@ export function AddMedsScreen({
                   }}
                 >
                   <Text style={[styles.intervalOptionText, intervalUnit === 'day' && styles.intervalOptionTextSelected]}>
-                    {locale === 'tr' ? 'Gün' : 'Day'}
+                    {t.day}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -725,7 +969,7 @@ export function AddMedsScreen({
                   }}
                 >
                   <Text style={[styles.intervalOptionText, intervalUnit === 'week' && styles.intervalOptionTextSelected]}>
-                    {locale === 'tr' ? 'Hafta' : 'Week'}
+                    {t.week}
                   </Text>
                 </Pressable>
               </View>
@@ -782,7 +1026,10 @@ export function AddMedsScreen({
 
                     const dateKey = formatDate(dateCell);
                     const selected = draftDate === dateKey;
-                    const selectable = dateField === 'end' || intervalUnit !== 'week' || dateCell.getDay() === selectedWeekday;
+                    const selectable =
+                      dateField === 'end' ||
+                      intervalUnit !== 'week' ||
+                      selectedWeekdays.includes(dateCell.getDay());
 
                     return (
                       <Pressable
@@ -829,7 +1076,7 @@ export function AddMedsScreen({
 
             {sheet === 'time' ? (
               <View style={styles.timeWrap}>
-                <Text style={styles.timeSectionLabel}>{locale === 'tr' ? 'Saat' : 'Hour'}</Text>
+                <Text style={styles.timeSectionLabel}>{t.hour}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeHorizontalList}>
                   {hourOptions.map((option) => {
                     const selected = draftHour === option;
@@ -841,7 +1088,7 @@ export function AddMedsScreen({
                   })}
                 </ScrollView>
 
-                <Text style={styles.timeSectionLabel}>{locale === 'tr' ? 'Dakika' : 'Minute'}</Text>
+                <Text style={styles.timeSectionLabel}>{t.minute}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeHorizontalList}>
                   {minuteOptions.map((option) => {
                     const selected = draftMinute === option;
@@ -1019,6 +1266,63 @@ const styles = StyleSheet.create({
   },
   doseCountRow: {
     gap: theme.spacing[8],
+  },
+  frequencyPresetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[8],
+  },
+  advancedModeSection: {
+    gap: theme.spacing[8],
+  },
+  advancedModeCard: {
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    padding: theme.spacing[8],
+    gap: theme.spacing[8],
+  },
+  advancedModeHeader: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing[8],
+  },
+  modeToggle: {
+    width: 38,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.neutral[200],
+  },
+  modeToggleActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[500],
+  },
+  frequencyPresetChip: {
+    minHeight: 34,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing[16],
+  },
+  frequencyPresetChipSelected: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+  },
+  frequencyPresetChipText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  frequencyPresetChipTextSelected: {
+    color: theme.colors.primaryBlue[600],
+    fontWeight: '700',
   },
   frequencySummary: {
     ...theme.typography.captionScale.lRegular,

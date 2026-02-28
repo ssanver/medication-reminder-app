@@ -1,4 +1,5 @@
 import { Linking } from 'react-native';
+import { getTranslations, type Locale } from '../localization/localization';
 
 export type SponsoredAd = {
   id: string;
@@ -29,22 +30,13 @@ export async function openDonationPage(): Promise<boolean> {
   }
 }
 
-export function getSponsoredAd(locale: 'tr' | 'en'): SponsoredAd {
-  if (locale === 'tr') {
-    return {
-      id: 'sponsor-001',
-      title: 'Sponsorlu',
-      body: 'Günlük sağlık takibi için akıllı ilaç kutusu kampanyası.',
-      ctaLabel: 'Detay',
-      ctaUrl: 'https://example.com/ad/pill-box',
-    };
-  }
-
+export function getSponsoredAd(locale: Locale): SponsoredAd {
+  const t = getTranslations(locale);
   return {
     id: 'sponsor-001',
-    title: 'Sponsored',
-    body: 'Smart pillbox promotion for daily health tracking.',
-    ctaLabel: 'Learn more',
+    title: t.sponsoredTitle,
+    body: t.sponsoredBody,
+    ctaLabel: t.sponsoredCta,
     ctaUrl: 'https://example.com/ad/pill-box',
   };
 }

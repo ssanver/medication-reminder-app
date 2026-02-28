@@ -1,9 +1,10 @@
 import { localizeFrequencyLabel } from '../localization/medication-localization';
-import { getLocaleTag, type Locale } from '../localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../localization/localization';
 
 export type WizardStep = 'name' | 'form-dose' | 'frequency' | 'note';
-export type IntervalUnit = 'day' | 'week';
+export type IntervalUnit = 'day' | 'week' | 'hour' | 'cycle' | 'as-needed';
 export type WeekStartsOn = 'monday' | 'sunday';
+export type FrequencyPreset = 'once-daily' | 'twice-daily' | 'as-needed' | 'custom';
 
 export type FormOption = {
   key: string;
@@ -11,10 +12,13 @@ export type FormOption = {
 };
 
 export const steps: WizardStep[] = ['name', 'form-dose', 'frequency', 'note'];
-export const defaultDoseTimes = ['09:00', '14:00', '20:00'];
+export const defaultDoseTimes = ['08:00', '12:00', '16:00', '20:00', '22:00', '23:00'];
 export const dayIntervalOptions = [1, 2, 3] as const;
 export const weekIntervalOptions = [1, 2] as const;
-export const dosesPerDayOptions = [1, 2, 3] as const;
+export const hourIntervalOptions = [1, 2, 3, 4, 6, 8, 12] as const;
+export const cycleOnDayOptions = [7, 14, 21, 28] as const;
+export const cycleOffDayOptions = [3, 5, 7, 14] as const;
+export const dosesPerDayOptions = [1, 2, 3, 4, 5, 6] as const;
 export const weekdayOptions = [1, 2, 3, 4, 5, 6, 0] as const;
 export const hourOptions = Array.from({ length: 24 }, (_, hour) => `${hour}`.padStart(2, '0'));
 export const minuteOptions = Array.from({ length: 12 }, (_, index) => `${index * 5}`.padStart(2, '0'));
@@ -94,25 +98,72 @@ export function getDayIntervalLabel(dayInterval: number, locale: Locale): string
 }
 
 export function getFrequencySummary(dayInterval: number, dosesPerDay: number, locale: Locale): string {
+  const t = getTranslations(locale);
   if (!Number.isFinite(dayInterval) || !Number.isFinite(dosesPerDay) || dayInterval < 1 || dosesPerDay < 1) {
-    return locale === 'tr' ? 'Sıklık seçin' : 'Select a valid frequency';
+    return t.selectValidFrequency;
   }
 
-  if (locale === 'tr') {
-    if (dayInterval === 1) {
-      return `Her gün ${dosesPerDay} kez`;
+  if (dayInterval === 1) {
+    if (locale === 'tr') {
+      return t.everyDayTimes.replace('{{count}}', `${dosesPerDay}`);
     }
-
-    return `Her ${dayInterval} günde ${dosesPerDay} kez`;
+    if (dosesPerDay === 1) {
+      return t.everyOneDayOneTime;
+    }
+    return t.everyOneDayManyTimes.replace('{{count}}', `${dosesPerDay}`);
   }
 
-  const dayLabel = dayInterval === 1 ? 'day' : 'days';
-  const doseLabel = dosesPerDay === 1 ? 'time' : 'times';
-  return `Every ${dayInterval} ${dayLabel}, ${dosesPerDay} ${doseLabel}`;
+  return t.everyNDaysTimes.replace('{{days}}', `${dayInterval}`).replace('{{count}}', `${dosesPerDay}`);
+}
+
+export function getAdvancedFrequencySummary(input: {
+  intervalUnit: IntervalUnit;
+  intervalCount: number;
+  dosesPerDay: number;
+  cycleOnDays: number;
+  cycleOffDays: number;
+  locale: Locale;
+}): string {
+  const { intervalUnit, intervalCount, dosesPerDay, cycleOnDays, cycleOffDays, locale } = input;
+  const t = getTranslations(locale);
+
+  if (intervalUnit === 'as-needed') {
+    return t.asNeededNoReminder;
+  }
+
+  if (intervalUnit === 'hour') {
+    return t.everyNHours.replace('{{count}}', `${Math.max(1, intervalCount)}`);
+  }
+
+  if (intervalUnit === 'cycle') {
+    return t.cycleSummary.replace('{{on}}', `${Math.max(1, cycleOnDays)}`).replace('{{off}}', `${Math.max(0, cycleOffDays)}`);
+  }
+
+  return getFrequencySummary(resolveDayInterval(intervalUnit, intervalCount), dosesPerDay, locale);
 }
 
 export function resolveDayInterval(intervalUnit: IntervalUnit, intervalCount: number): number {
-  return intervalUnit === 'week' ? intervalCount * 7 : intervalCount;
+  if (intervalUnit === 'week') {
+    return intervalCount * 7;
+  }
+
+  return intervalCount;
+}
+
+export function resolveFrequencyPreset(intervalUnit: IntervalUnit, intervalCount: number, dosesPerDay: number): FrequencyPreset {
+  if (intervalUnit === 'as-needed') {
+    return 'as-needed';
+  }
+
+  if (intervalUnit === 'day' && intervalCount === 1 && dosesPerDay === 1) {
+    return 'once-daily';
+  }
+
+  if (intervalUnit === 'day' && intervalCount === 1 && dosesPerDay === 2) {
+    return 'twice-daily';
+  }
+
+  return 'custom';
 }
 
 export function getWeekdayLabel(weekday: number, locale: Locale): string {

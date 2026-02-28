@@ -58,47 +58,54 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
     {
         var resolvedUserReference = ResolveUserReference(userReference);
         var userAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedUserReference);
+        var isDefaultGuest = IsDefaultGuestReference(resolvedUserReference);
+
+        UserPreference? transientPreference = null;
         if (userAccount is null)
         {
-            userAccount = new UserAccount
+            if (isDefaultGuest)
             {
-                Id = Guid.NewGuid(),
-                FirstName = "User",
-                LastName = "Preference",
-                Email = resolvedUserReference,
-                PasswordHash = "preference-only-account",
-                FullName = "User Preference",
-                BirthDate = string.Empty,
-                Gender = string.Empty,
-                PhotoUri = string.Empty,
-                IsEmailVerified = false,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            };
-            dbContext.UserAccounts.Add(userAccount);
+                transientPreference = CreateDefaultPreference();
+            }
+            else
+            {
+                userAccount = new UserAccount
+                {
+                    Id = Guid.NewGuid(),
+                    FirstName = "User",
+                    LastName = "Preference",
+                    Email = resolvedUserReference,
+                    PasswordHash = "preference-only-account",
+                    FullName = "User Preference",
+                    BirthDate = string.Empty,
+                    Gender = string.Empty,
+                    PhotoUri = string.Empty,
+                    IsEmailVerified = false,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                };
+                dbContext.UserAccounts.Add(userAccount);
+            }
         }
 
-        var item = await dbContext
-            .UserPreferences
-            .Include(x => x.UserAccount)
-            .FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
+        var item = transientPreference;
         if (item is null)
         {
-            item = new UserPreference
+            item = await dbContext
+                .UserPreferences
+                .Include(x => x.UserAccount)
+                .FirstOrDefaultAsync(x => x.UserAccountId == userAccount!.Id);
+        }
+
+        if (item is null)
+        {
+            item = CreateDefaultPreference();
+            item.UserAccountId = userAccount!.Id;
+            item.UserAccount = userAccount;
+            if (!isDefaultGuest)
             {
-                Id = Guid.NewGuid(),
-                UserAccountId = userAccount.Id,
-                UserAccount = userAccount,
-                Locale = "tr",
-                FontScale = 1.0m,
-                NotificationsEnabled = true,
-                MedicationRemindersEnabled = true,
-                SnoozeMinutes = 10,
-                WeekStartsOn = "monday",
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            };
-            dbContext.UserPreferences.Add(item);
+                dbContext.UserPreferences.Add(item);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(request.Locale))
@@ -154,7 +161,11 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
         }
 
         item.UpdatedAt = DateTimeOffset.UtcNow;
-        await dbContext.SaveChangesAsync();
+        if (!isDefaultGuest)
+        {
+            await dbContext.SaveChangesAsync();
+        }
+
         return Ok(ToResponse(item));
     }
 
@@ -163,6 +174,12 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
         return string.IsNullOrWhiteSpace(userReference)
             ? DefaultUserReference.Resolve(configuration)
             : userReference.Trim().ToLowerInvariant();
+    }
+
+    private bool IsDefaultGuestReference(string userReference)
+    {
+        var fallback = DefaultUserReference.Resolve(configuration);
+        return userReference.Equals(fallback, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizeWeekStartsOn(string value)
@@ -198,6 +215,22 @@ public sealed class UserPreferencesController(AppDbContext dbContext, IConfigura
             SnoozeMinutes = item.SnoozeMinutes,
             WeekStartsOn = item.WeekStartsOn,
             UpdatedAt = item.UpdatedAt,
+        };
+    }
+
+    private static UserPreference CreateDefaultPreference()
+    {
+        return new UserPreference
+        {
+            Id = Guid.NewGuid(),
+            Locale = "tr",
+            FontScale = 1.0m,
+            NotificationsEnabled = true,
+            MedicationRemindersEnabled = true,
+            SnoozeMinutes = 10,
+            WeekStartsOn = "monday",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
     }
 }

@@ -65,6 +65,29 @@ public sealed class MedicationApplicationServiceTests
         Assert.Equal("Medication not found.", error.Message);
     }
 
+    [Fact]
+    public async Task AddSchedule_ShouldThrow_WhenCycleOffDaysFormatIsMissing()
+    {
+        var repository = new InMemoryMedicationRepository();
+        var service = new MedicationApplicationService(repository);
+
+        var created = await service.CreateAsync(new SaveMedicationCommand(
+            "Parol",
+            "500mg",
+            null,
+            false,
+            new DateOnly(2026, 2, 20),
+            null,
+            [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+
+        var act = async () => await service.AddScheduleAsync(
+            created.Id,
+            new MedicationScheduleInput("cycle", 21, new TimeOnly(8, 0), null));
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(act);
+        Assert.Equal("Cycle repeat type requires DaysOfWeek format off:<number>.", error.Message);
+    }
+
     private sealed class InMemoryMedicationRepository : IMedicationRepository
     {
         private readonly Dictionary<Guid, MedicationRecord> _store = [];
