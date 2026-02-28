@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Linking, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
@@ -34,6 +34,7 @@ export function TodayScreen({
   onOpenNotificationHistory,
   onOpenEmailVerification,
 }: TodayScreenProps) {
+  const { width: windowWidth } = useWindowDimensions();
   const t = getTranslations(locale);
   const {
     filter,
@@ -57,33 +58,58 @@ export function TodayScreen({
     dateDelta,
     isFutureDate,
     isPastDate,
-    weekStrip,
+    weekStrip: _weekStrip,
     dateTitle,
     sponsoredAd,
     sectionTitle,
   } = useTodayScreenState({ locale, weekStartsOn });
-  const daySwipeResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onStartShouldSetPanResponderCapture: () => false,
-        onMoveShouldSetPanResponderCapture: (_, gesture) =>
-          Math.abs(gesture.dx) > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.9,
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.9,
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderRelease: (_, gesture) => {
-          if (gesture.dx <= -16 || gesture.vx <= -0.12) {
-            setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1));
-            return;
-          }
-          if (gesture.dx >= 16 || gesture.vx >= 0.12) {
-            setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1));
-          }
-        },
-      }),
-    [setSelectedDate],
-  );
+  const dayStripRef = useRef<ScrollView>(null);
+  const dayAnchorRef = useRef(new Date());
+  const DAY_ITEM_WIDTH = 52;
+  const DAY_ITEM_GAP = theme.spacing[8];
+  const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
+  const DAY_ARROW_BUTTON_WIDTH = 38;
+  const DAY_RANGE = 365;
+  const dayStripSidePadding = Math.max(theme.spacing[16], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
+  const dayStripItems = useMemo(() => {
+    const anchor = dayAnchorRef.current;
+    const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+    return Array.from({ length: DAY_RANGE * 2 + 1 }, (_, idx) => {
+      const diff = idx - DAY_RANGE;
+      const date = new Date(anchorDate);
+      date.setDate(anchorDate.getDate() + diff);
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
+        date,
+        label: new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date).replace('.', '').slice(0, 1).toUpperCase(),
+        dateLabel: `${date.getDate()}`,
+        isToday: new Date().toDateString() === date.toDateString(),
+      };
+    });
+  }, [locale]);
+  const selectedIndex = useMemo(() => {
+    const anchor = dayAnchorRef.current;
+    const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+    const current = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    const diffDays = Math.round((current.getTime() - anchorDate.getTime()) / (24 * 60 * 60 * 1000));
+    return Math.max(0, Math.min(dayStripItems.length - 1, DAY_RANGE + diffDays));
+  }, [dayStripItems.length, selectedDate]);
+
+  useEffect(() => {
+    dayStripRef.current?.scrollTo({
+      x: selectedIndex * DAY_ITEM_SNAP,
+      animated: true,
+    });
+  }, [selectedIndex, DAY_ITEM_SNAP]);
+
+  function selectDayFromOffset(offsetX: number) {
+    const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
+    const target = dayStripItems[index];
+    if (!target) {
+      return;
+    }
+    setSelectedDate(target.date);
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -140,32 +166,43 @@ export function TodayScreen({
           }}
         />
       ) : null}
-      <View style={styles.calendarStrip} {...daySwipeResponder.panHandlers}>
+      <View style={styles.calendarStrip}>
         <Pressable
-          style={styles.arrowButton}
+          style={styles.calendarArrowButton}
           hitSlop={10}
           onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1))}
         >
-          <Text style={styles.arrow}>{'<'}</Text>
+          <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} />
         </Pressable>
-        {weekStrip.map((day) => {
-          return (
-            <Pressable
-              key={day.key}
-              style={[styles.dayCell, day.isSelected && styles.dayCellActive]}
-              onPress={() => setSelectedDate(day.date)}
-            >
-              <Text style={[styles.dayText, day.isSelected && styles.dayTextActive]}>{day.label}</Text>
-              <Text style={[styles.dayDate, day.isSelected && styles.dayTextActive, day.isToday && styles.dayDateToday]}>{day.dateLabel}</Text>
-            </Pressable>
-          );
-        })}
+        <ScrollView
+          ref={dayStripRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={DAY_ITEM_SNAP}
+          decelerationRate="fast"
+          contentContainerStyle={[styles.calendarStripContent, { paddingHorizontal: dayStripSidePadding }]}
+          onMomentumScrollEnd={(event) => selectDayFromOffset(event.nativeEvent.contentOffset.x)}
+        >
+          {dayStripItems.map((day, index) => {
+            const isSelected = index === selectedIndex;
+            return (
+              <Pressable
+                key={day.key}
+                style={[styles.dayCell, isSelected && styles.dayCellActive]}
+                onPress={() => setSelectedDate(day.date)}
+              >
+                <Text style={[styles.dayText, isSelected && styles.dayTextActive]}>{day.label}</Text>
+                <Text style={[styles.dayDate, isSelected && styles.dayTextActive, day.isToday && styles.dayDateToday]}>{day.dateLabel}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
         <Pressable
-          style={styles.arrowButton}
+          style={styles.calendarArrowButton}
           hitSlop={10}
           onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1))}
         >
-          <Text style={styles.arrow}>{'>'}</Text>
+          <AppIcon name="forward" size={16} color={theme.colors.semantic.textSecondary} />
         </Pressable>
       </View>
 
@@ -391,35 +428,31 @@ const styles = StyleSheet.create({
   calendarStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderRadius: theme.radius[16],
     backgroundColor: theme.colors.semantic.cardBackground,
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
-    paddingHorizontal: theme.spacing[16],
-    paddingVertical: theme.spacing[16],
-    minHeight: 64,
+    paddingVertical: theme.spacing[8],
+    paddingHorizontal: theme.spacing[4],
+    minHeight: 72,
   },
-  arrow: {
-    ...theme.typography.bodyScale.mRegular,
-    color: theme.colors.semantic.textSecondary,
-  },
-  arrowButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+  calendarArrowButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.neutral[50],
+  },
+  calendarStripContent: {
+    alignItems: 'center',
+    gap: theme.spacing[8],
   },
   dayCell: {
-    width: 42,
-    minHeight: 44,
+    width: 52,
+    height: 52,
     borderRadius: theme.radius[16],
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
   },
   dayCellActive: {
     borderWidth: 1,
