@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
@@ -158,9 +158,10 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
                   <DateTimePicker
                     value={draftBirthDate}
                     mode="date"
-                    display="spinner"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
                     locale={getLocaleTag(locale)}
                     maximumDate={new Date()}
+                    style={styles.datePicker}
                     onChange={(_, date) => {
                       if (date) {
                         setDraftBirthDate(date);
@@ -291,5 +292,9 @@ const styles = StyleSheet.create({
   datePickerWrap: {
     marginBottom: theme.spacing[8],
     alignItems: 'center',
+  },
+  datePicker: {
+    width: '100%',
+    minHeight: 320,
   },
 });
