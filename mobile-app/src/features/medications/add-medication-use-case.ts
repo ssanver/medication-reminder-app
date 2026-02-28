@@ -4,7 +4,7 @@ import { getLocaleTag, getTranslations, type Locale } from '../localization/loca
 export type WizardStep = 'name' | 'form-dose' | 'frequency' | 'note';
 export type IntervalUnit = 'day' | 'week' | 'hour' | 'cycle' | 'as-needed';
 export type WeekStartsOn = 'monday' | 'sunday';
-export type FrequencyPreset = 'once-daily' | 'twice-daily' | 'as-needed' | 'custom';
+export type FrequencyPreset = 'once-daily' | 'twice-daily' | 'custom';
 
 export type FormOption = {
   key: string;
@@ -21,7 +21,7 @@ export const cycleOffDayOptions = [3, 5, 7, 14] as const;
 export const dosesPerDayOptions = [1, 2, 3, 4, 5, 6] as const;
 export const weekdayOptions = [1, 2, 3, 4, 5, 6, 0] as const;
 export const hourOptions = Array.from({ length: 24 }, (_, hour) => `${hour}`.padStart(2, '0'));
-export const minuteOptions = Array.from({ length: 12 }, (_, index) => `${index * 5}`.padStart(2, '0'));
+export const minuteOptions = Array.from({ length: 60 }, (_, minute) => `${minute}`.padStart(2, '0'));
 export const medicationIconOptions = ['💊', '🧴', '💉', '🫙', '🩹', '🌿', '🟡', '🔵'];
 
 export const formOptions: FormOption[] = [
@@ -152,7 +152,7 @@ export function resolveDayInterval(intervalUnit: IntervalUnit, intervalCount: nu
 
 export function resolveFrequencyPreset(intervalUnit: IntervalUnit, intervalCount: number, dosesPerDay: number): FrequencyPreset {
   if (intervalUnit === 'as-needed') {
-    return 'as-needed';
+    return 'custom';
   }
 
   if (intervalUnit === 'day' && intervalCount === 1 && dosesPerDay === 1) {

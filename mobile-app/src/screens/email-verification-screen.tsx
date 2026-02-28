@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { getTranslations, type Locale } from '../features/localization/localization';
@@ -111,36 +111,35 @@ export function EmailVerificationScreen({
       </ScrollView>
 
       <Modal transparent visible={sheetOpen} animationType="slide" onRequestClose={() => setSheetOpen(false)}>
-        <KeyboardAvoidingView
-          style={styles.overlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
-        >
+        <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={() => setSheetOpen(false)} />
-          <Pressable style={styles.sheet} onPress={() => undefined}>
-            <Text style={styles.sheetTitle}>{t.emailVerification}</Text>
-            <Text style={styles.sheetDescription}>{t.emailCodePrompt}</Text>
-            <TextInput
-              value={code}
-              onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-              keyboardType="number-pad"
-              style={styles.codeInput}
-              maxLength={6}
-              textAlign="center"
-              autoFocus
-              returnKeyType="done"
-            />
-            <Button label={t.verify} onPress={() => void handleVerify()} disabled={busy} />
-            <Pressable onPress={() => void handleResend()} disabled={cooldownSeconds > 0 || busy}>
-              <Text style={[styles.resendText, (cooldownSeconds > 0 || busy) && styles.resendTextDisabled]}>
-                {cooldownSeconds > 0
-                  ? t.resendCodeCountdown.replace('{{seconds}}', `${cooldownSeconds}`)
-                  : t.resendCode}
-              </Text>
+          <View style={styles.sheetWrap}>
+            <Pressable style={styles.sheet} onPress={() => undefined}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>{t.emailVerification}</Text>
+              <Text style={styles.sheetDescription}>{t.emailCodePrompt}</Text>
+              <TextInput
+                value={code}
+                onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                keyboardType="number-pad"
+                style={styles.codeInput}
+                maxLength={6}
+                textAlign="center"
+                autoFocus
+                returnKeyType="done"
+              />
+              <Button label={t.verify} onPress={() => void handleVerify()} disabled={busy} />
+              <Pressable onPress={() => void handleResend()} disabled={cooldownSeconds > 0 || busy}>
+                <Text style={[styles.resendText, (cooldownSeconds > 0 || busy) && styles.resendTextDisabled]}>
+                  {cooldownSeconds > 0
+                    ? t.resendCodeCountdown.replace('{{seconds}}', `${cooldownSeconds}`)
+                    : t.resendCode}
+                </Text>
+              </Pressable>
             </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -215,20 +214,34 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: theme.colors.semantic.overlay,
+    justifyContent: 'flex-end',
+  },
+  sheetWrap: {
+    justifyContent: 'flex-end',
   },
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.colors.semantic.overlay,
   },
   sheet: {
     borderTopLeftRadius: theme.radius[24],
     borderTopRightRadius: theme.radius[24],
     backgroundColor: theme.colors.semantic.cardBackground,
-    minHeight: '50%',
-    maxHeight: '60%',
+    minHeight: '52%',
+    maxHeight: '72%',
+    width: '100%',
     padding: theme.spacing[16],
     gap: theme.spacing[8],
     justifyContent: 'flex-start',
+    paddingBottom: theme.spacing[24],
+  },
+  sheetHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: theme.colors.neutral[300],
+    alignSelf: 'center',
+    marginBottom: theme.spacing[8],
   },
   sheetTitle: {
     ...theme.typography.bodyScale.mMedium,

@@ -72,7 +72,7 @@ export function AddMedsScreen({
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('day');
   const [intervalCount, setIntervalCount] = useState<number>(1);
   const [cycleOffDays, setCycleOffDays] = useState<number>(7);
-  const [advancedMode, setAdvancedMode] = useState<'interval' | 'multi' | 'weekdays' | 'cycle' | 'as-needed'>('interval');
+  const [advancedMode, setAdvancedMode] = useState<'interval' | 'multi' | 'weekdays' | 'cycle'>('interval');
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1]);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
   const [forceCustomFrequency, setForceCustomFrequency] = useState(false);
@@ -215,7 +215,6 @@ export function AddMedsScreen({
     setIconEmoji(editingMedication.iconEmoji || resolveFormDefaultIcon(editingMedication.form));
     setDosage(editingMedication.dosage || '1');
     setIsBeforeMeal(Boolean(editingMedication.isBeforeMeal));
-    setIntervalUnit(editingMedication.intervalUnit ?? 'day');
     setIntervalCount(Math.max(1, editingMedication.intervalCount ?? 1));
     setCycleOffDays(Math.max(0, editingMedication.cycleOffDays ?? 7));
     setSelectedWeekdays(
@@ -234,16 +233,16 @@ export function AddMedsScreen({
     );
     setDoseTimes([...presetTimes, ...defaultDoseTimes].slice(0, 6));
     setNote(editingMedication.note ?? '');
+    const normalizedIntervalUnit = editingMedication.intervalUnit === 'as-needed' ? 'day' : editingMedication.intervalUnit;
+    setIntervalUnit(normalizedIntervalUnit ?? 'day');
     setAdvancedMode(
-      editingMedication.intervalUnit === 'as-needed'
-        ? 'as-needed'
-        : editingMedication.intervalUnit === 'cycle'
-          ? 'cycle'
-          : editingMedication.intervalUnit === 'week'
-            ? 'weekdays'
-            : editingMedication.intervalUnit === 'day' && Math.max(1, presetTimes.length) > 2
-              ? 'multi'
-              : 'interval',
+      normalizedIntervalUnit === 'cycle'
+        ? 'cycle'
+        : normalizedIntervalUnit === 'week'
+          ? 'weekdays'
+          : normalizedIntervalUnit === 'day' && Math.max(1, presetTimes.length) > 2
+            ? 'multi'
+            : 'interval',
     );
     setForceCustomFrequency(
       resolveFrequencyPreset(
@@ -477,6 +476,28 @@ export function AddMedsScreen({
       return (
         <View style={styles.stepBody}>
           <View style={styles.doseCountRow}>
+            <Text style={styles.selectionLabel}>{t.mealPreference}</Text>
+            <View style={styles.mealPreferenceRow}>
+              <Pressable
+                onPress={() => setIsBeforeMeal(true)}
+                style={[styles.mealPreferenceChip, isBeforeMeal && styles.doseCountChipSelected]}
+              >
+                <Text style={[styles.doseCountChipText, isBeforeMeal && styles.doseCountChipTextSelected]}>
+                  {t.beforeMeal}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setIsBeforeMeal(false)}
+                style={[styles.mealPreferenceChip, !isBeforeMeal && styles.doseCountChipSelected]}
+              >
+                <Text style={[styles.doseCountChipText, !isBeforeMeal && styles.doseCountChipTextSelected]}>
+                  {t.afterMeal}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.doseCountRow}>
             <Text style={styles.selectionLabel}>{t.frequency}</Text>
             <View style={styles.frequencyPresetRow}>
               <Pressable
@@ -508,20 +529,6 @@ export function AddMedsScreen({
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.frequencyPresetChip, intervalUnit === 'as-needed' && !isCustomFrequency && styles.frequencyPresetChipSelected]}
-                onPress={() => {
-                  setIntervalUnit('as-needed');
-                  setIntervalCount(1);
-                  setDosesPerDay(1);
-                  setAdvancedMode('as-needed');
-                  setForceCustomFrequency(false);
-                }}
-              >
-                <Text style={[styles.frequencyPresetChipText, intervalUnit === 'as-needed' && !isCustomFrequency && styles.frequencyPresetChipTextSelected]}>
-                  {t.asNeeded}
-                </Text>
-              </Pressable>
-              <Pressable
                 style={[styles.frequencyPresetChip, isCustomFrequency && styles.frequencyPresetChipSelected]}
                 onPress={() => {
                   setForceCustomFrequency(true);
@@ -539,26 +546,66 @@ export function AddMedsScreen({
 
           {isCustomFrequency ? (
             <View style={styles.advancedModeSection}>
+              <View style={styles.advancedModeSelectorRow}>
+                <Pressable
+                  onPress={() => {
+                    setAdvancedMode('interval');
+                    if (intervalUnit !== 'day' && intervalUnit !== 'hour') {
+                      setIntervalUnit('day');
+                      setIntervalCount(3);
+                    }
+                  }}
+                  style={[styles.frequencyPresetChip, advancedMode === 'interval' && styles.frequencyPresetChipSelected]}
+                >
+                  <Text style={[styles.frequencyPresetChipText, advancedMode === 'interval' && styles.frequencyPresetChipTextSelected]}>
+                    {t.interval}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setAdvancedMode('multi');
+                    setIntervalUnit('day');
+                    setIntervalCount(1);
+                    setDosesPerDay(Math.max(3, dosesPerDay));
+                  }}
+                  style={[styles.frequencyPresetChip, advancedMode === 'multi' && styles.frequencyPresetChipSelected]}
+                >
+                  <Text style={[styles.frequencyPresetChipText, advancedMode === 'multi' && styles.frequencyPresetChipTextSelected]}>
+                    {t.multipleDosesPerDay}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setAdvancedMode('weekdays');
+                    setIntervalUnit('week');
+                    setIntervalCount(1);
+                  }}
+                  style={[styles.frequencyPresetChip, advancedMode === 'weekdays' && styles.frequencyPresetChipSelected]}
+                >
+                  <Text style={[styles.frequencyPresetChipText, advancedMode === 'weekdays' && styles.frequencyPresetChipTextSelected]}>
+                    {t.daysOfWeek}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setAdvancedMode('cycle');
+                    setIntervalUnit('cycle');
+                    setIntervalCount(21);
+                    setCycleOffDays(7);
+                  }}
+                  style={[styles.frequencyPresetChip, advancedMode === 'cycle' && styles.frequencyPresetChipSelected]}
+                >
+                  <Text style={[styles.frequencyPresetChipText, advancedMode === 'cycle' && styles.frequencyPresetChipTextSelected]}>
+                    {t.cycleMode}
+                  </Text>
+                </Pressable>
+              </View>
+
               <View style={styles.advancedModeCard}>
-                <View style={styles.advancedModeHeader}>
-                  <View>
-                    <Text style={styles.selectionLabel}>{t.interval}</Text>
-                    <Text style={styles.selectionHint}>{t.intervalHint}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => {
-                      const next = advancedMode === 'interval' ? 'multi' : 'interval';
-                      setAdvancedMode(next);
-                      if (next === 'interval' && intervalUnit !== 'day' && intervalUnit !== 'hour') {
-                        setIntervalUnit('day');
-                        setIntervalCount(3);
-                      }
-                    }}
-                    style={[styles.modeToggle, advancedMode === 'interval' && styles.modeToggleActive]}
-                  />
-                </View>
                 {advancedMode === 'interval' ? (
                   <View style={styles.doseCountRow}>
+                    <Text style={styles.selectionLabel}>{t.interval}</Text>
+                    <Text style={styles.selectionHint}>{t.intervalHint}</Text>
                     <View style={styles.doseCountChipRow}>
                       <Pressable
                         onPress={() => {
@@ -599,107 +646,58 @@ export function AddMedsScreen({
                     </View>
                   </View>
                 ) : null}
-              </View>
 
-              <View style={styles.advancedModeCard}>
-                <View style={styles.advancedModeHeader}>
-                  <View>
+                {advancedMode === 'multi' ? (
+                  <View style={styles.doseCountRow}>
                     <Text style={styles.selectionLabel}>{t.multipleDosesPerDay}</Text>
                     <Text style={styles.selectionHint}>{t.multipleDosesPerDayHint}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => {
-                      const enabled = advancedMode !== 'multi';
-                      setAdvancedMode(enabled ? 'multi' : 'interval');
-                      if (enabled) {
-                        setIntervalUnit('day');
-                        setIntervalCount(1);
-                        setDosesPerDay(Math.max(3, dosesPerDay));
-                      }
-                    }}
-                    style={[styles.modeToggle, advancedMode === 'multi' && styles.modeToggleActive]}
-                  />
-                </View>
-                {advancedMode === 'multi' ? (
-                  <View style={styles.doseCountChipRow}>
-                    {[3, 4, 5, 6].map((count) => {
-                      const selected = count === dosesPerDay;
-                      return (
-                        <Pressable key={`multi-${count}`} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
-                          <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
-                        </Pressable>
-                      );
-                    })}
+                    <View style={styles.doseCountChipRow}>
+                      {[3, 4, 5, 6].map((count) => {
+                        const selected = count === dosesPerDay;
+                        return (
+                          <Pressable key={`multi-${count}`} onPress={() => setDosesPerDay(count)} style={[styles.doseCountChip, selected && styles.doseCountChipSelected]}>
+                            <Text style={[styles.doseCountChipText, selected && styles.doseCountChipTextSelected]}>{count}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                   </View>
                 ) : null}
-              </View>
 
-              <View style={styles.advancedModeCard}>
-                <View style={styles.advancedModeHeader}>
-                  <View>
+                {advancedMode === 'weekdays' ? (
+                  <View style={styles.doseCountRow}>
                     <Text style={styles.selectionLabel}>{t.daysOfWeek}</Text>
                     <Text style={styles.selectionHint}>{t.weekdaysHint}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => {
-                      const enabled = advancedMode !== 'weekdays';
-                      setAdvancedMode(enabled ? 'weekdays' : 'interval');
-                      if (enabled) {
-                        setIntervalUnit('week');
-                        setIntervalCount(1);
-                      }
-                    }}
-                    style={[styles.modeToggle, advancedMode === 'weekdays' && styles.modeToggleActive]}
-                  />
-                </View>
-                {advancedMode === 'weekdays' ? (
-                  <View style={styles.weekdayChipRow}>
-                    {orderedWeekdays.map((weekday) => {
-                      const selected = selectedWeekdays.includes(weekday);
-                      return (
-                        <Pressable
-                          key={weekday}
-                          onPress={() =>
-                            setSelectedWeekdays((prev) => {
-                              if (prev.includes(weekday)) {
-                                return prev.length === 1 ? prev : prev.filter((item) => item !== weekday);
-                              }
-                              return [...prev, weekday];
-                            })
-                          }
-                          style={[styles.weekdayChip, selected && styles.weekdayChipSelected]}
-                        >
-                          <Text style={[styles.weekdayChipText, selected && styles.weekdayChipTextSelected]}>
-                            {getWeekdayLabel(weekday, locale)}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
+                    <View style={styles.weekdayChipRow}>
+                      {orderedWeekdays.map((weekday) => {
+                        const selected = selectedWeekdays.includes(weekday);
+                        return (
+                          <Pressable
+                            key={weekday}
+                            onPress={() =>
+                              setSelectedWeekdays((prev) => {
+                                if (prev.includes(weekday)) {
+                                  return prev.length === 1 ? prev : prev.filter((item) => item !== weekday);
+                                }
+                                return [...prev, weekday];
+                              })
+                            }
+                            style={[styles.weekdayChip, selected && styles.weekdayChipSelected]}
+                          >
+                            <Text style={[styles.weekdayChipText, selected && styles.weekdayChipTextSelected]}>
+                              {getWeekdayLabel(weekday, locale)}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                   </View>
                 ) : null}
-              </View>
 
-              <View style={styles.advancedModeCard}>
-                <View style={styles.advancedModeHeader}>
-                  <View>
-                    <Text style={styles.selectionLabel}>{t.cycleMode}</Text>
-                    <Text style={styles.selectionHint}>{t.cycleModeHint}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => {
-                      const enabled = advancedMode !== 'cycle';
-                      setAdvancedMode(enabled ? 'cycle' : 'interval');
-                      if (enabled) {
-                        setIntervalUnit('cycle');
-                        setIntervalCount(21);
-                        setCycleOffDays(7);
-                      }
-                    }}
-                    style={[styles.modeToggle, advancedMode === 'cycle' && styles.modeToggleActive]}
-                  />
-                </View>
                 {advancedMode === 'cycle' ? (
                   <View style={styles.doseCountRow}>
+                    <Text style={styles.selectionLabel}>{t.cycleMode}</Text>
+                    <Text style={styles.selectionHint}>{t.cycleModeHint}</Text>
                     <Text style={styles.selectionLabel}>{t.cycleOnDays}</Text>
                     <View style={styles.doseCountChipRow}>
                       {cycleOnDayOptions.map((count) => {
@@ -725,52 +723,10 @@ export function AddMedsScreen({
                   </View>
                 ) : null}
               </View>
-
-              <View style={styles.advancedModeCard}>
-                <View style={styles.advancedModeHeader}>
-                  <View>
-                    <Text style={styles.selectionLabel}>{t.asNeeded}</Text>
-                    <Text style={styles.selectionHint}>{t.asNeededHint}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => {
-                      const enabled = advancedMode !== 'as-needed';
-                      setAdvancedMode(enabled ? 'as-needed' : 'interval');
-                      if (enabled) {
-                        setIntervalUnit('as-needed');
-                        setIntervalCount(1);
-                      }
-                    }}
-                    style={[styles.modeToggle, advancedMode === 'as-needed' && styles.modeToggleActive]}
-                  />
-                </View>
-              </View>
             </View>
           ) : null}
 
           <Text style={styles.frequencySummary}>{frequencySummary}</Text>
-
-          <View style={styles.doseCountRow}>
-            <Text style={styles.selectionLabel}>{t.mealPreference}</Text>
-            <View style={styles.mealPreferenceRow}>
-              <Pressable
-                onPress={() => setIsBeforeMeal(true)}
-                style={[styles.mealPreferenceChip, isBeforeMeal && styles.doseCountChipSelected]}
-              >
-                <Text style={[styles.doseCountChipText, isBeforeMeal && styles.doseCountChipTextSelected]}>
-                  {t.beforeMeal}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setIsBeforeMeal(false)}
-                style={[styles.mealPreferenceChip, !isBeforeMeal && styles.doseCountChipSelected]}
-              >
-                <Text style={[styles.doseCountChipText, !isBeforeMeal && styles.doseCountChipTextSelected]}>
-                  {t.afterMeal}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
 
           <View style={styles.doseCountRow}>
             <Text style={styles.selectionLabel}>{t.totalQuantity}</Text>
@@ -1273,6 +1229,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing[8],
   },
   advancedModeSection: {
+    gap: theme.spacing[8],
+  },
+  advancedModeSelectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing[8],
   },
   advancedModeCard: {

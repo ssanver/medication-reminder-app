@@ -26,7 +26,7 @@ describe('add-medication-use-case/getFrequencySummary', () => {
   it('hazir siklik secimi kurallarini cozer', () => {
     expect(resolveFrequencyPreset('day', 1, 1)).toBe('once-daily');
     expect(resolveFrequencyPreset('day', 1, 2)).toBe('twice-daily');
-    expect(resolveFrequencyPreset('as-needed', 1, 1)).toBe('as-needed');
+    expect(resolveFrequencyPreset('as-needed', 1, 1)).toBe('custom');
     expect(resolveFrequencyPreset('day', 2, 1)).toBe('custom');
     expect(resolveFrequencyPreset('week', 1, 1)).toBe('custom');
   });
