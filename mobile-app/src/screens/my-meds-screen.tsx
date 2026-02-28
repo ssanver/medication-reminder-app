@@ -19,6 +19,10 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
   const t = getTranslations(locale);
   const { filter, setFilter, filtered, counts, toggleMedicationActive } = useMyMedsScreenState({ locale });
+  function applyMedicationActiveState(medicationId: string, nextActive: boolean) {
+    setFilter(nextActive ? 'Active' : 'Inactive');
+    void toggleMedicationActive(medicationId, nextActive);
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -49,7 +53,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
               key={item.id}
               actionLabel={item.active ? t.makeInactive : t.makeActive}
               actionVariant={item.active ? 'deactivate' : 'activate'}
-              onAction={() => void toggleMedicationActive(item.id, !item.active)}
+              onAction={() => applyMedicationActiveState(item.id, !item.active)}
             >
               <MedicationCard
                 locale={locale}
@@ -60,7 +64,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
                 showToggle
                 compact
                 medEmoji={item.emoji}
-                onToggle={(value) => void toggleMedicationActive(item.id, value)}
+                onToggle={(value) => applyMedicationActiveState(item.id, value)}
                 onPress={() => onOpenMedicationDetails(item.id)}
               />
             </SwipeToDeleteRow>

@@ -65,13 +65,19 @@ export function TodayScreen({
   const daySwipeResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.2,
+        onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          Math.abs(gesture.dx) > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.9,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.9,
+        onPanResponderTerminationRequest: () => false,
         onPanResponderRelease: (_, gesture) => {
-          if (gesture.dx <= -22 || gesture.vx <= -0.2) {
+          if (gesture.dx <= -16 || gesture.vx <= -0.12) {
             setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1));
             return;
           }
-          if (gesture.dx >= 22 || gesture.vx >= 0.2) {
+          if (gesture.dx >= 16 || gesture.vx >= 0.12) {
             setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1));
           }
         },
@@ -390,27 +396,30 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.semantic.cardBackground,
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
-    paddingHorizontal: theme.spacing[8],
-    paddingVertical: theme.spacing[8],
+    paddingHorizontal: theme.spacing[16],
+    paddingVertical: theme.spacing[16],
+    minHeight: 64,
   },
   arrow: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
   arrowButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.neutral[50],
   },
   dayCell: {
-    width: 36,
-    borderRadius: theme.radius[8],
+    width: 42,
+    minHeight: 44,
+    borderRadius: theme.radius[16],
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   dayCellActive: {
     borderWidth: 1,

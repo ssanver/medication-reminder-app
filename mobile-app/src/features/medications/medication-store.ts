@@ -617,6 +617,13 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     active,
   };
 
+  state = {
+    ...state,
+    medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
+  };
+  emit();
+  await persist();
+
   try {
     const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
       method: 'PUT',
@@ -632,13 +639,7 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     emit();
     await persist();
   } catch {
-    // Fallback to local status toggle to keep My Meds actions responsive offline.
-    state = {
-      ...state,
-      medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
-    };
-    emit();
-    await persist();
+    // Keep optimistic status when backend update fails; sync retries later.
   }
 }
 
