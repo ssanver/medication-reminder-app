@@ -1,9 +1,13 @@
 using api.data;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
 namespace api.tests;
 
@@ -30,21 +34,11 @@ public sealed class HealthAndConfigurationTests : IClassFixture<WebApplicationFa
     public async Task HealthEndpoint_ShouldReturn200_WhenTokenProvided()
     {
         using var client = _factory.CreateClient();
-        var email = $"health-{Guid.NewGuid():N}@pillmind.local";
-        var signUpResponse = await client.PostAsJsonAsync("/api/auth/email/sign-up", new
-        {
-            firstName = "Health",
-            lastName = "Tester",
-            email,
-            password = "Sth280711!",
-        });
-        signUpResponse.EnsureSuccessStatusCode();
+        using var scope = _factory.Services.CreateScope();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var token = JwtTestTokenFactory.CreateAccessToken(configuration, $"health-{Guid.NewGuid():N}@pillmind.local");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var payload = await signUpResponse.Content.ReadFromJsonAsync<EmailAuthTokenPayload>();
-        Assert.NotNull(payload);
-        Assert.False(string.IsNullOrWhiteSpace(payload!.AccessToken));
-
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", payload.AccessToken);
         var response = await client.GetAsync("/health");
         Assert.True(response.IsSuccessStatusCode);
     }
@@ -60,7 +54,32 @@ public sealed class HealthAndConfigurationTests : IClassFixture<WebApplicationFa
     }
 }
 
-public sealed class EmailAuthTokenPayload
+internal static class JwtTestTokenFactory
 {
-    public string AccessToken { get; set; } = string.Empty;
+    public static string CreateAccessToken(IConfiguration configuration, string email)
+    {
+        var issuer = configuration["Authentication:Jwt:Issuer"] ?? "pillmind-api";
+        var audience = configuration["Authentication:Jwt:Audience"] ?? "pillmind-mobile";
+        var secret = configuration["Authentication:Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT secret is missing.");
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, email),
+            new Claim(ClaimTypes.Email, email),
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var now = DateTime.UtcNow;
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            notBefore: now,
+            expires: now.AddMinutes(30),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }
