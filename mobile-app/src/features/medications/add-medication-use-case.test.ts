@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getFrequencySummary } from './add-medication-use-case';
+import { getFrequencySummary, getWeekdayLabel } from './add-medication-use-case';
 
 describe('add-medication-use-case/getFrequencySummary', () => {
   it('turkce metni interval ve doz sayisina gore uretir', () => {
@@ -15,5 +15,11 @@ describe('add-medication-use-case/getFrequencySummary', () => {
   it('gecersiz degerlerde guvenli fallback dondurur', () => {
     expect(getFrequencySummary(0, 2, 'tr')).toBe('Sıklık seçin');
     expect(getFrequencySummary(2, 0, 'en')).toBe('Select a valid frequency');
+  });
+
+  it('hafta gunu etiketlerini dogru gun indexi ile esler', () => {
+    expect(getWeekdayLabel(1, 'en')).toMatch(/Mon/i);
+    expect(getWeekdayLabel(2, 'en')).toMatch(/Tue/i);
+    expect(getWeekdayLabel(0, 'en')).toMatch(/Sun/i);
   });
 });

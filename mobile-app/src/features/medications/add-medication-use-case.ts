@@ -116,7 +116,9 @@ export function resolveDayInterval(intervalUnit: IntervalUnit, intervalCount: nu
 }
 
 export function getWeekdayLabel(weekday: number, locale: Locale): string {
-  const anchor = new Date(2026, 0, 5 + weekday);
+  // 2026-01-04 is a Sunday, so JS weekday indexes map correctly:
+  // 0=Sun, 1=Mon, ... 6=Sat
+  const anchor = new Date(2026, 0, 4 + weekday);
   return anchor.toLocaleDateString(getLocaleTag(locale), { weekday: 'short' });
 }
 
