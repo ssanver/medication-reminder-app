@@ -24,7 +24,7 @@ import {
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { openDonationPage } from '../features/monetization/monetization-service';
-import { clearMedicationStore } from '../features/medications/medication-store';
+import { clearMedicationStore, hydrateMedicationStore } from '../features/medications/medication-store';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { handleReminderSkip, handleReminderSnooze, handleReminderTakeNow } from '../features/notifications/notification-center-service';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
@@ -301,6 +301,16 @@ export function AppNavigator() {
                   emailVerified: payload.emailVerified,
                 });
                 await clearMedicationStore();
+                try {
+                  await hydrateMedicationStore();
+                  const latestPreferences = await loadAppPreferences();
+                  await syncMedicationReminderNotifications(
+                    latestPreferences.locale,
+                    latestPreferences.notificationsEnabled && latestPreferences.medicationRemindersEnabled,
+                  );
+                } catch {
+                  // Keep login flow resilient; periodic sync effects retry in app phase.
+                }
                 setAccountEmail(payload.email);
                 setEmailVerifiedState(payload.emailVerified);
                 if (!payload.emailVerified) {
@@ -352,6 +362,16 @@ export function AppNavigator() {
                   emailVerified: isEmailVerified,
                 });
                 await clearMedicationStore();
+                try {
+                  await hydrateMedicationStore();
+                  const latestPreferences = await loadAppPreferences();
+                  await syncMedicationReminderNotifications(
+                    latestPreferences.locale,
+                    latestPreferences.notificationsEnabled && latestPreferences.medicationRemindersEnabled,
+                  );
+                } catch {
+                  // Keep login flow resilient; periodic sync effects retry in app phase.
+                }
                 setAccountEmail(payload.email);
                 setEmailVerifiedState(isEmailVerified);
                 setPhase('app');
