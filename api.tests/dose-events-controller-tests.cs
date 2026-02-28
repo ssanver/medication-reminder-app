@@ -195,6 +195,102 @@ public sealed class DoseEventsControllerTests
         Assert.Equal(1, logCount);
     }
 
+    [Fact]
+    public async Task GetScheduledDoses_ShouldReturnServerCalculatedDoseStatuses()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var targetDate = DateOnly.FromDateTime(DateTime.UtcNow.Date).AddDays(1);
+        var targetDateKey = targetDate.ToString("yyyy-MM-dd");
+        var medication = new Medication
+        {
+            Id = Guid.NewGuid(),
+            Name = "Parol",
+            Dosage = "500mg",
+            StartDate = targetDate,
+            IsBeforeMeal = false,
+            Schedules =
+            [
+                new MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    RepeatType = "daily",
+                    IntervalCount = 1,
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        };
+        dbContext.Medications.Add(medication);
+        dbContext.DoseEvents.Add(new DoseEvent
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medication.Id,
+            ActionType = "taken",
+            DateKey = targetDateKey,
+            ScheduledTime = "08:00",
+            ActionAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var result = await controller.GetScheduledDoses(targetDate);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<ScheduledDoseResponse[]>(okResult.Value);
+        Assert.Single(payload);
+        Assert.Equal("taken", payload[0].Status);
+        Assert.Equal("08:00", payload[0].ScheduledTime);
+    }
+
+    [Fact]
+    public async Task GetReport_ShouldReturnSummaryTrendAndMedicationRows()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var fromDate = new DateOnly(2026, 2, 20);
+        var toDate = new DateOnly(2026, 2, 22);
+        var medication = new Medication
+        {
+            Id = Guid.NewGuid(),
+            Name = "Parol",
+            Dosage = "500mg",
+            StartDate = fromDate,
+            IsBeforeMeal = false,
+            Schedules =
+            [
+                new MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    RepeatType = "daily",
+                    IntervalCount = 1,
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        };
+        dbContext.Medications.Add(medication);
+        dbContext.DoseEvents.Add(new DoseEvent
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medication.Id,
+            ActionType = "taken",
+            DateKey = "2026-02-20",
+            ScheduledTime = "08:00",
+            ActionAt = new DateTimeOffset(new DateTime(2026, 2, 20, 8, 0, 0), TimeSpan.Zero),
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var result = await controller.GetReport(fromDate, toDate, "en");
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<DoseReportResponse>(okResult.Value);
+        Assert.Equal(3, payload.Summary.PlannedCount);
+        Assert.Equal(1, payload.Summary.TakenCount);
+        Assert.Equal(3, payload.WeeklyTrend.Count);
+        Assert.Single(payload.MedicationRows);
+        Assert.Equal("Parol", payload.MedicationRows.First().Medication);
+    }
+
     private static async Task<Medication> AddMedication(AppDbContext dbContext)
     {
         var medication = new Medication

@@ -195,7 +195,7 @@ export function AppNavigator() {
       if (nextState === 'active' && medicationStore.isHydrated) {
         void syncMedicationReminderNotifications(locale, notificationsEnabled && medicationRemindersEnabled);
         if (notificationsEnabled && medicationRemindersEnabled) {
-          emitDueReminderPrompt(locale);
+          void emitDueReminderPrompt(locale);
         }
       }
     });
@@ -210,9 +210,9 @@ export function AppNavigator() {
       return;
     }
 
-    emitDueReminderPrompt(locale);
+    void emitDueReminderPrompt(locale);
     const timer = setInterval(() => {
-      emitDueReminderPrompt(locale);
+      void emitDueReminderPrompt(locale);
     }, 15000);
 
     return () => clearInterval(timer);

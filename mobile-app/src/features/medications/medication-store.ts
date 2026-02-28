@@ -1,6 +1,6 @@
 import { apiRequestJson, apiRequestVoid } from '../network/api-client';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
-import { getLocaleTag, type Locale } from '../localization/localization';
+import { type Locale } from '../localization/localization';
 
 export type DoseStatus = 'taken' | 'missed';
 
@@ -62,11 +62,6 @@ function toDateKey(date: Date): string {
 
 function parseDateKey(dateKey: string): Date {
   return new Date(`${dateKey}T00:00:00`);
-}
-
-function diffDays(from: Date, to: Date): number {
-  const ms = normalize(to).getTime() - normalize(from).getTime();
-  return Math.round(ms / (1000 * 60 * 60 * 24));
 }
 
 function toFrequencyLabel(intervalUnit: 'day' | 'week', intervalCount: number): string {
@@ -622,45 +617,6 @@ export async function clearDoseStatus(medicationId: string, date: Date, schedule
   await persist();
 }
 
-function isScheduled(medication: Medication, date: Date): boolean {
-  const normalizedDate = normalize(date);
-  const dayDiff = diffDays(parseDateKey(medication.startDate), normalizedDate);
-
-  if (dayDiff < 0) {
-    return false;
-  }
-
-  if (medication.endDate) {
-    const endDate = normalize(parseDateKey(medication.endDate));
-    if (normalizedDate.getTime() > endDate.getTime()) {
-      return false;
-    }
-  }
-
-  if (medication.intervalUnit === 'week') {
-    const weekday = normalizedDate.getDay();
-    const weeklyDays = getWeeklyDays(medication);
-    if (!weeklyDays.includes(weekday)) {
-      return false;
-    }
-    const weekDiff = Math.floor(dayDiff / 7);
-    return weekDiff % Math.max(1, medication.intervalCount) === 0;
-  }
-
-  return dayDiff % Math.max(1, medication.intervalCount) === 0;
-}
-
-function compareDay(a: Date, b: Date): number {
-  const da = normalize(a).getTime();
-  const db = normalize(b).getTime();
-
-  if (da === db) {
-    return 0;
-  }
-
-  return da < db ? -1 : 1;
-}
-
 export type ScheduledDoseItem = {
   id: string;
   medicationId: string;
@@ -693,113 +649,93 @@ export function resolveMedicationIcon(form: string, iconEmoji?: string): string 
   return iconEmoji || iconForForm(form);
 }
 
-export function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): ScheduledDoseItem[] {
-  const today = new Date();
-  const dayCompare = compareDay(date, today);
-  const dateKey = toDateKey(date);
+type ApiScheduledDoseResponse = {
+  id: string;
+  medicationId: string;
+  scheduledTime: string;
+  dateKey: string;
+  name: string;
+  dosage: string;
+  usageType?: string | null;
+  isBeforeMeal: boolean;
+  frequencyLabel: string;
+  status: 'taken' | 'missed' | 'pending';
+};
 
-  return state.medications
-    .filter((medication) => medication.active && isScheduled(medication, date))
-    .flatMap((medication) => {
-      const detailsUnit = medication.form.toLowerCase() === 'drop' ? 'Drops' : medication.form.toLowerCase() === 'injection' ? 'Injection' : 'Capsules';
+type ApiDoseSummaryResponse = {
+  fromDate: string;
+  toDate: string;
+  plannedCount: number;
+  takenCount: number;
+  missedCount: number;
+  snoozedCount: number;
+  adherenceRate: number;
+};
 
-      return getMedicationTimes(medication).map((scheduledTime) => {
-        const event = state.events.find(
-          (item) => item.medicationId === medication.id && item.dateKey === dateKey && item.scheduledTime === scheduledTime,
-        );
-        const status: ScheduledDoseItem['status'] = event ? event.status : dayCompare < 0 ? 'missed' : 'pending';
+type ApiDoseTrendPointResponse = {
+  label: string;
+  value: number;
+};
 
-        return {
-          id: `${medication.id}-${dateKey}-${scheduledTime}`,
-          medicationId: medication.id,
-          scheduledTime,
-          name: medication.name,
-          details: `${medication.dosage} ${detailsUnit}`,
-          schedule: `${scheduledTime} | ${localizeFrequencyLabel(toFrequencyLabel(medication.intervalUnit, medication.intervalCount), locale)}`,
-          status,
-          emoji: resolveMedicationIcon(medication.form, medication.iconEmoji),
-        };
-      });
-    })
-    .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
-}
-
-export function getAdherenceSummary(referenceDate: Date): {
-  adherence: number;
-  totalScheduled: number;
+type ApiDoseMedicationReportRowResponse = {
+  medication: string;
   taken: number;
   missed: number;
-} {
-  let totalScheduled = 0;
-  let taken = 0;
-  let missed = 0;
+};
 
-  for (let i = 0; i < 7; i += 1) {
-    const date = new Date(referenceDate);
-    date.setDate(referenceDate.getDate() - i);
+type ApiDoseReportResponse = {
+  summary: ApiDoseSummaryResponse;
+  weeklyTrend: ApiDoseTrendPointResponse[];
+  medicationRows: ApiDoseMedicationReportRowResponse[];
+};
 
-    const doses = getScheduledDosesForDate(date);
-    totalScheduled += doses.length;
-    taken += doses.filter((item) => item.status === 'taken').length;
-    missed += doses.filter((item) => item.status === 'missed').length;
-  }
+function resolveDoseDetails(dosage: string, usageType?: string | null): string {
+  const normalized = (usageType ?? '').trim().toLowerCase();
+  const unit = normalized === 'drop' ? 'Drops' : normalized === 'injection' ? 'Injection' : 'Capsules';
+  return `${dosage} ${unit}`;
+}
 
-  const adherence = totalScheduled === 0 ? 0 : Math.round((taken / totalScheduled) * 100);
+export async function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): Promise<ScheduledDoseItem[]> {
+  const dateKey = toDateKey(date);
+  const query = encodeURIComponent(dateKey);
+  const response = await apiRequestJson<ApiScheduledDoseResponse[]>(`/api/dose-events/scheduled-doses?date=${query}`, {
+    correlationPrefix: 'dose-events-scheduled',
+  });
+
+  return response.map((item) => ({
+    id: item.id,
+    medicationId: item.medicationId,
+    scheduledTime: item.scheduledTime,
+    name: item.name,
+    details: resolveDoseDetails(item.dosage, item.usageType),
+    schedule: `${item.scheduledTime} | ${localizeFrequencyLabel(item.frequencyLabel, locale)}`,
+    status: item.status,
+    emoji: resolveMedicationIcon(item.usageType?.trim() || 'Capsule'),
+  }));
+}
+
+export async function getDoseReport(referenceDate: Date, locale: Locale = 'en'): Promise<{
+  summary: { adherence: number; totalScheduled: number; taken: number; missed: number };
+  weekly: Array<{ label: string; value: number }>;
+  medicationRows: Array<{ medication: string; taken: number; missed: number }>;
+}> {
+  const toDate = toDateKey(referenceDate);
+  const fromDateObject = new Date(referenceDate);
+  fromDateObject.setDate(referenceDate.getDate() - 6);
+  const fromDate = toDateKey(fromDateObject);
+  const response = await apiRequestJson<ApiDoseReportResponse>(
+    `/api/dose-events/report?fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}&locale=${encodeURIComponent(locale)}`,
+    { correlationPrefix: 'dose-events-report' },
+  );
 
   return {
-    adherence,
-    totalScheduled,
-    taken,
-    missed,
+    summary: {
+      adherence: Math.round((response.summary.adherenceRate ?? 0) * 100),
+      totalScheduled: response.summary.plannedCount,
+      taken: response.summary.takenCount,
+      missed: response.summary.missedCount,
+    },
+    weekly: response.weeklyTrend,
+    medicationRows: response.medicationRows,
   };
-}
-
-export function getWeeklyTrend(referenceDate: Date, locale: Locale = 'en'): Array<{ label: string; value: number }> {
-  const localeTag = getLocaleTag(locale);
-  const out: Array<{ label: string; value: number }> = [];
-
-  for (let i = 6; i >= 0; i -= 1) {
-    const date = new Date(referenceDate);
-    date.setDate(referenceDate.getDate() - i);
-    const doses = getScheduledDosesForDate(date);
-    const total = doses.length;
-    const taken = doses.filter((item) => item.status === 'taken').length;
-    const adherence = total === 0 ? 0 : Math.round((taken / total) * 100);
-    const weekday = new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(date).replace('.', '');
-    out.push({
-      label: weekday,
-      value: adherence,
-    });
-  }
-
-  return out;
-}
-
-export function getMedicationReport(referenceDate: Date): Array<{ medication: string; taken: number; missed: number }> {
-  const rows = state.medications.map((item) => ({
-    medication: item.name,
-    taken: 0,
-    missed: 0,
-  }));
-
-  for (let i = 0; i < 7; i += 1) {
-    const date = new Date(referenceDate);
-    date.setDate(referenceDate.getDate() - i);
-    const doses = getScheduledDosesForDate(date);
-
-    doses.forEach((dose) => {
-      const row = rows.find((item) => item.medication === dose.name);
-      if (!row) {
-        return;
-      }
-
-      if (dose.status === 'taken') {
-        row.taken += 1;
-      } else if (dose.status === 'missed') {
-        row.missed += 1;
-      }
-    });
-  }
-
-  return rows.filter((item) => item.taken > 0 || item.missed > 0);
 }

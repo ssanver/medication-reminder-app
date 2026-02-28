@@ -358,7 +358,7 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
   for (let offset = 0; offset <= SCHEDULE_WINDOW_DAYS; offset += 1) {
     const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
     const dateKey = toDateKey(date);
-    const doses = getScheduledDosesForDate(date, locale).filter((dose) => dose.status === 'pending');
+    const doses = (await getScheduledDosesForDate(date, locale)).filter((dose) => dose.status === 'pending');
 
     for (const dose of doses) {
       let triggerDate = toScheduledDate(date, dose.scheduledTime);
@@ -433,14 +433,15 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
   await writeTrackedReminders(nextTracked);
 }
 
-export function emitDueReminderPrompt(locale: Locale, reference = new Date()): void {
+export async function emitDueReminderPrompt(locale: Locale, reference = new Date()): Promise<void> {
   const dateKey = toDateKey(reference);
   if (promptedDateKey !== dateKey) {
     promptedDateKey = dateKey;
     promptedDoseKeys.clear();
   }
 
-  const dueDose = getScheduledDosesForDate(reference, locale)
+  const doses = await getScheduledDosesForDate(reference, locale);
+  const dueDose = doses
     .filter((item) => item.status === 'pending')
     .find((item) => {
       const scheduled = toScheduledDate(reference, item.scheduledTime);

@@ -24,11 +24,32 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const [showFutureActionPopup, setShowFutureActionPopup] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('');
+  const [doses, setDoses] = useState<Awaited<ReturnType<typeof getScheduledDosesForDate>>>([]);
 
   const shortDisplayName = toShortDisplayName(profileName) || (locale === 'tr' ? 'Kullanıcı' : 'User');
   const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
 
-  const doses = useMemo(() => getScheduledDosesForDate(selectedDate, locale), [selectedDate, locale, store.medications, store.events]);
+  useEffect(() => {
+    let isMounted = true;
+    void (async () => {
+      try {
+        const scheduled = await getScheduledDosesForDate(selectedDate, locale);
+        if (!isMounted) {
+          return;
+        }
+        setDoses(scheduled);
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+        setDoses([]);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate, locale, store.medications, store.events]);
 
   const filtered = useMemo(() => {
     if (filter === 'All') {

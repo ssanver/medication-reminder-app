@@ -5,6 +5,7 @@ using api.services;
 using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace api.Controllers;
 
@@ -200,6 +201,198 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         });
     }
 
+    [HttpGet("scheduled-doses")]
+    public async Task<ActionResult<IReadOnlyCollection<ScheduledDoseResponse>>> GetScheduledDoses(
+        [FromQuery] DateOnly? date = null)
+    {
+        var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var targetDateKey = targetDate.ToString("yyyy-MM-dd");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+
+        var medications = await dbContext
+            .Medications
+            .AsNoTracking()
+            .Include(x => x.Schedules)
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .ToListAsync();
+
+        var medicationIds = medications.Select(x => x.Id).ToArray();
+        var events = await dbContext
+            .DoseEvents
+            .AsNoTracking()
+            .Where(x => x.DateKey == targetDateKey && medicationIds.Contains(x.MedicationId))
+            .ToListAsync();
+        var eventByDoseKey = events
+            .GroupBy(x => $"{x.MedicationId}:{x.DateKey}:{x.ScheduledTime}")
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(x => x.ActionAt).First().ActionType, StringComparer.OrdinalIgnoreCase);
+
+        var doses = new List<ScheduledDoseResponse>();
+        foreach (var medication in medications)
+        {
+            foreach (var schedule in medication.Schedules)
+            {
+                var planned = SchedulePlanner.BuildOccurrences(
+                    [schedule],
+                    medication.StartDate,
+                    targetDate,
+                    totalDays: 1,
+                    medication.EndDate);
+
+                foreach (var occurrence in planned)
+                {
+                    var scheduledTime = TimeOnly.FromDateTime(occurrence.UtcDateTime).ToString("HH:mm");
+                    var key = $"{medication.Id}:{targetDateKey}:{scheduledTime}";
+                    var status = eventByDoseKey.TryGetValue(key, out var actionType)
+                        ? NormalizeDoseStatus(actionType)
+                        : targetDate < today
+                            ? "missed"
+                            : "pending";
+
+                    doses.Add(new ScheduledDoseResponse
+                    {
+                        Id = $"{medication.Id}-{targetDateKey}-{scheduledTime}",
+                        MedicationId = medication.Id,
+                        ScheduledTime = scheduledTime,
+                        DateKey = targetDateKey,
+                        Name = medication.Name,
+                        Dosage = medication.Dosage,
+                        UsageType = medication.UsageType,
+                        IsBeforeMeal = medication.IsBeforeMeal,
+                        FrequencyLabel = BuildFrequencyLabel(schedule),
+                        Status = status,
+                    });
+                }
+            }
+        }
+
+        return Ok(doses.OrderBy(x => x.ScheduledTime).ThenBy(x => x.Name).ToArray());
+    }
+
+    [HttpGet("report")]
+    public async Task<ActionResult<DoseReportResponse>> GetReport(
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        [FromQuery] string locale = "en")
+    {
+        var resolvedToDate = toDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var resolvedFromDate = fromDate ?? resolvedToDate.AddDays(-6);
+        if (resolvedToDate < resolvedFromDate)
+        {
+            return BadRequest("toDate cannot be earlier than fromDate.");
+        }
+
+        var medications = await dbContext
+            .Medications
+            .AsNoTracking()
+            .Include(x => x.Schedules)
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .ToListAsync();
+
+        var eventRows = await dbContext
+            .DoseEvents
+            .AsNoTracking()
+            .Where(x =>
+                x.ActionAt >= resolvedFromDate.ToDateTime(TimeOnly.MinValue) &&
+                x.ActionAt <= resolvedToDate.ToDateTime(TimeOnly.MaxValue))
+            .ToListAsync();
+        var eventByDoseKey = eventRows
+            .Where(x => x.ActionType == "taken" || x.ActionType == "missed")
+            .GroupBy(x => $"{x.MedicationId}:{x.DateKey}:{x.ScheduledTime}")
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(x => x.ActionAt).First().ActionType, StringComparer.OrdinalIgnoreCase);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var summaryPlanned = 0;
+        var summaryTaken = 0;
+        var summaryMissed = 0;
+        var summarySnoozed = eventRows.Count(x => x.ActionType == "snooze");
+        var medicationRows = medications.ToDictionary(
+            key => key.Id,
+            value => new DoseMedicationReportRowResponse
+            {
+                Medication = value.Name,
+                Taken = 0,
+                Missed = 0,
+            });
+        var weeklyTrend = new List<DoseTrendPointResponse>();
+        var culture = ResolveCulture(locale);
+
+        for (var date = resolvedFromDate; date <= resolvedToDate; date = date.AddDays(1))
+        {
+            var dayKey = date.ToString("yyyy-MM-dd");
+            var dayDateTime = date.ToDateTime(TimeOnly.MinValue);
+            var dayPlanned = 0;
+            var dayTaken = 0;
+
+            foreach (var medication in medications)
+            {
+                var planned = SchedulePlanner.BuildOccurrences(
+                    medication.Schedules.ToArray(),
+                    medication.StartDate,
+                    date,
+                    totalDays: 1,
+                    medication.EndDate);
+
+                foreach (var occurrence in planned)
+                {
+                    dayPlanned += 1;
+                    summaryPlanned += 1;
+
+                    var scheduledTime = TimeOnly.FromDateTime(occurrence.UtcDateTime).ToString("HH:mm");
+                    var doseKey = $"{medication.Id}:{dayKey}:{scheduledTime}";
+                    var status = eventByDoseKey.TryGetValue(doseKey, out var actionType)
+                        ? NormalizeDoseStatus(actionType)
+                        : date < today
+                            ? "missed"
+                            : "pending";
+
+                    if (status == "taken")
+                    {
+                        dayTaken += 1;
+                        summaryTaken += 1;
+                        medicationRows[medication.Id].Taken += 1;
+                    }
+                    else if (status == "missed")
+                    {
+                        summaryMissed += 1;
+                        medicationRows[medication.Id].Missed += 1;
+                    }
+                }
+            }
+
+            var dayAdherence = dayPlanned == 0 ? 0 : (int)Math.Round((decimal)dayTaken * 100 / dayPlanned, MidpointRounding.AwayFromZero);
+            weeklyTrend.Add(new DoseTrendPointResponse
+            {
+                Label = dayDateTime.ToString("ddd", culture).Replace(".", string.Empty),
+                Value = dayAdherence,
+            });
+        }
+
+        var adherenceRate = summaryPlanned == 0
+            ? 0
+            : Math.Round((decimal)summaryTaken / summaryPlanned, 4, MidpointRounding.AwayFromZero);
+
+        return Ok(new DoseReportResponse
+        {
+            Summary = new DoseSummaryResponse
+            {
+                FromDate = resolvedFromDate,
+                ToDate = resolvedToDate,
+                PlannedCount = summaryPlanned,
+                TakenCount = summaryTaken,
+                MissedCount = summaryMissed,
+                SnoozedCount = summarySnoozed,
+                AdherenceRate = adherenceRate,
+            },
+            WeeklyTrend = weeklyTrend,
+            MedicationRows = medicationRows.Values
+                .Where(x => x.Taken > 0 || x.Missed > 0)
+                .OrderBy(x => x.Medication)
+                .ToArray(),
+        });
+    }
+
     private static DoseEventResponse ToResponse(DoseEvent doseEvent)
     {
         return new DoseEventResponse
@@ -234,5 +427,43 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         }
 
         return "00:00";
+    }
+
+    private static string NormalizeDoseStatus(string? actionType)
+    {
+        var value = (actionType ?? string.Empty).Trim().ToLowerInvariant();
+        return value switch
+        {
+            "taken" => "taken",
+            "missed" => "missed",
+            _ => "pending",
+        };
+    }
+
+    private static CultureInfo ResolveCulture(string? locale)
+    {
+        var normalized = (locale ?? "en").Trim().ToLowerInvariant();
+        if (normalized.StartsWith("tr"))
+        {
+            return CultureInfo.GetCultureInfo("tr-TR");
+        }
+
+        return CultureInfo.GetCultureInfo("en-US");
+    }
+
+    private static string BuildFrequencyLabel(MedicationSchedule schedule)
+    {
+        var intervalCount = Math.Max(1, schedule.IntervalCount);
+        if (schedule.RepeatType.Equals("weekly", StringComparison.OrdinalIgnoreCase))
+        {
+            return intervalCount == 2 ? "Every 14 Days" : "Every 7 Days";
+        }
+
+        return intervalCount switch
+        {
+            3 => "Every 3 Days",
+            2 => "Every 2 Days",
+            _ => "Every 1 Day",
+        };
     }
 }
