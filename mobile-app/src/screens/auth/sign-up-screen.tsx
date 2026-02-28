@@ -1,13 +1,11 @@
-import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
 import { IconButton } from '../../components/ui/icon-button';
 import { TextField } from '../../components/ui/text-field';
-import { signUpWithEmail } from '../../features/auth/email-auth-service';
+import { useSignUpScreenState } from '../../features/auth/application/use-sign-up-screen-state';
 import { getTranslations, type Locale } from '../../features/localization/localization';
-import { loginWithSocial, type SocialLoginResult } from '../../features/auth/social-auth';
-import { isSignUpFormValid } from '../../features/auth/signup-validation';
+import { type SocialLoginResult } from '../../features/auth/social-auth';
 import { theme } from '../../theme';
 
 type SignUpScreenProps = {
@@ -19,68 +17,24 @@ type SignUpScreenProps = {
 
 export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUpScreenProps) {
   const t = getTranslations(locale);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isPasswordHidden, setIsPasswordHidden] = useState(true);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [errorText, setErrorText] = useState('');
-  const [socialMessage, setSocialMessage] = useState('');
-  const [isSocialLoading, setIsSocialLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const canSubmit = useMemo(() => isSignUpFormValid({ name, email, password }), [name, email, password]);
-
-  async function handleSignUp() {
-    if (!canSubmit) {
-      setErrorText(t.pleaseFillAllFields);
-      return;
-    }
-
-    const fullName = name.trim();
-    const nameParts = fullName.split(/\s+/).filter((item) => item.length > 0);
-    const firstName = nameParts[0] ?? '';
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'User';
-
-    if (!firstName) {
-      setErrorText(t.pleaseFillAllFields);
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorText('');
-    try {
-      const response = await signUpWithEmail({
-        firstName,
-        lastName,
-        email: email.trim().toLowerCase(),
-        password,
-      });
-      setShowSuccess(true);
-      setTimeout(() => onSuccess({ email: response.email, emailVerified: false }), 800);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Sign-up failed.';
-      setErrorText(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleSocialAuth(provider: 'Apple' | 'Google') {
-    try {
-      setIsSocialLoading(true);
-      setErrorText('');
-      const response = await loginWithSocial(provider);
-      setSocialMessage(`${t.socialSignInSuccessPrefix} ${response.provider}.`);
-      setTimeout(() => onSuccess({ session: response, email: response.email, emailVerified: true }), 400);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Social login failed.';
-      setErrorText(`${t.socialSignInFailedPrefix} ${message}`);
-    } finally {
-      setIsSocialLoading(false);
-    }
-  }
-
+  const {
+    name,
+    setName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    canSubmit,
+    isPasswordHidden,
+    setIsPasswordHidden,
+    showSuccess,
+    errorText,
+    socialMessage,
+    isSocialLoading,
+    isLoading,
+    signUp,
+    signUpWithSocial,
+  } = useSignUpScreenState({ onSuccess, t });
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <IconButton testID="signup-back-button" icon="back" variant="outlined" onPress={onBack} />
@@ -114,8 +68,8 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
       <Button
         testID="signup-submit-button"
         label={t.createAccount}
-        onPress={() => void handleSignUp()}
-        disabled={isLoading}
+        onPress={() => void signUp()}
+        disabled={isLoading || !canSubmit}
       />
 
       <Text style={styles.legal}>{t.termsText}</Text>
@@ -128,14 +82,14 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         label={t.continueWithApple}
         leadingNode={<BrandIcon name="apple" />}
         variant="outlined"
-        onPress={() => void handleSocialAuth('Apple')}
+        onPress={() => void signUpWithSocial('Apple')}
         disabled={isSocialLoading}
       />
       <Button
         label={t.continueWithGoogle}
         leadingNode={<BrandIcon name="google" />}
         variant="outlined"
-        onPress={() => void handleSocialAuth('Google')}
+        onPress={() => void signUpWithSocial('Google')}
         disabled={isSocialLoading}
       />
       <Pressable testID="signup-open-signin-link" onPress={onOpenSignIn}>

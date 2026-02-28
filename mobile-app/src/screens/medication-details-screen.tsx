@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { Button } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
 import { getTranslations, type Locale } from '../features/localization/localization';
-import { getMedicationById, updateMedication } from '../features/medications/medication-store';
+import { useMedicationDetailsScreenState } from '../features/medications/application/use-medication-details-screen-state';
 import { theme } from '../theme';
 
 type MedicationDetailsScreenProps = {
@@ -15,13 +14,8 @@ type MedicationDetailsScreenProps = {
 
 export function MedicationDetailsScreen({ locale, medicationId, onBack }: MedicationDetailsScreenProps) {
   const t = getTranslations(locale);
-  const medication = useMemo(() => getMedicationById(medicationId), [medicationId]);
-  const [name, setName] = useState(medication?.name ?? '');
-  const [dosage, setDosage] = useState(medication?.dosage ?? '1');
-  const [frequencyLabel, setFrequencyLabel] = useState(medication?.frequencyLabel ?? 'Every 1 Day');
-  const [time, setTime] = useState(medication?.time ?? '09:00');
-  const [note, setNote] = useState(medication?.note ?? '');
-  const [message, setMessage] = useState('');
+  const { medication, name, setName, dosage, setDosage, frequencyLabel, setFrequencyLabel, time, setTime, note, setNote, message, save } =
+    useMedicationDetailsScreenState(medicationId, t.saved);
 
   if (!medication) {
     return (
@@ -49,15 +43,12 @@ export function MedicationDetailsScreen({ locale, medicationId, onBack }: Medica
       <Button
         label={t.save}
         onPress={() => {
-          void updateMedication(medicationId, {
-            name: name.trim() || medication.name,
-            dosage: dosage.trim() || medication.dosage,
-            frequencyLabel: frequencyLabel.trim() || medication.frequencyLabel,
-            time: time.trim() || medication.time,
-            note: note.trim(),
-          });
-          setMessage(t.saved);
-          setTimeout(() => onBack(), 300);
+          void (async () => {
+            const isSaved = await save();
+            if (isSaved) {
+              setTimeout(() => onBack(), 300);
+            }
+          })();
         }}
       />
     </ScrollView>

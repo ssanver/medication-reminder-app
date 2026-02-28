@@ -1,8 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { getTranslations, type Locale } from '../features/localization/localization';
-import { getAdherenceSummary, getMedicationReport, getWeeklyTrend } from '../features/medications/medication-store';
-import { useMedicationStore } from '../features/medications/use-medication-store';
+import { useReportsScreenState } from '../features/medications/application/use-reports-screen-state';
 import { theme } from '../theme';
 
 type ReportsScreenProps = {
@@ -12,10 +11,7 @@ type ReportsScreenProps = {
 
 export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
   const t = getTranslations(locale);
-  const store = useMedicationStore();
-  const summary = getAdherenceSummary(new Date());
-  const weekly = getWeeklyTrend(new Date(), locale);
-  const medicationRows = getMedicationReport(new Date());
+  const { summary, weekly, medicationRows, eventCount } = useReportsScreenState(locale);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -69,7 +65,7 @@ export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
         ))}
         {medicationRows.length === 0 ? <Text style={styles.summaryHint}>{t.noReportData}</Text> : null}
       </View>
-      <Text style={styles.hidden}>{store.events.length}</Text>
+      <Text style={styles.hidden}>{eventCount}</Text>
     </ScrollView>
   );
 }

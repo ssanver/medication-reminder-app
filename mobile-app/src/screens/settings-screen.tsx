@@ -1,14 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Constants from 'expo-constants';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { TextField } from '../components/ui/text-field';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
-import { resolveProfileAvatarEmoji } from '../features/profile/profile-avatar';
-import { toShortDisplayName } from '../features/profile/display-name';
-import { loadProfile } from '../features/profile/profile-store';
+import { useSettingsScreenState } from '../features/settings/application/use-settings-screen-state';
 import { theme } from '../theme';
 
 type SettingsScreenProps = {
@@ -58,45 +54,28 @@ export function SettingsScreen({
 }: SettingsScreenProps) {
   const t = getTranslations(locale);
   const localeOptions = getLocaleOptions(locale);
-  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
-  const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
-  const [cancelAccountVisible, setCancelAccountVisible] = useState(false);
-  const [cancelPassword, setCancelPassword] = useState('');
-  const [cancelErrorText, setCancelErrorText] = useState('');
-  const [isCancelLoading, setIsCancelLoading] = useState(false);
-  const [profileName, setProfileName] = useState('');
-  const [profileGender, setProfileGender] = useState('');
-  const [draftLocale, setDraftLocale] = useState<Locale>(locale);
-  const [draftFontScale, setDraftFontScale] = useState(fontScale);
-
-  useEffect(() => {
-    setDraftLocale(locale);
-  }, [locale]);
-
-  useEffect(() => {
-    setDraftFontScale(fontScale);
-  }, [fontScale]);
-
-  useEffect(() => {
-    void (async () => {
-      const profile = await loadProfile();
-      setProfileName(profile.fullName);
-      setProfileGender(profile.gender);
-    })();
-  }, []);
-
-  const shortDisplayName = toShortDisplayName(profileName) || (locale === 'tr' ? 'Kullanıcı' : 'User');
-  const profileAvatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
-
-  const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale;
-
-  const version = useMemo(() => {
-    const expoVersion = Constants.expoConfig?.version ?? '1.0.0';
-    const iosBuild = Constants.expoConfig?.ios?.buildNumber;
-    const androidBuild = Constants.expoConfig?.android?.versionCode;
-    const buildMeta = iosBuild ?? (typeof androidBuild === 'number' ? `${androidBuild}` : 'dev');
-    return `Version ${expoVersion} (${buildMeta})`;
-  }, []);
+  const {
+    languagePickerOpen,
+    setLanguagePickerOpen,
+    logoutConfirmVisible,
+    setLogoutConfirmVisible,
+    cancelAccountVisible,
+    setCancelAccountVisible,
+    cancelPassword,
+    setCancelPassword,
+    cancelErrorText,
+    setCancelErrorText,
+    isCancelLoading,
+    setIsCancelLoading,
+    draftLocale,
+    setDraftLocale,
+    draftFontScale,
+    setDraftFontScale,
+    shortDisplayName,
+    profileAvatarEmoji,
+    isAppearanceDirty,
+    version,
+  } = useSettingsScreenState({ locale, fontScale });
 
   return (
     <>

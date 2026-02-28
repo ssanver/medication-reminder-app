@@ -1,11 +1,9 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { Alert, Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MedicationCard } from '../components/ui/medication-card';
-import { localizeFormLabel, localizeFrequencyLabel } from '../features/localization/medication-localization';
 import { SegmentedControl } from '../components/ui/segmented-control';
-import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
-import { deleteMedication, resolveMedicationIcon, setMedicationActive } from '../features/medications/medication-store';
-import { useMedicationStore } from '../features/medications/use-medication-store';
+import { getTranslations, type Locale } from '../features/localization/localization';
+import { useMyMedsScreenState } from '../features/medications/application/use-my-meds-screen-state';
 import { theme } from '../theme';
 
 type MyMedsScreenProps = {
@@ -18,82 +16,8 @@ type MyMedsScreenProps = {
 type MedStatus = 'All' | 'Active' | 'Inactive';
 
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
-  const store = useMedicationStore();
   const t = getTranslations(locale);
-  const [filter, setFilter] = useState<MedStatus>('All');
-  const takenCountsByMedication = useMemo(() => {
-    return store.events.reduce<Record<string, number>>((acc, item) => {
-      if (item.status !== 'taken') {
-        return acc;
-      }
-      acc[item.medicationId] = (acc[item.medicationId] ?? 0) + 1;
-      return acc;
-    }, {});
-  }, [store.events]);
-
-  const items = useMemo(
-    () =>
-      store.medications.map((item) => {
-        const icon = resolveMedicationIcon(item.form, item.iconEmoji);
-        const startedAt = new Date(`${item.startDate}T00:00:00`);
-        const startedLabel = Number.isNaN(startedAt.getTime())
-          ? item.startDate
-          : startedAt.toLocaleDateString(getLocaleTag(locale), {
-              day: 'numeric',
-              month: 'long',
-            });
-
-        const formLabel = localizeFormLabel(item.form, locale);
-        const frequencyLabel = localizeFrequencyLabel(item.frequencyLabel, locale);
-        const mealLabel = item.isBeforeMeal
-          ? locale === 'tr'
-            ? 'Aç karnına'
-            : 'Before meal'
-          : locale === 'tr'
-            ? 'Tok karnına'
-            : 'After meal';
-        const takenCount = takenCountsByMedication[item.id] ?? 0;
-        const remainingCount =
-          typeof item.totalQuantity === 'number' && item.totalQuantity > 0 ? Math.max(item.totalQuantity - takenCount, 0) : null;
-
-        return {
-          id: item.id,
-          name: item.name,
-          details:
-            locale === 'tr'
-              ? `${frequencyLabel} | ${item.dosage} ${formLabel} | ${mealLabel}`
-              : `${frequencyLabel} | ${item.dosage} ${formLabel} | ${mealLabel}`,
-          schedule:
-            remainingCount === null
-              ? locale === 'tr'
-                ? `${startedLabel} başlangıç`
-                : `Started ${startedLabel}`
-              : locale === 'tr'
-                ? `${startedLabel} başlangıç | ${remainingCount} adet kaldı`
-                : `Started ${startedLabel} | ${remainingCount} left`,
-          active: item.active,
-          emoji: icon,
-        };
-      }),
-    [store.medications, locale, takenCountsByMedication],
-  );
-
-  const filtered = useMemo(() => {
-    if (filter === 'All') {
-      return items;
-    }
-
-    return items.filter((item) => (filter === 'Active' ? item.active : !item.active));
-  }, [items, filter]);
-
-  const counts = useMemo(
-    () => ({
-      all: items.length,
-      active: items.filter((item) => item.active).length,
-      inactive: items.filter((item) => !item.active).length,
-    }),
-    [items],
-  );
+  const { filter, setFilter, filtered, counts, removeMedication, toggleMedicationActive } = useMyMedsScreenState({ locale });
 
   function confirmDelete(medicationId: string) {
     Alert.alert(
@@ -109,12 +33,11 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              try {
-                await deleteMedication(medicationId);
-              } catch {
+              const errorText = await removeMedication(medicationId);
+              if (errorText) {
                 Alert.alert(
                   locale === 'tr' ? 'Silme başarısız' : 'Delete failed',
-                  locale === 'tr' ? 'İlaç silinemedi. Lütfen tekrar deneyin.' : 'Medication could not be deleted. Please try again.',
+                  errorText,
                 );
               }
             })();
@@ -158,7 +81,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
                 showToggle
                 compact
                 medEmoji={item.emoji}
-                onToggle={(value) => void setMedicationActive(item.id, value)}
+                onToggle={(value) => void toggleMedicationActive(item.id, value)}
                 onPress={() => onOpenMedicationDetails(item.id)}
               />
             </SwipeToDeleteRow>

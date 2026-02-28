@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
-import { resolveProfileAvatarEmoji } from '../features/profile/profile-avatar';
 import { TextField } from '../components/ui/text-field';
-import { loadProfile, saveProfile } from '../features/profile/profile-store';
+import { useProfileScreenState } from '../features/profile/application/use-profile-screen-state';
+import { getProfileGenderOptions } from '../features/profile/application/profile-screen-model';
 import { theme } from '../theme';
 
 type ProfileScreenProps = {
@@ -16,80 +16,25 @@ type ProfileScreenProps = {
 
 type SheetType = 'none' | 'birth-date' | 'gender';
 
-function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function parseDateKey(value: string): Date {
-  if (!value) {
-    return new Date();
-  }
-
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-}
-
-function getGenderOptions(locale: Locale): string[] {
-  if (locale === 'tr') {
-    return ['Kadın', 'Erkek', 'Belirtmek istemiyorum'];
-  }
-
-  return ['Female', 'Male', 'Prefer not to say'];
-}
-
 export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
   const t = getTranslations(locale);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState('');
   const [sheet, setSheet] = useState<SheetType>('none');
-  const [savedMessage, setSavedMessage] = useState('');
-  const [draftBirthDate, setDraftBirthDate] = useState(new Date());
-  const avatarEmoji = resolveProfileAvatarEmoji(gender, locale);
-
-  useEffect(() => {
-    void (async () => {
-      const profile = await loadProfile();
-      setName(profile.fullName);
-      setEmail(profile.email);
-      setBirthDate(profile.birthDate);
-      setGender(profile.gender);
-    })();
-  }, []);
-
-  const localizedBirthDate = useMemo(() => {
-    if (!birthDate) {
-      return locale === 'tr' ? 'Seçiniz' : 'Select';
-    }
-
-    const parsed = parseDateKey(birthDate);
-    return parsed.toLocaleDateString(getLocaleTag(locale), {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  }, [birthDate, locale]);
-
-  async function onSave() {
-    await saveProfile({
-      fullName: name,
-      email,
-      birthDate,
-      gender,
-      photoUri: '',
-    });
-    setSavedMessage(t.profileUpdated);
-    setTimeout(() => setSavedMessage(''), 2000);
-  }
-
-  function openDateSheet() {
-    setDraftBirthDate(parseDateKey(birthDate));
-    setSheet('birth-date');
-  }
+  const {
+    name,
+    setName,
+    email,
+    setEmail,
+    gender,
+    setGender,
+    savedMessage,
+    draftBirthDate,
+    setDraftBirthDate,
+    avatarEmoji,
+    localizedBirthDate,
+    save,
+    openDateSheet,
+    applyDraftBirthDate,
+  } = useProfileScreenState({ locale });
 
   return (
     <>
@@ -108,7 +53,13 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
 
           <View style={styles.fieldWrap}>
             <Text style={styles.fieldLabel}>{t.dateOfBirth}</Text>
-            <Pressable style={styles.combo} onPress={openDateSheet}>
+            <Pressable
+              style={styles.combo}
+              onPress={() => {
+                openDateSheet();
+                setSheet('birth-date');
+              }}
+            >
               <Text style={styles.comboText}>{localizedBirthDate}</Text>
               <Text style={styles.chevron}>{'>'}</Text>
             </Pressable>
@@ -123,7 +74,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
           </View>
 
           {savedMessage ? <Text style={styles.savedText}>{savedMessage}</Text> : null}
-          <Button label={t.saveChanges} onPress={() => void onSave()} />
+          <Button label={t.saveChanges} onPress={() => void save()} />
         </View>
       </ScrollView>
 
@@ -133,7 +84,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
             {sheet === 'gender' ? (
               <>
                 <Text style={styles.sheetTitle}>{t.gender}</Text>
-                {getGenderOptions(locale).map((option) => {
+                {getProfileGenderOptions(locale).map((option) => {
                   const selected = option === gender;
                   return (
                     <Pressable
@@ -173,7 +124,7 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
                 <Button
                   label={t.save}
                   onPress={() => {
-                    setBirthDate(formatDate(draftBirthDate));
+                    applyDraftBirthDate();
                     setSheet('none');
                   }}
                 />

@@ -1,10 +1,8 @@
-import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { TextField } from '../components/ui/text-field';
-import { loadAuthSession } from '../features/auth/auth-session-store';
-import { changePassword } from '../features/auth/email-auth-service';
+import { useChangePasswordScreenState } from '../features/auth/application/use-change-password-screen-state';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
@@ -15,59 +13,21 @@ type ChangePasswordScreenProps = {
 
 export function ChangePasswordScreen({ locale, onBack }: ChangePasswordScreenProps) {
   const t = getTranslations(locale);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isHidden, setIsHidden] = useState(true);
-  const [message, setMessage] = useState('');
-  const [errorText, setErrorText] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  const canSave = useMemo(
-    () => currentPassword.trim().length > 0 && newPassword.trim().length >= 6 && confirmPassword.trim().length >= 6,
-    [currentPassword, newPassword, confirmPassword],
-  );
-
-  async function onSave() {
-    if (!canSave) {
-      setMessage('');
-      setErrorText(t.pleaseFillAllFields);
-      return;
-    }
-
-    if (newPassword.trim() !== confirmPassword.trim()) {
-      setMessage('');
-      setErrorText(locale === 'tr' ? 'Yeni şifre ve tekrar şifre aynı olmalıdır.' : 'New password and confirmation must match.');
-      return;
-    }
-
-    const session = await loadAuthSession();
-    if (!session.email) {
-      setMessage('');
-      setErrorText(locale === 'tr' ? 'Oturum e-posta bilgisi bulunamadı.' : 'Session email was not found.');
-      return;
-    }
-
-    setIsSaving(true);
-    setErrorText('');
-    try {
-      await changePassword({
-        email: session.email,
-        currentPassword,
-        newPassword,
-      });
-      setMessage(locale === 'tr' ? 'Şifre başarıyla güncellendi.' : 'Password updated successfully.');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : locale === 'tr' ? 'Şifre güncelleme başarısız.' : 'Password update failed.';
-      setMessage('');
-      setErrorText(message);
-    } finally {
-      setIsSaving(false);
-    }
-  }
+  const {
+    currentPassword,
+    setCurrentPassword,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    isHidden,
+    setIsHidden,
+    message,
+    errorText,
+    isSaving,
+    canSave,
+    save,
+  } = useChangePasswordScreenState({ locale, t });
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -105,7 +65,7 @@ export function ChangePasswordScreen({ locale, onBack }: ChangePasswordScreenPro
         {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
         {message ? <Text style={styles.successText}>{message}</Text> : null}
 
-        <Button label={t.saveChanges} onPress={() => void onSave()} disabled={!canSave || isSaving} />
+        <Button label={t.saveChanges} onPress={() => void save()} disabled={!canSave || isSaving} />
       </View>
     </ScrollView>
   );

@@ -1,19 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SponsoredBanner } from '../components/ui/sponsored-banner';
 import { SegmentedControl } from '../components/ui/segmented-control';
-import { getDateTitle, getWeekStrip } from '../features/date/week-strip';
-import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
-import { getSponsoredAd } from '../features/monetization/monetization-service';
-import { clearDoseStatus, getScheduledDosesForDate, setDoseStatus } from '../features/medications/medication-store';
-import { useMedicationStore } from '../features/medications/use-medication-store';
+import { getTranslations, type Locale } from '../features/localization/localization';
+import { clearDoseStatus, setDoseStatus } from '../features/medications/medication-store';
 import { scheduleSnoozeReminder } from '../features/notifications/local-notifications';
-import { resolveProfileAvatarEmoji } from '../features/profile/profile-avatar';
-import { loadProfile } from '../features/profile/profile-store';
-import { toShortDisplayName } from '../features/profile/display-name';
+import { useTodayScreenState, type TodayDoseFilter } from '../features/today/application/use-today-screen-state';
 import { theme } from '../theme';
 
 type TodayScreenProps = {
@@ -28,8 +23,6 @@ type TodayScreenProps = {
   onOpenEmailVerification: () => void;
 };
 
-type DoseStatus = 'All' | 'Taken' | 'Missed';
-
 export function TodayScreen({
   locale,
   fontScale,
@@ -42,80 +35,32 @@ export function TodayScreen({
   onOpenEmailVerification,
 }: TodayScreenProps) {
   const t = getTranslations(locale);
-  const store = useMedicationStore();
-  const [filter, setFilter] = useState<DoseStatus>('All');
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [actionWarning, setActionWarning] = useState<string | null>(null);
-  const [showFutureActionPopup, setShowFutureActionPopup] = useState(false);
-  const [profileName, setProfileName] = useState('');
-  const [profileGender, setProfileGender] = useState('');
-  const shortDisplayName = toShortDisplayName(profileName) || (locale === 'tr' ? 'Kullanıcı' : 'User');
-  const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
-  const doses = useMemo(() => getScheduledDosesForDate(selectedDate, locale), [selectedDate, locale, store.medications, store.events]);
-
-  const filtered = useMemo(() => {
-    if (filter === 'All') {
-      return doses;
-    }
-
-    const map = {
-      Taken: 'taken',
-      Missed: 'missed',
-    } as const;
-
-    return doses.filter((item) => item.status === map[filter]);
-  }, [filter, doses]);
-
-  const counts = useMemo(
-    () => ({
-      all: doses.length,
-      taken: doses.filter((item) => item.status === 'taken').length,
-      missed: doses.filter((item) => item.status === 'missed').length,
-    }),
-    [doses],
-  );
-  const hasAnyDoseForSelectedDate = doses.length > 0;
-  const isTakenFilter = filter === 'Taken';
-  const isMissedFilter = filter === 'Missed';
-  const showFilteredEmptyWarningOnly = (isMissedFilter || isTakenFilter) && filtered.length === 0 && hasAnyDoseForSelectedDate;
-  const filteredEmptyTitle =
-    isMissedFilter
-      ? t.noMissedMedicationTitle
-      : locale === 'tr'
-        ? 'Alınan ilacınız bulunmamaktadır'
-        : 'No taken medications were found';
-  const dateDelta = useMemo(() => {
-    const normalize = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    return normalize(selectedDate) - normalize(new Date());
-  }, [selectedDate]);
-  const isFutureDate = dateDelta > 0;
-  const isPastDate = dateDelta < 0;
-
-  useEffect(() => {
-    setActionWarning(null);
-    setShowFutureActionPopup(false);
-  }, [selectedDate, filter]);
-
-  useEffect(() => {
-    void (async () => {
-      const profile = await loadProfile();
-      setProfileName(profile.fullName);
-      setProfileGender(profile.gender);
-    })();
-  }, []);
-
-  const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale, weekStartsOn), [selectedDate, locale, weekStartsOn]);
-  const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
-  const sponsoredAd = useMemo(() => getSponsoredAd(locale === 'tr' ? 'tr' : 'en'), [locale]);
-  const sectionTitle = useMemo(() => {
-    const localeTag = getLocaleTag(locale);
-    const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);
-    const isToday = dateDelta === 0;
-    if (isToday) {
-      return `${dateText} ${t.todaysMedication}`;
-    }
-    return locale === 'tr' ? `${dateText} ilaçları` : `${dateText} medications`;
-  }, [selectedDate, locale, dateDelta, t.todaysMedication]);
+  const {
+    filter,
+    setFilter,
+    selectedDate,
+    setSelectedDate,
+    actionWarning,
+    setActionWarning,
+    showFutureActionPopup,
+    setShowFutureActionPopup,
+    shortDisplayName,
+    avatarEmoji,
+    filtered,
+    counts,
+    hasAnyDoseForSelectedDate,
+    isTakenFilter,
+    isMissedFilter,
+    showFilteredEmptyWarningOnly,
+    filteredEmptyTitle,
+    dateDelta,
+    isFutureDate,
+    isPastDate,
+    weekStrip,
+    dateTitle,
+    sponsoredAd,
+    sectionTitle,
+  } = useTodayScreenState({ locale, weekStartsOn });
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -195,7 +140,7 @@ export function TodayScreen({
           { label: t.missed, value: 'Missed', count: counts.missed },
         ]}
         value={filter}
-        onChange={(next) => setFilter(next as DoseStatus)}
+        onChange={(next) => setFilter(next as TodayDoseFilter)}
       />
 
       {filtered.length === 0 ? (

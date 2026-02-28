@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { submitFeedback, type FeedbackCategory } from '../features/feedback/feedback-service';
+import { useFeedbackScreenState } from '../features/feedback/application/use-feedback-screen-state';
 import { type Locale } from '../features/localization/localization';
 import { theme } from '../theme';
 
@@ -12,42 +11,19 @@ type FeedbackScreenProps = {
 };
 
 export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
-  const [category, setCategory] = useState<FeedbackCategory>('notification-problem');
-  const [message, setMessage] = useState('');
-  const [statusText, setStatusText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
-
-  const categories = useMemo(
-    () => [
-      { key: 'notification-problem' as const, label: locale === 'tr' ? 'Bildirim Sorunu' : 'Notification Problem' },
-      { key: 'add-medication-problem' as const, label: locale === 'tr' ? 'İlaç Ekleme Sorunu' : 'Add Medication Problem' },
-      { key: 'suggestion' as const, label: locale === 'tr' ? 'Öneri' : 'Suggestion' },
-      { key: 'other' as const, label: locale === 'tr' ? 'Diğer' : 'Other' },
-    ],
-    [locale],
-  );
-
-  const canSubmit = message.trim().length >= 10 && !submitting;
-  const selectedCategoryLabel = categories.find((item) => item.key === category)?.label ?? '';
-
-  async function onSubmit() {
-    if (!canSubmit) {
-      return;
-    }
-
-    setSubmitting(true);
-    setStatusText('');
-    try {
-      await submitFeedback(category, message.trim());
-      setMessage('');
-      setStatusText(locale === 'tr' ? 'Geri bildiriminiz alınmıştır.' : 'Feedback received.');
-    } catch {
-      setStatusText(locale === 'tr' ? 'Gönderim başarısız. Lütfen tekrar deneyin.' : 'Submission failed. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const {
+    category,
+    setCategory,
+    message,
+    setMessage,
+    statusText,
+    categoryPickerOpen,
+    setCategoryPickerOpen,
+    categories,
+    canSubmit,
+    selectedCategoryLabel,
+    send,
+  } = useFeedbackScreenState(locale);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -73,7 +49,7 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
         />
 
         {statusText.length > 0 ? <Text style={styles.status}>{statusText}</Text> : null}
-        <Button label={locale === 'tr' ? 'Gönder' : 'Submit'} onPress={() => void onSubmit()} disabled={!canSubmit} />
+        <Button label={locale === 'tr' ? 'Gönder' : 'Submit'} onPress={() => void send()} disabled={!canSubmit} />
       </View>
 
       <Modal transparent visible={categoryPickerOpen} animationType="slide" onRequestClose={() => setCategoryPickerOpen(false)}>
