@@ -99,6 +99,11 @@ export function TodayScreen({
   }, [dayStripItems.length, selectedDate]);
 
   useEffect(() => {
+    const now = new Date();
+    setSelectedDate(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+  }, [setSelectedDate]);
+
+  useEffect(() => {
     dayStripRef.current?.scrollTo({
       x: selectedIndex * DAY_ITEM_SNAP,
       animated: true,

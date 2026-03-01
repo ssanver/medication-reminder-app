@@ -16,11 +16,16 @@ type UseTodayScreenStateInput = {
   weekStartsOn: 'monday' | 'sunday';
 };
 
+function getTodayAtMidnight() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStateInput) {
   const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<TodayDoseFilter>('All');
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(getTodayAtMidnight);
   const [actionWarning, setActionWarning] = useState<string | null>(null);
   const [showFutureActionPopup, setShowFutureActionPopup] = useState(false);
   const [profileName, setProfileName] = useState('');
