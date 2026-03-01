@@ -78,6 +78,11 @@ public sealed class CancelAccountRequest
     public required string Password { get; set; }
 }
 
+public sealed class GuestSessionRequest
+{
+    public string? DeviceId { get; set; }
+}
+
 public sealed class EmailAuthResponse
 {
     public required Guid UserId { get; set; }

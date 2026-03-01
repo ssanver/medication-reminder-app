@@ -43,7 +43,12 @@ function parseNumberArray(value: string | undefined): number[] {
     return [];
   }
 
-  const parsed = JSON.parse(value);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return [];
+  }
   if (!Array.isArray(parsed)) {
     return [];
   }
@@ -58,7 +63,12 @@ function parseStringArray(value: string | undefined): string[] {
     return [];
   }
 
-  const parsed = JSON.parse(value);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return [];
+  }
   if (!Array.isArray(parsed)) {
     return [];
   }
@@ -73,7 +83,12 @@ function parseFormOptions(value: string | undefined): FormOption[] {
     return [];
   }
 
-  const parsed = JSON.parse(value);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return [];
+  }
   if (!Array.isArray(parsed)) {
     return [];
   }

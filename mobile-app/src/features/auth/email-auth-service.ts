@@ -34,10 +34,11 @@ export async function signInWithEmail(payload: { email: string; password: string
   });
 }
 
-export async function createGuestSession(): Promise<AuthSessionResponse> {
+export async function createGuestSession(payload?: { deviceId?: string }): Promise<AuthSessionResponse> {
   return apiRequestJson<AuthSessionResponse>('/api/auth/guest/session', {
     method: 'POST',
     correlationPrefix: 'guest-session',
+    body: payload,
   });
 }
 

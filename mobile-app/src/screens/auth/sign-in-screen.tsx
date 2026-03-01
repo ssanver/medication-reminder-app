@@ -82,8 +82,9 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp, onContinueAsGues
       />
       <Button label={t.continueAsGuest} variant="ghost" onPress={onContinueAsGuest} />
 
-      <Pressable testID="signin-open-signup-link" onPress={onOpenSignUp}>
-        <Text style={styles.signUpText}>{t.noAccount}</Text>
+      <Pressable testID="signin-open-signup-link" onPress={onOpenSignUp} style={styles.signUpCta}>
+        <Text style={styles.signUpHint}>{t.noAccount}</Text>
+        <Text style={styles.signUpText}>{t.createAccount}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -124,9 +125,24 @@ const styles = StyleSheet.create({
     color: theme.colors.semantic.textSecondary,
     textAlign: 'center',
   },
-  signUpText: {
-    ...theme.typography.captionScale.lRegular,
+  signUpCta: {
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[300],
+    borderRadius: theme.radius[16],
+    backgroundColor: theme.colors.primaryBlue[50],
+    paddingVertical: theme.spacing[8],
+    paddingHorizontal: theme.spacing[16],
+    alignItems: 'center',
+    gap: theme.spacing[4],
+  },
+  signUpHint: {
+    ...theme.typography.captionScale.mRegular,
     color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
+  },
+  signUpText: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.primaryBlue[700],
     textAlign: 'center',
   },
 });

@@ -7,6 +7,7 @@ import { fontScaleLevels, isFontScaleLevelValid } from '../features/accessibilit
 import { resolveInitialPhase } from '../features/auth/auth-flow';
 import {
   clearSessionForLogout,
+  loadOrCreateDeviceId,
   subscribeAuthSession,
   loadAuthSession,
   loadAccessToken,
@@ -103,6 +104,11 @@ export function AppNavigator() {
   const t = getTranslations(locale);
   const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
 
+  async function requestGuestSession() {
+    const deviceId = await loadOrCreateDeviceId();
+    return createGuestSession({ deviceId });
+  }
+
   useEffect(() => {
     if (phase !== 'splash') {
       return;
@@ -113,7 +119,7 @@ export function AppNavigator() {
       let session = await loadAuthSession();
       if (!session.isLoggedIn && !session.isGuestMode) {
         try {
-          const guestSession = await createGuestSession();
+          const guestSession = await requestGuestSession();
           await markGuestMode({
             accessToken: guestSession.accessToken,
             refreshToken: guestSession.refreshToken,
@@ -128,7 +134,7 @@ export function AppNavigator() {
         const token = await loadAccessToken();
         if (!token) {
           try {
-            const guestSession = await createGuestSession();
+            const guestSession = await requestGuestSession();
             await markGuestMode({
               accessToken: guestSession.accessToken,
               refreshToken: guestSession.refreshToken,
@@ -373,7 +379,7 @@ export function AppNavigator() {
             onContinueAsGuest={() => {
               void (async () => {
                 try {
-                  const guestSession = await createGuestSession();
+                  const guestSession = await requestGuestSession();
                   await markGuestMode({
                     accessToken: guestSession.accessToken,
                     refreshToken: guestSession.refreshToken,
@@ -442,7 +448,7 @@ export function AppNavigator() {
             onContinueAsGuest={() => {
               void (async () => {
                 try {
-                  const guestSession = await createGuestSession();
+                  const guestSession = await requestGuestSession();
                   await markGuestMode({
                     accessToken: guestSession.accessToken,
                     refreshToken: guestSession.refreshToken,

@@ -10,6 +10,7 @@ const KEY_EMAIL = 'auth:email';
 const KEY_EMAIL_VERIFIED = 'auth:emailVerified';
 const KEY_HAS_SEEN_SPLASH_ONCE = 'auth:hasSeenSplashOnce';
 const KEY_IS_GUEST_MODE = 'auth:isGuestMode';
+const KEY_DEVICE_ID = 'auth:deviceId';
 
 export type AuthSession = {
   isLoggedIn: boolean;
@@ -181,4 +182,16 @@ export async function loadAccessToken(): Promise<string | null> {
   }
 
   return token.trim();
+}
+
+export async function loadOrCreateDeviceId(): Promise<string> {
+  const existing = await AsyncStorage.getItem(KEY_DEVICE_ID);
+  if (existing && existing.trim().length > 0) {
+    return existing.trim();
+  }
+
+  const randomPart = `${Date.now()}-${Math.round(Math.random() * 1_000_000_000)}`;
+  const generated = `device-${randomPart}`.toLowerCase();
+  await AsyncStorage.setItem(KEY_DEVICE_ID, generated);
+  return generated;
 }

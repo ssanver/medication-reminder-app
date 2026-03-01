@@ -93,11 +93,13 @@ public sealed class AuthController(
     }
 
     [HttpPost("guest/session")]
-    public ActionResult<EmailAuthResponse> CreateGuestSession()
+    public ActionResult<EmailAuthResponse> CreateGuestSession([FromBody] GuestSessionRequest? request = null)
     {
         var now = DateTimeOffset.UtcNow;
-        var guestId = Guid.NewGuid();
-        var guestEmail = $"guest-{guestId:N}@pillmind.local";
+        var headerDeviceId = HttpContext?.Request?.Headers["X-Device-Id"].FirstOrDefault();
+        var deviceId = NormalizeDeviceId(request?.DeviceId ?? headerDeviceId);
+        var guestId = BuildGuestIdFromDevice(deviceId);
+        var guestEmail = BuildGuestEmailFromDevice(deviceId);
         var accessToken = jwtTokenService.CreateAccessToken(
             subject: guestId.ToString(),
             email: guestEmail,
@@ -106,6 +108,9 @@ public sealed class AuthController(
             additionalClaims: new[]
             {
                 new Claim("is_guest", "true"),
+                new Claim("device_id", deviceId),
+                new Claim(ClaimTypes.Role, "guest"),
+                new Claim("role", "guest"),
             });
 
         return Ok(new EmailAuthResponse
@@ -119,6 +124,37 @@ public sealed class AuthController(
             RefreshToken = $"guest-rt-{Guid.NewGuid():N}",
             ExpiresAt = jwtTokenService.GetAccessTokenExpiry(now),
         });
+    }
+
+    private static string NormalizeDeviceId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "unknown-device";
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized.Length > 128)
+        {
+            normalized = normalized[..128];
+        }
+
+        return normalized;
+    }
+
+    private static Guid BuildGuestIdFromDevice(string deviceId)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(deviceId));
+        Span<byte> guidBytes = stackalloc byte[16];
+        hash.AsSpan(0, 16).CopyTo(guidBytes);
+        return new Guid(guidBytes);
+    }
+
+    private static string BuildGuestEmailFromDevice(string deviceId)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(deviceId));
+        var prefix = Convert.ToHexString(hash.AsSpan(0, 10)).ToLowerInvariant();
+        return $"guest-{prefix}@pillmind.local";
     }
 
     [HttpPost("email/sign-up")]

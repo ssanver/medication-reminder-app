@@ -479,7 +479,17 @@ export function AddMedsScreen({
 
           <View style={styles.suggestionList}>
             {filteredSuggestions.map((item) => (
-              <Pressable key={item} onPress={() => setName(item)} style={styles.suggestionRow}>
+              <Pressable
+                key={item}
+                onPress={() => {
+                  setName(item);
+                  if (!iconEmoji && medicationIconOptions[0]) {
+                    setIconEmoji(medicationIconOptions[0]);
+                  }
+                }}
+                style={styles.suggestionRow}
+              >
+                <Text style={styles.suggestionIcon}>{iconEmoji || medicationIconOptions[0] || '💊'}</Text>
                 <Text numberOfLines={1} style={styles.suggestionText}>{item}</Text>
               </Pressable>
             ))}
@@ -1231,6 +1241,11 @@ const styles = StyleSheet.create({
     color: theme.colors.primaryBlue[500],
   },
   suggestionText: {
+    flex: 1,
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textSecondary,
+  },
+  suggestionIcon: {
     ...theme.typography.bodyScale.xmRegular,
     color: theme.colors.semantic.textSecondary,
   },
