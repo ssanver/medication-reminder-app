@@ -17,5 +17,6 @@ public sealed class UserAccount
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? LastLoginAt { get; set; }
     public string Role { get; set; } = UserRole.Member;
+    public string? SubscriptionPlanId { get; set; }
     public UserPreference? Preference { get; set; }
 }

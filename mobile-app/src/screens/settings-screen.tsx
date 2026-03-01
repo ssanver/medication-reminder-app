@@ -3,10 +3,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { TextField } from '../components/ui/text-field';
-import { loadAppDefinitions } from '../features/definitions/definitions-service';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
-import { activateAdFreeMode, getAdFreeStatus, type SubscriptionOffer, subscribeAdFreeStatus } from '../features/monetization/subscription-service';
+import { getMonetizationStatus, refreshMonetizationStatus, subscribeMonetizationStatus } from '../features/monetization/subscription-service';
 import { useSettingsScreenState } from '../features/settings/application/use-settings-screen-state';
 import { theme } from '../theme';
 
@@ -23,6 +22,7 @@ type SettingsScreenProps = {
   onLogout: () => void;
   onShareApp: () => void;
   onOpenDonate: () => void;
+  onOpenPremium: () => void;
   isGuestMode: boolean;
   onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>;
   notificationsEnabled: boolean;
@@ -46,6 +46,7 @@ export function SettingsScreen({
   onLogout,
   onShareApp,
   onOpenDonate,
+  onOpenPremium,
   isGuestMode,
   onCancelAccount,
   notificationsEnabled: _notificationsEnabled,
@@ -81,26 +82,14 @@ export function SettingsScreen({
     isAppearanceDirty,
     version,
   } = useSettingsScreenState({ locale, fontScale, weekStartsOn });
-  const [offers, setOffers] = useState<SubscriptionOffer[]>([]);
-  const [paywallOpen, setPaywallOpen] = useState(false);
   const [adFree, setAdFree] = useState(false);
 
   useEffect(() => {
+    const unsubscribe = subscribeMonetizationStatus((status) => setAdFree(!status.adsEnabled));
     void (async () => {
-      try {
-        const definitions = await loadAppDefinitions();
-        setOffers(definitions.subscriptionOffers ?? []);
-      } catch {
-        setOffers([]);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = subscribeAdFreeStatus((status) => setAdFree(status.isAdFree));
-    void (async () => {
-      const status = await getAdFreeStatus();
-      setAdFree(status.isAdFree);
+      const status = await getMonetizationStatus();
+      setAdFree(!status.adsEnabled);
+      await refreshMonetizationStatus();
     })();
     return unsubscribe;
   }, []);
@@ -113,7 +102,7 @@ export function SettingsScreen({
         <View style={styles.profileCard}>
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{profileAvatarEmoji}</Text></View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
+            <Text style={styles.profileName}>{shortDisplayName}</Text>
             {isGuestMode ? <Text style={styles.guestInfoText}>{t.guestProfileWarning}</Text> : null}
             {!isGuestMode ? (
               <Pressable onPress={onOpenProfile}>
@@ -198,7 +187,7 @@ export function SettingsScreen({
             testID="settings-remove-ads-row"
             label={t.removeAds}
             value={adFree ? t.adFreeActive : undefined}
-            onPress={() => setPaywallOpen(true)}
+            onPress={onOpenPremium}
           />
           {!isGuestMode ? (
             <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
@@ -324,31 +313,6 @@ export function SettingsScreen({
         </View>
       </Modal>
 
-      <Modal transparent visible={paywallOpen} animationType="slide" onRequestClose={() => setPaywallOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setPaywallOpen(false)}>
-          <Pressable style={styles.sheet} onPress={() => undefined}>
-            <Text style={styles.sheetTitle}>{t.removeAds}</Text>
-            <Text style={styles.rowSubtitle}>{t.removeAdsDescription}</Text>
-            {offers.map((offer) => (
-              <Pressable
-                key={offer.id}
-                style={styles.subscriptionCard}
-                onPress={() => {
-                  void (async () => {
-                    await activateAdFreeMode(offer.id);
-                    setPaywallOpen(false);
-                  })();
-                }}
-              >
-                <Text style={styles.subscriptionTitle}>{offer.localized[locale]?.title ?? offer.localized.en?.title ?? offer.id}</Text>
-                <Text style={styles.rowSubtitle}>
-                  {offer.localized[locale]?.priceLabel ?? offer.localized.en?.priceLabel ?? ''}
-                </Text>
-              </Pressable>
-            ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
     </>
   );
 }
@@ -437,16 +401,15 @@ const styles = StyleSheet.create({
   completeProfileCta: {
     minHeight: 34,
     borderRadius: theme.radius[16],
-    borderWidth: 1,
-    borderColor: theme.colors.primaryBlue[500],
-    backgroundColor: theme.colors.primaryBlue[50],
+    borderWidth: 0,
+    backgroundColor: theme.colors.error[600],
     paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
   },
   completeProfileCtaText: {
     ...theme.typography.captionScale.lRegular,
-    color: theme.colors.primaryBlue[500],
+    color: theme.colors.semantic.onPrimary,
     fontWeight: '700',
   },
   sectionWrap: {
@@ -668,21 +631,6 @@ const styles = StyleSheet.create({
   languageOptionTextActive: {
     color: theme.colors.primaryBlue[500],
     fontWeight: '700',
-  },
-  subscriptionCard: {
-    minHeight: 58,
-    borderRadius: theme.radius[16],
-    borderWidth: 1,
-    borderColor: theme.colors.semantic.borderSoft,
-    backgroundColor: theme.colors.neutral[50],
-    paddingHorizontal: theme.spacing[16],
-    paddingVertical: theme.spacing[8],
-    justifyContent: 'center',
-    gap: 2,
-  },
-  subscriptionTitle: {
-    ...theme.typography.bodyScale.xmMedium,
-    color: theme.colors.semantic.textPrimary,
   },
   bottomSpacer: {
     height: theme.spacing[8],

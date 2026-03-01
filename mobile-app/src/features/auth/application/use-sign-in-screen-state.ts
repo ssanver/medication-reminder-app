@@ -9,7 +9,7 @@ type AuthSessionTokens = {
 };
 
 type UseSignInScreenStateInput = {
-  onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean }) => void;
+  onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean; role: 'visitor' | 'member' | 'vip' }) => void;
   t: {
     pleaseFillAllFields: string;
     socialSignInSuccessPrefix: string;
@@ -53,6 +53,7 @@ export function useSignInScreenState({ onSuccess, t }: UseSignInScreenStateInput
         },
         email: response.email,
         emailVerified: response.isEmailVerified,
+        role: response.role,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sign-in failed.';
@@ -68,7 +69,7 @@ export function useSignInScreenState({ onSuccess, t }: UseSignInScreenStateInput
       setErrorText('');
       const response = await loginWithSocial(provider);
       setSocialMessage(`${t.socialSignInSuccessPrefix} ${response.provider}.`);
-      setTimeout(() => onSuccess({ session: response, email: response.email, emailVerified: true }), 400);
+      setTimeout(() => onSuccess({ session: response, email: response.email, emailVerified: true, role: 'member' }), 400);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Social login failed.';
       setErrorText(`${t.socialSignInFailedPrefix} ${message}`);

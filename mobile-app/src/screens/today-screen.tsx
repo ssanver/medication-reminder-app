@@ -128,7 +128,6 @@ export function TodayScreen({
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{avatarEmoji}</Text></View>
           {isGuestMode ? (
             <Pressable style={styles.guestAlertRow} onPress={onOpenSignUp}>
-              <Text style={styles.guestAlertHello}>{`${t.hello},`}</Text>
               <Text style={styles.guestAlertCta}>{t.signUpNow}</Text>
             </Pressable>
           ) : (
@@ -426,21 +425,16 @@ const styles = StyleSheet.create({
   guestAlertRow: {
     minHeight: 36,
     borderRadius: theme.radius[16],
-    borderWidth: 1,
-    borderColor: theme.colors.error[200],
-    backgroundColor: theme.colors.error[50],
+    borderWidth: 0,
+    backgroundColor: theme.colors.error[600],
     paddingHorizontal: theme.spacing[16],
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing[8],
   },
-  guestAlertHello: {
-    ...theme.typography.bodyScale.mMedium,
-    color: theme.colors.error[800],
-  },
   guestAlertCta: {
     ...theme.typography.bodyScale.mBold,
-    color: theme.colors.error[800],
+    color: theme.colors.semantic.onPrimary,
     fontWeight: '700',
   },
   dateTitle: {

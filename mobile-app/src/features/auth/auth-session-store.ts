@@ -11,6 +11,9 @@ const KEY_EMAIL_VERIFIED = 'auth:emailVerified';
 const KEY_HAS_SEEN_SPLASH_ONCE = 'auth:hasSeenSplashOnce';
 const KEY_IS_GUEST_MODE = 'auth:isGuestMode';
 const KEY_DEVICE_ID = 'auth:deviceId';
+const KEY_ROLE = 'auth:role';
+
+export type UserRole = 'visitor' | 'member' | 'vip';
 
 export type AuthSession = {
   isLoggedIn: boolean;
@@ -20,6 +23,7 @@ export type AuthSession = {
   hasSeenSplashOnce: boolean;
   email: string;
   emailVerified: boolean;
+  role: UserRole;
 };
 
 const authSessionListeners = new Set<() => void>();
@@ -38,7 +42,7 @@ function parseFlag(value: string | null): boolean {
 }
 
 export async function loadAuthSession(): Promise<AuthSession> {
-  const [isLoggedInRaw, isGuestModeRaw, hasCompletedOnboardingRaw, hasSeenPermissionScreenRaw, hasSeenSplashOnceRaw, emailRaw, emailVerifiedRaw] = await Promise.all([
+  const [isLoggedInRaw, isGuestModeRaw, hasCompletedOnboardingRaw, hasSeenPermissionScreenRaw, hasSeenSplashOnceRaw, emailRaw, emailVerifiedRaw, roleRaw] = await Promise.all([
     AsyncStorage.getItem(KEY_IS_LOGGED_IN),
     AsyncStorage.getItem(KEY_IS_GUEST_MODE),
     AsyncStorage.getItem(KEY_HAS_COMPLETED_ONBOARDING),
@@ -46,6 +50,7 @@ export async function loadAuthSession(): Promise<AuthSession> {
     AsyncStorage.getItem(KEY_HAS_SEEN_SPLASH_ONCE),
     AsyncStorage.getItem(KEY_EMAIL),
     AsyncStorage.getItem(KEY_EMAIL_VERIFIED),
+    AsyncStorage.getItem(KEY_ROLE),
   ]);
 
   return {
@@ -56,6 +61,7 @@ export async function loadAuthSession(): Promise<AuthSession> {
     hasSeenSplashOnce: parseFlag(hasSeenSplashOnceRaw),
     email: emailRaw ?? '',
     emailVerified: parseFlag(emailVerifiedRaw),
+    role: toUserRole(roleRaw),
   };
 }
 
@@ -79,6 +85,7 @@ export async function markAuthenticated(payload: {
   refreshToken?: string;
   email?: string;
   emailVerified?: boolean;
+  role?: UserRole;
 } = {}): Promise<void> {
   const hasValidSession = Boolean(payload.accessToken && payload.email);
   const writes: Array<Promise<void>> = [
@@ -106,6 +113,7 @@ export async function markAuthenticated(payload: {
   }
 
   writes.push(AsyncStorage.setItem(KEY_EMAIL_VERIFIED, payload.emailVerified ? 'true' : 'false'));
+  writes.push(AsyncStorage.setItem(KEY_ROLE, payload.role ?? 'member'));
 
   await Promise.all(writes);
   emitAuthSessionChanged();
@@ -115,6 +123,7 @@ export async function markGuestMode(payload: {
   accessToken?: string;
   refreshToken?: string;
   email?: string;
+  role?: UserRole;
 } = {}): Promise<void> {
   const writes: Array<Promise<void>> = [
     AsyncStorage.setItem(KEY_IS_LOGGED_IN, 'false'),
@@ -141,6 +150,7 @@ export async function markGuestMode(payload: {
   } else {
     writes.push(AsyncStorage.removeItem(KEY_EMAIL));
   }
+  writes.push(AsyncStorage.setItem(KEY_ROLE, payload.role ?? 'visitor'));
 
   await Promise.all(writes);
   emitAuthSessionChanged();
@@ -165,6 +175,7 @@ export async function clearSessionForLogout(): Promise<void> {
     AsyncStorage.removeItem(KEY_CACHED_USER),
     AsyncStorage.removeItem(KEY_EMAIL),
     AsyncStorage.removeItem(KEY_EMAIL_VERIFIED),
+    AsyncStorage.removeItem(KEY_ROLE),
   ]);
   emitAuthSessionChanged();
 }
@@ -194,4 +205,12 @@ export async function loadOrCreateDeviceId(): Promise<string> {
   const generated = `device-${randomPart}`.toLowerCase();
   await AsyncStorage.setItem(KEY_DEVICE_ID, generated);
   return generated;
+}
+
+function toUserRole(value: string | null): UserRole {
+  if (value === 'vip' || value === 'member' || value === 'visitor') {
+    return value;
+  }
+
+  return 'visitor';
 }

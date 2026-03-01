@@ -148,6 +148,9 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
     if (!definition) {
       return null;
     }
+    if (definition.placements && definition.placements.length > 0 && !definition.placements.includes('today')) {
+      return null;
+    }
     const localized = definition.localized[locale] ?? definition.localized.en ?? Object.values(definition.localized)[0];
     if (!localized || !localized.title || !localized.body || !localized.ctaLabel || !definition.ctaUrl) {
       return null;

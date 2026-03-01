@@ -214,6 +214,8 @@
   "donate": "Bağış Yap",
   "removeAds": "Reklamları Kaldır",
   "removeAdsDescription": "Daha akıcı deneyim için reklamsız sürüme geçin.",
+  "loading": "Yükleniyor...",
+  "error": "Bir hata oluştu.",
   "adFreeActive": "Reklamsız aktif",
   "shareApp": "Uygulamayı Paylaş",
   "version": "Sürüm",

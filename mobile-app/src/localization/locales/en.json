@@ -214,6 +214,8 @@
   "donate": "Donate",
   "removeAds": "Remove Ads",
   "removeAdsDescription": "Upgrade to ad-free mode for uninterrupted use.",
+  "loading": "Loading...",
+  "error": "An error occurred.",
   "adFreeActive": "Ad-free active",
   "shareApp": "Share App",
   "version": "Version",

@@ -1,11 +1,15 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
+import { InlineAdCard } from '../components/ui/inline-ad-card';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SegmentedControl } from '../components/ui/segmented-control';
+import { loadAppDefinitions } from '../features/definitions/definitions-service';
 import { getTranslations, type Locale } from '../features/localization/localization';
+import { getMonetizationStatus, refreshMonetizationStatus, subscribeMonetizationStatus } from '../features/monetization/subscription-service';
 import { useMyMedsScreenState } from '../features/medications/application/use-my-meds-screen-state';
 import { theme } from '../theme';
+import * as Linking from 'expo-linking';
 
 type MyMedsScreenProps = {
   locale: Locale;
@@ -19,10 +23,50 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
   const t = getTranslations(locale);
   const { filter, setFilter, filtered, counts, toggleMedicationActive } = useMyMedsScreenState({ locale });
+  const [ad, setAd] = useState<{ title: string; body: string; ctaLabel: string; ctaUrl: string } | null>(null);
+  const [adsEnabled, setAdsEnabled] = useState(true);
   function applyMedicationActiveState(medicationId: string, nextActive: boolean) {
     setFilter(nextActive ? 'Active' : 'Inactive');
     void toggleMedicationActive(medicationId, nextActive);
   }
+
+  useEffect(() => {
+    const unsubscribe = subscribeMonetizationStatus((status) => setAdsEnabled(status.adsEnabled));
+    void (async () => {
+      const status = await getMonetizationStatus();
+      setAdsEnabled(status.adsEnabled);
+      await refreshMonetizationStatus();
+      try {
+        const definitions = await loadAppDefinitions();
+        const sponsored = definitions.sponsoredAd;
+        if (!sponsored) {
+          setAd(null);
+          return;
+        }
+        if (sponsored.placements && sponsored.placements.length > 0 && !sponsored.placements.includes('my-meds')) {
+          setAd(null);
+          return;
+        }
+
+        const localized = sponsored.localized[locale] ?? sponsored.localized.en ?? Object.values(sponsored.localized)[0];
+        if (!localized?.title || !localized.body || !localized.ctaLabel || !sponsored.ctaUrl) {
+          setAd(null);
+          return;
+        }
+
+        setAd({
+          title: localized.title,
+          body: localized.body,
+          ctaLabel: localized.ctaLabel,
+          ctaUrl: sponsored.ctaUrl,
+        });
+      } catch {
+        setAd(null);
+      }
+    })();
+
+    return unsubscribe;
+  }, [locale]);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -37,6 +81,17 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
         value={filter}
         onChange={(next) => setFilter(next as MedStatus)}
       />
+
+      {adsEnabled && ad ? (
+        <InlineAdCard
+          title={ad.title}
+          body={ad.body}
+          ctaLabel={ad.ctaLabel}
+          onPress={() => {
+            void Linking.openURL(ad.ctaUrl);
+          }}
+        />
+      ) : null}
 
       {filtered.length === 0 ? (
         <View style={styles.emptyCard}>
@@ -85,11 +140,10 @@ type SwipeToDeleteRowProps = {
 };
 
 function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: SwipeToDeleteRowProps) {
-  const actionWidth = 132;
+  const actionWidth = 108;
   const [isOpen, setIsOpen] = useState(false);
   const translateX = useState(() => new Animated.Value(0))[0];
-  const actionButtonColor = actionVariant === 'deactivate' ? theme.colors.neutral[500] : theme.colors.primaryBlue[500];
-  const actionPanelColor = actionVariant === 'deactivate' ? theme.colors.neutral[100] : theme.colors.primaryBlue[50];
+  const actionButtonColor = actionVariant === 'deactivate' ? theme.colors.error[500] : theme.colors.success[500];
   const actionIconName = actionVariant === 'deactivate' ? 'close' : 'check';
 
   const panResponder = useMemo(
@@ -123,7 +177,7 @@ function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: Sw
 
   return (
     <View style={styles.swipeContainer}>
-      <View style={[styles.swipeDeleteAction, { width: actionWidth, backgroundColor: actionPanelColor }]}>
+      <View style={[styles.swipeDeleteAction, { width: actionWidth }]}>
         <Pressable style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }]} onPress={onAction} hitSlop={12}>
           <AppIcon name={actionIconName} size={18} color="#FFFFFF" />
           <Text style={styles.swipeDeleteButtonText}>{actionLabel}</Text>
@@ -164,13 +218,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingRight: theme.spacing[8],
+    paddingRight: 0,
   },
   swipeDeleteButton: {
-    width: 116,
-    minHeight: 56,
-    borderRadius: theme.radius[16],
-    paddingHorizontal: theme.spacing[16],
+    width: 96,
+    minHeight: 52,
+    borderTopRightRadius: theme.radius[16],
+    borderBottomRightRadius: theme.radius[16],
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',

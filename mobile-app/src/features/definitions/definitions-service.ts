@@ -22,11 +22,17 @@ export type AppDefinitions = {
   sponsoredAd?: {
     id: string;
     ctaUrl: string;
+    placements?: string[];
+    localized: Record<string, { title: string; body: string; ctaLabel: string }>;
+  };
+  donationCampaign?: {
+    id: string;
+    ctaUrl: string;
     localized: Record<string, { title: string; body: string; ctaLabel: string }>;
   };
   subscriptionOffers?: Array<{
     id: string;
-    localized: Record<string, { title: string; priceLabel: string }>;
+    localized: Record<string, { title: string; priceLabel: string; description?: string; badge?: string; ctaLabel?: string }>;
   }>;
 };
 
@@ -113,6 +119,7 @@ function parseFormOptions(value: string | undefined): FormOption[] {
 function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
   const source = response.definitions ?? {};
   let sponsoredAd: AppDefinitions['sponsoredAd'] | undefined;
+  let donationCampaign: AppDefinitions['donationCampaign'] | undefined;
   let subscriptionOffers: AppDefinitions['subscriptionOffers'] | undefined;
   try {
     const raw = source.sponsoredAd ? JSON.parse(source.sponsoredAd) : null;
@@ -127,11 +134,34 @@ function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
       sponsoredAd = {
         id: raw.id,
         ctaUrl: raw.ctaUrl,
+        placements: Array.isArray(raw.placements)
+          ? raw.placements.map((item: unknown) => `${item ?? ''}`.trim()).filter((item: string) => item.length > 0)
+          : undefined,
         localized: raw.localized as Record<string, { title: string; body: string; ctaLabel: string }>,
       };
     }
   } catch {
     sponsoredAd = undefined;
+  }
+
+  try {
+    const raw = source.donationCampaign ? JSON.parse(source.donationCampaign) : null;
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      typeof raw.id === 'string' &&
+      typeof raw.ctaUrl === 'string' &&
+      raw.localized &&
+      typeof raw.localized === 'object'
+    ) {
+      donationCampaign = {
+        id: raw.id,
+        ctaUrl: raw.ctaUrl,
+        localized: raw.localized as Record<string, { title: string; body: string; ctaLabel: string }>,
+      };
+    }
+  } catch {
+    donationCampaign = undefined;
   }
 
   try {
@@ -150,7 +180,7 @@ function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
           }
           return {
             id: item.id,
-            localized: item.localized as Record<string, { title: string; priceLabel: string }>,
+            localized: item.localized as Record<string, { title: string; priceLabel: string; description?: string; badge?: string; ctaLabel?: string }>,
           };
         })
         .filter((item): item is NonNullable<AppDefinitions['subscriptionOffers']>[number] => item !== null);
@@ -174,6 +204,7 @@ function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
     formOptions: parseFormOptions(source.formOptions),
     snoozeOptions: parseNumberArray(source.snoozeOptions),
     sponsoredAd,
+    donationCampaign,
     subscriptionOffers,
   };
 }

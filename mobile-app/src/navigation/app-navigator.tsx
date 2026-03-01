@@ -27,8 +27,8 @@ import {
 } from '../features/auth/email-verification-service';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
-import { openDonationPage } from '../features/monetization/monetization-service';
 import { clearMedicationStore, hydrateMedicationStore } from '../features/medications/medication-store';
+import { applyRoleToMonetizationStatus, refreshMonetizationStatus } from '../features/monetization/subscription-service';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { handleReminderSkip, handleReminderSnooze, handleReminderTakeNow } from '../features/notifications/notification-center-service';
 import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
@@ -56,6 +56,8 @@ import { NotificationHistoryScreen } from '../screens/notification-history-scree
 import { NotificationSettingsScreen } from '../screens/notification-settings-screen';
 import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
+import { PremiumScreen } from '../screens/premium-screen';
+import { DonateScreen } from '../screens/donate-screen';
 import { SettingsScreen } from '../screens/settings-screen';
 import { TodayScreen } from '../screens/today-screen';
 import { theme } from '../theme';
@@ -70,7 +72,9 @@ type OverlayScreen =
   | 'change-password'
   | 'feedback'
   | 'email-verification'
-  | 'about-us';
+  | 'about-us'
+  | 'premium'
+  | 'donate';
 type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
 
 const tabGlyph: Record<TabKey, AppIconName> = {
@@ -133,9 +137,10 @@ export function AppNavigator() {
             accessToken: guestSession.accessToken,
             refreshToken: guestSession.refreshToken,
             email: guestSession.email,
+            role: 'visitor',
           });
         } catch {
-          await markGuestMode();
+          await markGuestMode({ role: 'visitor' });
         }
         session = await loadAuthSession();
       }
@@ -148,6 +153,7 @@ export function AppNavigator() {
               accessToken: guestSession.accessToken,
               refreshToken: guestSession.refreshToken,
               email: guestSession.email,
+              role: 'visitor',
             });
             session = await loadAuthSession();
           } catch {
@@ -159,6 +165,8 @@ export function AppNavigator() {
         void (async () => {
         setAccountEmail(session.email);
         setIsGuestMode(session.isGuestMode);
+        await applyRoleToMonetizationStatus(session.role);
+        await refreshMonetizationStatus();
         if (session.isGuestMode) {
           await applyGuestDeviceLocale();
         }
@@ -370,7 +378,10 @@ export function AppNavigator() {
                   refreshToken: payload.session?.refreshToken,
                   email: payload.email,
                   emailVerified: payload.emailVerified,
+                  role: payload.role,
                 });
+                await applyRoleToMonetizationStatus(payload.role);
+                await refreshMonetizationStatus();
                 await clearMedicationStore();
                 try {
                   await hydrateMedicationStore();
@@ -411,9 +422,10 @@ export function AppNavigator() {
                     accessToken: guestSession.accessToken,
                     refreshToken: guestSession.refreshToken,
                     email: guestSession.email,
+                    role: 'visitor',
                   });
                 } catch {
-                  await markGuestMode();
+                  await markGuestMode({ role: 'visitor' });
                 }
                 await clearMedicationStore();
                 await hydrateMedicationStore();
@@ -454,7 +466,10 @@ export function AppNavigator() {
                   refreshToken: payload.session?.refreshToken,
                   email: payload.email,
                   emailVerified: isEmailVerified,
+                  role: payload.role,
                 });
+                await applyRoleToMonetizationStatus(payload.role);
+                await refreshMonetizationStatus();
                 await clearMedicationStore();
                 try {
                   await hydrateMedicationStore();
@@ -481,9 +496,10 @@ export function AppNavigator() {
                     accessToken: guestSession.accessToken,
                     refreshToken: guestSession.refreshToken,
                     email: guestSession.email,
+                    role: 'visitor',
                   });
                 } catch {
-                  await markGuestMode();
+                  await markGuestMode({ role: 'visitor' });
                 }
                 await clearMedicationStore();
                 await hydrateMedicationStore();
@@ -675,6 +691,34 @@ export function AppNavigator() {
     );
   }
 
+  if (overlayScreen === 'premium') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <PremiumScreen
+            locale={locale}
+            isGuestMode={isGuestMode}
+            onBack={() => setOverlayScreen('none')}
+            onOpenSignUp={() => {
+              setOverlayScreen('none');
+              setPhase('signup');
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (overlayScreen === 'donate') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <DonateScreen locale={locale} onBack={() => setOverlayScreen('none')} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -715,6 +759,7 @@ export function AppNavigator() {
             void (async () => {
               await clearMedicationStore();
               await clearSessionForLogout();
+              await applyRoleToMonetizationStatus('visitor');
               setAccountEmail('');
               setIsGuestMode(false);
               setEmailVerifiedState(true);
@@ -726,9 +771,8 @@ export function AppNavigator() {
           () => {
             void shareApplication();
           },
-          () => {
-            void openDonationPage();
-          },
+          () => setOverlayScreen('donate'),
+          () => setOverlayScreen('premium'),
           async (password) => {
             try {
               await cancelAccount({
@@ -738,6 +782,7 @@ export function AppNavigator() {
               await clearMedicationStore();
               await clearProfile();
               await clearSessionForLogout();
+              await applyRoleToMonetizationStatus('visitor');
               setAccountEmail('');
               setIsGuestMode(false);
               setEmailVerifiedState(true);
@@ -824,6 +869,7 @@ function renderTab(
   onLogout: () => void,
   onShareApp: () => void,
   onOpenDonate: () => void,
+  onOpenPremium: () => void,
   onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>,
   onOpenEmailVerification: () => void,
   showEmailVerificationAlert: boolean,
@@ -879,6 +925,7 @@ function renderTab(
           onLogout={onLogout}
           onShareApp={onShareApp}
           onOpenDonate={onOpenDonate}
+          onOpenPremium={onOpenPremium}
           onCancelAccount={onCancelAccount}
           isGuestMode={isGuestMode}
           notificationsEnabled={notificationsEnabled}

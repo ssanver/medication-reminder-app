@@ -6,6 +6,7 @@ type EmailAuthResponse = {
   lastName: string;
   email: string;
   isEmailVerified: boolean;
+  role: 'visitor' | 'member' | 'vip';
   accessToken: string;
   refreshToken: string;
   expiresAt: string;

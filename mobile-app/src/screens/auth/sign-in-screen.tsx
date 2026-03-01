@@ -14,7 +14,7 @@ type AuthSessionTokens = {
 
 type SignInScreenProps = {
   locale: Locale;
-  onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean }) => void;
+  onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean; role: 'visitor' | 'member' | 'vip' }) => void;
   onOpenSignUp: () => void;
   onContinueAsGuest: () => void;
 };

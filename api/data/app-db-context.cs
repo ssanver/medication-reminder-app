@@ -57,6 +57,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
             entity.Property(x => x.Role).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.SubscriptionPlanId).HasMaxLength(80);
             entity.HasIndex(x => x.Email).IsUnique();
         });
 
