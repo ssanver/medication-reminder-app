@@ -84,7 +84,7 @@ export function AppNavigator() {
   const medicationStore = useMedicationStore();
   const reminderPrompt = useSyncExternalStore(subscribeReminderPrompt, getReminderPromptSnapshot, getReminderPromptSnapshot);
   const [phase, setPhase] = useState<AppPhase>('splash');
-  const [locale, setLocale] = useState<Locale>('tr');
+  const [locale, setLocale] = useState<Locale>(resolveDefaultLocale());
   const [fontScale, setFontScale] = useState<number>(fontScaleLevels[0]);
   const [weekStartsOn, setWeekStartsOn] = useState<'monday' | 'sunday'>('monday');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -98,6 +98,7 @@ export function AppNavigator() {
   const [emailVerified, setEmailVerifiedState] = useState(true);
   const [emailResendCooldown, setEmailResendCooldown] = useState(0);
   const [isGuestMode, setIsGuestMode] = useState(false);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   const t = getTranslations(locale);
   const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
@@ -212,6 +213,7 @@ export function AppNavigator() {
       } catch {
         setWeekStartsOn('monday');
       }
+      setPreferencesLoaded(true);
     })();
   }, []);
 
@@ -231,6 +233,10 @@ export function AppNavigator() {
   }, [accountEmail, phase]);
 
   useEffect(() => {
+    if (!preferencesLoaded) {
+      return;
+    }
+
     void saveAppPreferences({
       locale,
       fontScale,
@@ -238,7 +244,7 @@ export function AppNavigator() {
       medicationRemindersEnabled,
       snoozeMinutes,
     });
-  }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes]);
+  }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes, preferencesLoaded]);
 
   useEffect(() => {
     setAppFontScale(fontScale);
