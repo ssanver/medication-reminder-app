@@ -21,7 +21,6 @@ export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseS
   const [isCancelLoading, setIsCancelLoading] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('');
-  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [draftLocale, setDraftLocale] = useState<Locale>(locale);
   const [draftFontScale, setDraftFontScale] = useState(fontScale);
   const [draftWeekStartsOn, setDraftWeekStartsOn] = useState<'monday' | 'sunday'>(weekStartsOn);
@@ -44,14 +43,12 @@ export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseS
         const profile = await loadProfile();
         setProfileName(profile.fullName);
         setProfileGender(profile.gender);
-        setProfileLoadError(null);
       } catch {
         setProfileName('');
         setProfileGender('');
-        setProfileLoadError(t.profileDataMissing);
       }
     })();
-  }, [t.profileDataMissing]);
+  }, []);
 
   const shortDisplayName = toShortDisplayName(profileName);
   const profileAvatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
@@ -85,7 +82,6 @@ export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseS
     draftWeekStartsOn,
     setDraftWeekStartsOn,
     shortDisplayName,
-    profileLoadError,
     profileAvatarEmoji,
     isAppearanceDirty,
     version,

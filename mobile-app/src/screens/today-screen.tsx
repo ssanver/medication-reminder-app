@@ -20,7 +20,7 @@ type TodayScreenProps = {
   isGuestMode: boolean;
   showEmailVerificationAlert: boolean;
   onOpenAddMedication: () => void;
-  onOpenProfile: () => void;
+  onOpenSignUp: () => void;
   onOpenNotificationHistory: () => void;
   onOpenEmailVerification: () => void;
 };
@@ -34,7 +34,7 @@ export function TodayScreen({
   isGuestMode,
   showEmailVerificationAlert,
   onOpenAddMedication,
-  onOpenProfile,
+  onOpenSignUp,
   onOpenNotificationHistory,
   onOpenEmailVerification,
 }: TodayScreenProps) {
@@ -50,7 +50,6 @@ export function TodayScreen({
     showFutureActionPopup,
     setShowFutureActionPopup,
     shortDisplayName,
-    profileLoadError,
     avatarEmoji,
     filtered,
     counts,
@@ -128,15 +127,11 @@ export function TodayScreen({
         <View style={styles.profileLeft}>
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{avatarEmoji}</Text></View>
           <View>
-            {profileLoadError ? (
-              <Text style={styles.profileError}>{profileLoadError}</Text>
-            ) : (
-              <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
-            )}
+            <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
             <Text style={styles.welcome}>{t.welcome}</Text>
             {isGuestMode ? (
-              <Pressable onPress={onOpenProfile}>
-                <Text style={styles.completeProfileInlineLink}>{t.completeProfile}</Text>
+              <Pressable style={styles.signUpInlineChip} onPress={onOpenSignUp}>
+                <Text style={styles.signUpInlineChipText}>{t.signUpNow}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -422,15 +417,23 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mBold,
     color: theme.colors.semantic.textPrimary,
   },
-  profileError: {
-    ...theme.typography.bodyScale.mBold,
-    color: theme.colors.error[500],
-  },
   welcome: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  completeProfileInlineLink: {
+  signUpInlineChip: {
+    marginTop: theme.spacing[4],
+    alignSelf: 'flex-start',
+    minHeight: 28,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+    paddingHorizontal: theme.spacing[8],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signUpInlineChipText: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[500],
     fontWeight: '700',

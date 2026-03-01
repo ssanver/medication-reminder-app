@@ -16,6 +16,7 @@ type SettingsScreenProps = {
   weekStartsOn: 'monday' | 'sunday';
   onSaveAppearance: (locale: Locale, fontScale: number, weekStartsOn: 'monday' | 'sunday') => void;
   onOpenProfile: () => void;
+  onOpenSignUp: () => void;
   onOpenNotificationSettings: () => void;
   onOpenReminderPreferences: () => void;
   onOpenChangePassword: () => void;
@@ -39,6 +40,7 @@ export function SettingsScreen({
   weekStartsOn,
   onSaveAppearance,
   onOpenProfile,
+  onOpenSignUp,
   onOpenNotificationSettings,
   onOpenReminderPreferences,
   onOpenChangePassword,
@@ -77,7 +79,6 @@ export function SettingsScreen({
     draftWeekStartsOn,
     setDraftWeekStartsOn,
     shortDisplayName,
-    profileLoadError,
     profileAvatarEmoji,
     isAppearanceDirty,
     version,
@@ -114,18 +115,17 @@ export function SettingsScreen({
         <View style={styles.profileCard}>
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{profileAvatarEmoji}</Text></View>
           <View style={styles.profileInfo}>
-            {profileLoadError ? (
-              <Text style={styles.profileError}>{profileLoadError}</Text>
-            ) : (
-              <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
-            )}
-            <Pressable onPress={onOpenProfile}>
-              <Text style={styles.editLink}>{t.editProfile}</Text>
-            </Pressable>
+            <Text style={styles.profileName}>{`${t.hello}, ${shortDisplayName}`}</Text>
+            {isGuestMode ? <Text style={styles.guestInfoText}>{t.guestProfileWarning}</Text> : null}
+            {!isGuestMode ? (
+              <Pressable onPress={onOpenProfile}>
+                <Text style={styles.editLink}>{t.editProfile}</Text>
+              </Pressable>
+            ) : null}
           </View>
           {isGuestMode ? (
-            <Pressable style={styles.completeProfileCta} onPress={onOpenProfile}>
-              <Text style={styles.completeProfileCtaText}>{t.completeProfile}</Text>
+            <Pressable style={styles.completeProfileCta} onPress={onOpenSignUp}>
+              <Text style={styles.completeProfileCtaText}>{t.signUpNow}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -135,58 +135,60 @@ export function SettingsScreen({
           <MenuRow testID="settings-snooze-duration-row" label={t.snoozeDuration} value={`${snoozeMinutes} min`} onPress={onOpenReminderPreferences} />
         </Section>
 
-        <Section title={t.general}>
-          <View style={styles.languageBlock}>
-            <Text style={styles.rowTitle}>{t.language}</Text>
-            <Pressable style={styles.languageCombo} onPress={() => setLanguagePickerOpen(true)}>
-              <Text style={styles.languageText}>{localeOptions.find((item) => item.code === draftLocale)?.label ?? draftLocale}</Text>
-              <Text style={styles.chevron}>{'>'}</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.zoomBlock}>
-            <Text style={styles.rowTitle}>{t.displayZoom}</Text>
-            <View style={styles.zoomRow}>
-              {fontScaleLevels.map((level) => {
-                const selected = level === draftFontScale;
-                return (
-                  <Pressable key={level} onPress={() => setDraftFontScale(level)} style={[styles.zoomChip, selected && styles.zoomChipActive]}>
-                    <Text style={[styles.zoomText, selected && styles.zoomTextActive]}>{`${Math.round(level * 100)}%`}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.weekStartBlock}>
-            <Text style={styles.rowTitle}>{t.weekStartsOn}</Text>
-            <View style={styles.weekStartRow}>
-              <Pressable
-                style={[styles.weekStartChip, draftWeekStartsOn === 'monday' && styles.weekStartChipActive]}
-                onPress={() => setDraftWeekStartsOn('monday')}
-              >
-                <Text style={[styles.weekStartChipText, draftWeekStartsOn === 'monday' && styles.weekStartChipTextActive]}>
-                  {t.weekStartsOnMonday}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.weekStartChip, draftWeekStartsOn === 'sunday' && styles.weekStartChipActive]}
-                onPress={() => setDraftWeekStartsOn('sunday')}
-              >
-                <Text style={[styles.weekStartChipText, draftWeekStartsOn === 'sunday' && styles.weekStartChipTextActive]}>
-                  {t.weekStartsOnSunday}
-                </Text>
+        {!isGuestMode ? (
+          <Section title={t.general}>
+            <View style={styles.languageBlock}>
+              <Text style={styles.rowTitle}>{t.language}</Text>
+              <Pressable style={styles.languageCombo} onPress={() => setLanguagePickerOpen(true)}>
+                <Text style={styles.languageText}>{localeOptions.find((item) => item.code === draftLocale)?.label ?? draftLocale}</Text>
+                <Text style={styles.chevron}>{'>'}</Text>
               </Pressable>
             </View>
-          </View>
 
-          <Button
-            label={t.save}
-            onPress={() => onSaveAppearance(draftLocale, draftFontScale, draftWeekStartsOn)}
-            disabled={!isAppearanceDirty}
-            size="s"
-          />
-        </Section>
+            <View style={styles.zoomBlock}>
+              <Text style={styles.rowTitle}>{t.displayZoom}</Text>
+              <View style={styles.zoomRow}>
+                {fontScaleLevels.map((level) => {
+                  const selected = level === draftFontScale;
+                  return (
+                    <Pressable key={level} onPress={() => setDraftFontScale(level)} style={[styles.zoomChip, selected && styles.zoomChipActive]}>
+                      <Text style={[styles.zoomText, selected && styles.zoomTextActive]}>{`${Math.round(level * 100)}%`}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.weekStartBlock}>
+              <Text style={styles.rowTitle}>{t.weekStartsOn}</Text>
+              <View style={styles.weekStartRow}>
+                <Pressable
+                  style={[styles.weekStartChip, draftWeekStartsOn === 'monday' && styles.weekStartChipActive]}
+                  onPress={() => setDraftWeekStartsOn('monday')}
+                >
+                  <Text style={[styles.weekStartChipText, draftWeekStartsOn === 'monday' && styles.weekStartChipTextActive]}>
+                    {t.weekStartsOnMonday}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.weekStartChip, draftWeekStartsOn === 'sunday' && styles.weekStartChipActive]}
+                  onPress={() => setDraftWeekStartsOn('sunday')}
+                >
+                  <Text style={[styles.weekStartChipText, draftWeekStartsOn === 'sunday' && styles.weekStartChipTextActive]}>
+                    {t.weekStartsOnSunday}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <Button
+              label={t.save}
+              onPress={() => onSaveAppearance(draftLocale, draftFontScale, draftWeekStartsOn)}
+              disabled={!isAppearanceDirty}
+              size="s"
+            />
+          </Section>
+        ) : null}
 
         <Section title={t.supportAndSecurity}>
           {!isGuestMode ? <MenuRow testID="settings-change-password-row" label={t.changePassword} onPress={onOpenChangePassword} /> : null}
@@ -422,13 +424,14 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mBold,
     color: theme.colors.semantic.textPrimary,
   },
-  profileError: {
-    ...theme.typography.bodyScale.mBold,
-    color: theme.colors.error[500],
-  },
   editLink: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[500],
+  },
+  guestInfoText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+    maxWidth: 220,
   },
   completeProfileCta: {
     minHeight: 34,

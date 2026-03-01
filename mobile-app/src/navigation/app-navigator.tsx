@@ -686,6 +686,7 @@ export function AppNavigator() {
             setOverlayScreen('medication-details');
           },
           () => setOverlayScreen('profile'),
+          () => setPhase('signup'),
           () => setOverlayScreen('notification-settings'),
           () => setOverlayScreen('notification-history'),
           () => setOverlayScreen('reminder-preferences'),
@@ -796,6 +797,7 @@ function renderTab(
   onMedicationSaved: () => void,
   onOpenMedicationDetails: (medicationId: string) => void,
   onOpenProfile: () => void,
+  onOpenSignUp: () => void,
   onOpenNotificationSettings: () => void,
   onOpenNotificationHistory: () => void,
   onOpenReminderPreferences: () => void,
@@ -817,7 +819,7 @@ function renderTab(
           fontScale={fontScale}
           weekStartsOn={weekStartsOn}
           onOpenAddMedication={onOpenAddMeds}
-          onOpenProfile={onOpenProfile}
+          onOpenSignUp={onOpenSignUp}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
           isGuestMode={isGuestMode}
@@ -852,6 +854,7 @@ function renderTab(
             void saveWeekStartPreference(nextWeekStartsOn);
           }}
           onOpenProfile={onOpenProfile}
+          onOpenSignUp={onOpenSignUp}
           onOpenNotificationSettings={onOpenNotificationSettings}
           onOpenReminderPreferences={onOpenReminderPreferences}
           onOpenChangePassword={onOpenChangePassword}
@@ -876,7 +879,7 @@ function renderTab(
           fontScale={fontScale}
           weekStartsOn={weekStartsOn}
           onOpenAddMedication={onOpenAddMeds}
-          onOpenProfile={onOpenProfile}
+          onOpenSignUp={onOpenSignUp}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
           isGuestMode={isGuestMode}
