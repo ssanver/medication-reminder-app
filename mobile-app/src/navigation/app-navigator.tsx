@@ -9,6 +9,7 @@ import {
   clearSessionForLogout,
   subscribeAuthSession,
   loadAuthSession,
+  loadAccessToken,
   markGuestMode,
   markAuthenticated,
   setEmailVerified,
@@ -16,6 +17,7 @@ import {
   setSplashSeen,
 } from '../features/auth/auth-session-store';
 import { cancelAccount } from '../features/auth/email-auth-service';
+import { createGuestSession } from '../features/auth/email-auth-service';
 import {
   getEmailVerificationStatus,
   requestEmailVerification,
@@ -110,8 +112,33 @@ export function AppNavigator() {
     void (async () => {
       let session = await loadAuthSession();
       if (!session.isLoggedIn && !session.isGuestMode) {
-        await markGuestMode();
+        try {
+          const guestSession = await createGuestSession();
+          await markGuestMode({
+            accessToken: guestSession.accessToken,
+            refreshToken: guestSession.refreshToken,
+            email: guestSession.email,
+          });
+        } catch {
+          await markGuestMode();
+        }
         session = await loadAuthSession();
+      }
+      if (!session.isLoggedIn && session.isGuestMode) {
+        const token = await loadAccessToken();
+        if (!token) {
+          try {
+            const guestSession = await createGuestSession();
+            await markGuestMode({
+              accessToken: guestSession.accessToken,
+              refreshToken: guestSession.refreshToken,
+              email: guestSession.email,
+            });
+            session = await loadAuthSession();
+          } catch {
+            // Keep guest mode active; network-dependent sync will retry later.
+          }
+        }
       }
       timer = setTimeout(() => {
         void (async () => {
@@ -345,10 +372,20 @@ export function AppNavigator() {
             }}
             onContinueAsGuest={() => {
               void (async () => {
-                await markGuestMode();
+                try {
+                  const guestSession = await createGuestSession();
+                  await markGuestMode({
+                    accessToken: guestSession.accessToken,
+                    refreshToken: guestSession.refreshToken,
+                    email: guestSession.email,
+                  });
+                } catch {
+                  await markGuestMode();
+                }
                 await clearMedicationStore();
                 await hydrateMedicationStore();
-                setAccountEmail('');
+                const updatedSession = await loadAuthSession();
+                setAccountEmail(updatedSession.email);
                 setIsGuestMode(true);
                 setEmailVerifiedState(true);
                 setPhase('app');
@@ -404,10 +441,20 @@ export function AppNavigator() {
             onOpenSignUp={() => setPhase('signup')}
             onContinueAsGuest={() => {
               void (async () => {
-                await markGuestMode();
+                try {
+                  const guestSession = await createGuestSession();
+                  await markGuestMode({
+                    accessToken: guestSession.accessToken,
+                    refreshToken: guestSession.refreshToken,
+                    email: guestSession.email,
+                  });
+                } catch {
+                  await markGuestMode();
+                }
                 await clearMedicationStore();
                 await hydrateMedicationStore();
-                setAccountEmail('');
+                const updatedSession = await loadAuthSession();
+                setAccountEmail(updatedSession.email);
                 setIsGuestMode(true);
                 setEmailVerifiedState(true);
                 setPhase('app');
@@ -423,7 +470,15 @@ export function AppNavigator() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <ProfileScreen locale={locale} onBack={() => setOverlayScreen('none')} />
+          <ProfileScreen
+            locale={locale}
+            isGuestMode={isGuestMode}
+            onOpenSignUp={() => {
+              setOverlayScreen('none');
+              setPhase('signup');
+            }}
+            onBack={() => setOverlayScreen('none')}
+          />
         </View>
       </View>
     );
@@ -762,8 +817,10 @@ function renderTab(
           fontScale={fontScale}
           weekStartsOn={weekStartsOn}
           onOpenAddMedication={onOpenAddMeds}
+          onOpenProfile={onOpenProfile}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
+          isGuestMode={isGuestMode}
           onOpenNotificationHistory={onOpenNotificationHistory}
           onOpenEmailVerification={onOpenEmailVerification}
           showEmailVerificationAlert={showEmailVerificationAlert}
@@ -819,8 +876,10 @@ function renderTab(
           fontScale={fontScale}
           weekStartsOn={weekStartsOn}
           onOpenAddMedication={onOpenAddMeds}
+          onOpenProfile={onOpenProfile}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
           snoozeMinutes={snoozeMinutes}
+          isGuestMode={isGuestMode}
           onOpenNotificationHistory={onOpenNotificationHistory}
           onOpenEmailVerification={onOpenEmailVerification}
           showEmailVerificationAlert={showEmailVerificationAlert}

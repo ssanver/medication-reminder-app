@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Security.Claims;
 using System.Text;
 using api.contracts;
 using api.data;
@@ -88,6 +89,35 @@ public sealed class AuthController(
             ExpiresAt = jwtTokenService.GetAccessTokenExpiry(now),
             DisplayName = providerName == "Apple" ? "Apple User" : "Google User",
             Email = user.Email,
+        });
+    }
+
+    [HttpPost("guest/session")]
+    public ActionResult<EmailAuthResponse> CreateGuestSession()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var guestId = Guid.NewGuid();
+        var guestEmail = $"guest-{guestId:N}@pillmind.local";
+        var accessToken = jwtTokenService.CreateAccessToken(
+            subject: guestId.ToString(),
+            email: guestEmail,
+            displayName: "Guest User",
+            now: now,
+            additionalClaims: new[]
+            {
+                new Claim("is_guest", "true"),
+            });
+
+        return Ok(new EmailAuthResponse
+        {
+            UserId = guestId,
+            FirstName = "Guest",
+            LastName = "User",
+            Email = guestEmail,
+            IsEmailVerified = true,
+            AccessToken = accessToken,
+            RefreshToken = $"guest-rt-{Guid.NewGuid():N}",
+            ExpiresAt = jwtTokenService.GetAccessTokenExpiry(now),
         });
     }
 

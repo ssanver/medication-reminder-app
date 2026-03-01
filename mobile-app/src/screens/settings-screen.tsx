@@ -123,6 +123,11 @@ export function SettingsScreen({
               <Text style={styles.editLink}>{t.editProfile}</Text>
             </Pressable>
           </View>
+          {isGuestMode ? (
+            <Pressable style={styles.completeProfileCta} onPress={onOpenProfile}>
+              <Text style={styles.completeProfileCtaText}>{t.completeProfile}</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <Section title={t.reminderAlarm}>
@@ -410,6 +415,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   profileInfo: {
+    flex: 1,
     gap: 2,
   },
   profileName: {
@@ -423,6 +429,21 @@ const styles = StyleSheet.create({
   editLink: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[500],
+  },
+  completeProfileCta: {
+    minHeight: 34,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[50],
+    paddingHorizontal: theme.spacing[16],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeProfileCtaText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.primaryBlue[500],
+    fontWeight: '700',
   },
   sectionWrap: {
     gap: theme.spacing[4],

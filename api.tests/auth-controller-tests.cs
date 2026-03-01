@@ -70,6 +70,23 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
+    public void CreateGuestSession_ShouldReturnToken_WithoutCreatingUserAccount()
+    {
+        using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext);
+
+        var result = controller.CreateGuestSession();
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<EmailAuthResponse>(ok.Value);
+        Assert.NotEmpty(payload.AccessToken);
+        Assert.NotEmpty(payload.RefreshToken);
+        Assert.Contains("@pillmind.local", payload.Email);
+        Assert.True(payload.IsEmailVerified);
+        Assert.Equal(0, dbContext.UserAccounts.Count());
+    }
+
+    [Fact]
     public async Task RequestVerificationCode_ShouldCreateToken()
     {
         await using var dbContext = CreateInMemoryContext();

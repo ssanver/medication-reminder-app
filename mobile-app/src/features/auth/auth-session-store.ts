@@ -110,17 +110,38 @@ export async function markAuthenticated(payload: {
   emitAuthSessionChanged();
 }
 
-export async function markGuestMode(): Promise<void> {
-  await Promise.all([
+export async function markGuestMode(payload: {
+  accessToken?: string;
+  refreshToken?: string;
+  email?: string;
+} = {}): Promise<void> {
+  const writes: Array<Promise<void>> = [
     AsyncStorage.setItem(KEY_IS_LOGGED_IN, 'false'),
     AsyncStorage.setItem(KEY_IS_GUEST_MODE, 'true'),
     AsyncStorage.setItem(KEY_HAS_COMPLETED_ONBOARDING, 'true'),
-    AsyncStorage.removeItem(KEY_ACCESS_TOKEN),
-    AsyncStorage.removeItem(KEY_REFRESH_TOKEN),
     AsyncStorage.removeItem(KEY_CACHED_USER),
-    AsyncStorage.removeItem(KEY_EMAIL),
     AsyncStorage.setItem(KEY_EMAIL_VERIFIED, 'true'),
-  ]);
+  ];
+
+  if (payload.accessToken) {
+    writes.push(AsyncStorage.setItem(KEY_ACCESS_TOKEN, payload.accessToken));
+  } else {
+    writes.push(AsyncStorage.removeItem(KEY_ACCESS_TOKEN));
+  }
+
+  if (payload.refreshToken) {
+    writes.push(AsyncStorage.setItem(KEY_REFRESH_TOKEN, payload.refreshToken));
+  } else {
+    writes.push(AsyncStorage.removeItem(KEY_REFRESH_TOKEN));
+  }
+
+  if (payload.email) {
+    writes.push(AsyncStorage.setItem(KEY_EMAIL, payload.email.trim().toLowerCase()));
+  } else {
+    writes.push(AsyncStorage.removeItem(KEY_EMAIL));
+  }
+
+  await Promise.all(writes);
   emitAuthSessionChanged();
 }
 

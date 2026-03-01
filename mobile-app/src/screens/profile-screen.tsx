@@ -11,12 +11,14 @@ import { theme } from '../theme';
 
 type ProfileScreenProps = {
   locale: Locale;
+  isGuestMode: boolean;
+  onOpenSignUp: () => void;
   onBack: () => void;
 };
 
 type SheetType = 'none' | 'birth-date' | 'gender';
 
-export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
+export function ProfileScreen({ locale, isGuestMode, onOpenSignUp, onBack }: ProfileScreenProps) {
   const t = getTranslations(locale);
   const [sheet, setSheet] = useState<SheetType>('none');
   const {
@@ -48,6 +50,13 @@ export function ProfileScreen({ locale, onBack }: ProfileScreenProps) {
         </View>
 
         <View style={styles.card}>
+          {isGuestMode ? (
+            <View style={styles.guestWarningCard}>
+              <Text style={styles.guestWarningText}>{t.guestProfileWarning}</Text>
+              <Button label={t.signUpNow} size="s" onPress={onOpenSignUp} />
+            </View>
+          ) : null}
+
           <TextField label={t.name} value={name} onChangeText={setName} />
           <TextField label={t.email} value={email} onChangeText={setEmail} />
 
@@ -170,6 +179,18 @@ const styles = StyleSheet.create({
     padding: theme.spacing[16],
     gap: theme.spacing[8],
     ...theme.elevation.card,
+  },
+  guestWarningCard: {
+    borderRadius: theme.radius[8],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.stateWarning,
+    backgroundColor: theme.colors.semantic.stateWarningSoft,
+    padding: theme.spacing[16],
+    gap: theme.spacing[8],
+  },
+  guestWarningText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textPrimary,
   },
   fieldWrap: {
     gap: theme.spacing[4],

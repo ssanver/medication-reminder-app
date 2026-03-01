@@ -11,13 +11,15 @@ type EmailAuthResponse = {
   expiresAt: string;
 };
 
+export type AuthSessionResponse = EmailAuthResponse;
+
 export async function signUpWithEmail(payload: {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
-}): Promise<EmailAuthResponse> {
-  return apiRequestJson<EmailAuthResponse>('/api/auth/email/sign-up', {
+}): Promise<AuthSessionResponse> {
+  return apiRequestJson<AuthSessionResponse>('/api/auth/email/sign-up', {
     method: 'POST',
     correlationPrefix: 'email-signup',
     body: payload,
@@ -25,10 +27,17 @@ export async function signUpWithEmail(payload: {
 }
 
 export async function signInWithEmail(payload: { email: string; password: string }): Promise<EmailAuthResponse> {
-  return apiRequestJson<EmailAuthResponse>('/api/auth/email/sign-in', {
+  return apiRequestJson<AuthSessionResponse>('/api/auth/email/sign-in', {
     method: 'POST',
     correlationPrefix: 'email-signin',
     body: payload,
+  });
+}
+
+export async function createGuestSession(): Promise<AuthSessionResponse> {
+  return apiRequestJson<AuthSessionResponse>('/api/auth/guest/session', {
+    method: 'POST',
+    correlationPrefix: 'guest-session',
   });
 }
 

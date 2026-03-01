@@ -17,8 +17,10 @@ type TodayScreenProps = {
   weekStartsOn: 'monday' | 'sunday';
   remindersEnabled: boolean;
   snoozeMinutes: number;
+  isGuestMode: boolean;
   showEmailVerificationAlert: boolean;
   onOpenAddMedication: () => void;
+  onOpenProfile: () => void;
   onOpenNotificationHistory: () => void;
   onOpenEmailVerification: () => void;
 };
@@ -29,8 +31,10 @@ export function TodayScreen({
   weekStartsOn,
   remindersEnabled,
   snoozeMinutes,
+  isGuestMode,
   showEmailVerificationAlert,
   onOpenAddMedication,
+  onOpenProfile,
   onOpenNotificationHistory,
   onOpenEmailVerification,
 }: TodayScreenProps) {
@@ -68,7 +72,7 @@ export function TodayScreen({
   const DAY_ITEM_WIDTH = 52;
   const DAY_ITEM_GAP = theme.spacing[8];
   const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
-  const DAY_ARROW_BUTTON_WIDTH = 38;
+  const DAY_ARROW_BUTTON_WIDTH = 48;
   const DAY_RANGE = 365;
   const dayStripSidePadding = Math.max(theme.spacing[16], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
@@ -130,6 +134,11 @@ export function TodayScreen({
               <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
             )}
             <Text style={styles.welcome}>{t.welcome}</Text>
+            {isGuestMode ? (
+              <Pressable onPress={onOpenProfile}>
+                <Text style={styles.completeProfileInlineLink}>{t.completeProfile}</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
         <View style={styles.rightIcons}>
@@ -169,10 +178,10 @@ export function TodayScreen({
       <View style={styles.calendarStrip}>
         <Pressable
           style={styles.calendarArrowButton}
-          hitSlop={10}
+          hitSlop={14}
           onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1))}
         >
-          <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} />
+          <AppIcon name="back" size={20} color={theme.colors.semantic.textSecondary} />
         </Pressable>
         <ScrollView
           ref={dayStripRef}
@@ -199,10 +208,10 @@ export function TodayScreen({
         </ScrollView>
         <Pressable
           style={styles.calendarArrowButton}
-          hitSlop={10}
+          hitSlop={14}
           onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1))}
         >
-          <AppIcon name="forward" size={16} color={theme.colors.semantic.textSecondary} />
+          <AppIcon name="forward" size={20} color={theme.colors.semantic.textSecondary} />
         </Pressable>
       </View>
 
@@ -421,6 +430,11 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
+  completeProfileInlineLink: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.primaryBlue[500],
+    fontWeight: '700',
+  },
   dateTitle: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textPrimary,
@@ -437,9 +451,9 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   calendarArrowButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -85,10 +85,11 @@ type SwipeToDeleteRowProps = {
 };
 
 function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: SwipeToDeleteRowProps) {
-  const actionWidth = 116;
+  const actionWidth = 132;
   const [isOpen, setIsOpen] = useState(false);
   const translateX = useState(() => new Animated.Value(0))[0];
   const actionButtonColor = actionVariant === 'deactivate' ? theme.colors.neutral[500] : theme.colors.primaryBlue[500];
+  const actionPanelColor = actionVariant === 'deactivate' ? theme.colors.neutral[100] : theme.colors.primaryBlue[50];
   const actionIconName = actionVariant === 'deactivate' ? 'close' : 'check';
 
   const panResponder = useMemo(
@@ -108,11 +109,11 @@ function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: Sw
         onPanResponderRelease: (_, gesture) => {
           const base = isOpen ? -actionWidth : 0;
           const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
-          const shouldOpen = next < -actionWidth * 0.08 || gesture.vx < -0.03;
+          const shouldOpen = next < -actionWidth * 0.22 || gesture.vx < -0.18;
           Animated.spring(translateX, {
             toValue: shouldOpen ? -actionWidth : 0,
             bounciness: 0,
-            speed: 24,
+            speed: 20,
             useNativeDriver: true,
           }).start(() => setIsOpen(shouldOpen));
         },
@@ -122,8 +123,8 @@ function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: Sw
 
   return (
     <View style={styles.swipeContainer}>
-      <View style={styles.swipeDeleteAction}>
-        <Pressable style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }]} onPress={onAction} hitSlop={8}>
+      <View style={[styles.swipeDeleteAction, { width: actionWidth, backgroundColor: actionPanelColor }]}>
+        <Pressable style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }]} onPress={onAction} hitSlop={12}>
           <AppIcon name={actionIconName} size={18} color="#FFFFFF" />
           <Text style={styles.swipeDeleteButtonText}>{actionLabel}</Text>
         </Pressable>
@@ -156,23 +157,27 @@ const styles = StyleSheet.create({
   },
   swipeContainer: {
     position: 'relative',
+    borderRadius: theme.radius[16],
+    overflow: 'hidden',
   },
   swipeDeleteAction: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'flex-end',
     justifyContent: 'center',
+    paddingRight: theme.spacing[8],
   },
   swipeDeleteButton: {
     width: 116,
-    height: '100%',
+    minHeight: 56,
     borderRadius: theme.radius[16],
-    paddingHorizontal: theme.spacing[8],
+    paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing[8],
+    flexDirection: 'row',
+    gap: theme.spacing[4],
   },
   swipeDeleteButtonText: {
-    ...theme.typography.bodyScale.mMedium,
+    ...theme.typography.bodyScale.xmMedium,
     color: '#FFFFFF',
     textAlign: 'center',
   },

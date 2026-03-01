@@ -9,6 +9,7 @@ namespace api.services.auth;
 public interface IJwtTokenService
 {
     string CreateAccessToken(UserAccount user, DateTimeOffset now);
+    string CreateAccessToken(string subject, string email, string displayName, DateTimeOffset now, IReadOnlyCollection<Claim>? additionalClaims = null);
     DateTimeOffset GetAccessTokenExpiry(DateTimeOffset now);
 }
 
@@ -18,15 +19,24 @@ public sealed class JwtTokenService(IConfiguration configuration) : IJwtTokenSer
 
     public string CreateAccessToken(UserAccount user, DateTimeOffset now)
     {
+        return CreateAccessToken(user.Id.ToString(), user.Email, user.FullName, now);
+    }
+
+    public string CreateAccessToken(string subject, string email, string displayName, DateTimeOffset now, IReadOnlyCollection<Claim>? additionalClaims = null)
+    {
         var jwtConfig = ReadJwtConfig(configuration);
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Email, user.Email),
+            new(JwtRegisteredClaimNames.Sub, subject),
+            new(JwtRegisteredClaimNames.Email, email),
+            new(ClaimTypes.NameIdentifier, subject),
+            new(ClaimTypes.Name, displayName),
+            new(ClaimTypes.Email, email),
         };
+        if (additionalClaims is not null && additionalClaims.Count > 0)
+        {
+            claims.AddRange(additionalClaims);
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
