@@ -15,7 +15,7 @@ const heroEmojiById: Record<string, string> = {
 
 export function getOnboardingSteps(locale: Locale): OnboardingStep[] {
   return getTranslations(locale).onboardingSteps
-    .filter((item) => item.id !== 'family')
+    .filter((item) => item.id !== 'family' && item.id !== 'reminders')
     .map((item) => ({
     id: item.id,
     title: item.title,

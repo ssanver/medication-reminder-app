@@ -45,7 +45,11 @@ export function OnboardingScreen({ locale, stepIndex, onNextStep, onSkip, onOpen
       </View>
 
       <View style={styles.actions}>
-        <Button label={isLastStep ? t.createAccount : t.next} onPress={onNextStep} />
+        <Button
+          label={isLastStep ? t.signUpNow : t.next}
+          variant={isLastStep ? 'danger' : 'filled'}
+          onPress={onNextStep}
+        />
         {isLastStep ? <Button label={t.signIn} variant="outlined" onPress={onOpenSignIn} /> : null}
       </View>
     </View>
