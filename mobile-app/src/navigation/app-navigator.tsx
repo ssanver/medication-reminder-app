@@ -108,7 +108,11 @@ export function AppNavigator() {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     void (async () => {
-      const session = await loadAuthSession();
+      let session = await loadAuthSession();
+      if (!session.isLoggedIn && !session.isGuestMode) {
+        await markGuestMode();
+        session = await loadAuthSession();
+      }
       timer = setTimeout(() => {
         void (async () => {
         setAccountEmail(session.email);

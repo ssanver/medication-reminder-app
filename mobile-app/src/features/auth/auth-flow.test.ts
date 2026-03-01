@@ -16,7 +16,7 @@ describe('resolveInitialPhase', () => {
     expect(phase).toBe('app');
   });
 
-  it('returns signin when onboarding is completed but user is not logged in', () => {
+  it('returns app when onboarding is completed but user is not logged in', () => {
     const phase = resolveInitialPhase({
       isLoggedIn: false,
       isGuestMode: false,
@@ -27,10 +27,10 @@ describe('resolveInitialPhase', () => {
       emailVerified: false,
     });
 
-    expect(phase).toBe('signin');
+    expect(phase).toBe('app');
   });
 
-  it('returns signin when session email exists but login flag is false', () => {
+  it('returns app when session email exists but login flag is false', () => {
     const phase = resolveInitialPhase({
       isLoggedIn: false,
       isGuestMode: false,
@@ -41,10 +41,10 @@ describe('resolveInitialPhase', () => {
       emailVerified: true,
     });
 
-    expect(phase).toBe('signin');
+    expect(phase).toBe('app');
   });
 
-  it('returns onboarding on fresh install state', () => {
+  it('returns app on fresh install state', () => {
     const phase = resolveInitialPhase({
       isLoggedIn: false,
       isGuestMode: false,
@@ -55,7 +55,7 @@ describe('resolveInitialPhase', () => {
       emailVerified: false,
     });
 
-    expect(phase).toBe('onboarding');
+    expect(phase).toBe('app');
   });
 
   it('returns app when guest mode is enabled', () => {

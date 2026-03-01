@@ -192,9 +192,11 @@ export function SettingsScreen({
             value={adFree ? t.adFreeActive : undefined}
             onPress={() => setPaywallOpen(true)}
           />
-          <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
-            <Text style={styles.logoutText}>{t.logOut}</Text>
-          </Pressable>
+          {!isGuestMode ? (
+            <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
+              <Text style={styles.logoutText}>{t.logOut}</Text>
+            </Pressable>
+          ) : null}
           {!isGuestMode ? (
             <Pressable testID="settings-delete-account-row" style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
               <Text style={styles.dangerText}>{t.deleteAccount}</Text>
