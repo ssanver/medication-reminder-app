@@ -59,6 +59,7 @@ public sealed class HealthEventsControllerTests
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
             Name = "Parol",
             Dosage = "500mg",
             StartDate = new DateOnly(2026, 2, 20),

@@ -11,26 +11,26 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         "as-needed",
     };
 
-    public Task<IReadOnlyCollection<MedicationRecord>> ListAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyCollection<MedicationRecord>> ListAsync(string userReference, CancellationToken cancellationToken = default)
     {
-        return repository.ListAsync(cancellationToken);
+        return repository.ListAsync(userReference, cancellationToken);
     }
 
-    public Task<MedicationRecord?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<MedicationRecord?> GetByIdAsync(Guid id, string userReference, CancellationToken cancellationToken = default)
     {
-        return repository.GetByIdAsync(id, cancellationToken);
+        return repository.GetByIdAsync(id, userReference, cancellationToken);
     }
 
-    public async Task<MedicationRecord> CreateAsync(SaveMedicationCommand command, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
     {
         ValidateSaveCommand(command);
-        return await repository.CreateAsync(NormalizeSaveCommand(command), cancellationToken);
+        return await repository.CreateAsync(userReference, NormalizeSaveCommand(command), cancellationToken);
     }
 
-    public async Task<MedicationRecord> UpdateAsync(Guid id, SaveMedicationCommand command, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord> UpdateAsync(Guid id, string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
     {
         ValidateSaveCommand(command);
-        var updated = await repository.UpdateAsync(id, NormalizeSaveCommand(command), cancellationToken);
+        var updated = await repository.UpdateAsync(id, userReference, NormalizeSaveCommand(command), cancellationToken);
         if (updated is null)
         {
             throw new KeyNotFoundException("Medication not found.");
@@ -39,10 +39,10 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         return updated;
     }
 
-    public async Task<MedicationRecord> AddScheduleAsync(Guid id, MedicationScheduleInput schedule, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord> AddScheduleAsync(Guid id, string userReference, MedicationScheduleInput schedule, CancellationToken cancellationToken = default)
     {
         ValidateScheduleInput(schedule);
-        var updated = await repository.AddScheduleAsync(id, NormalizeSchedule(schedule), cancellationToken);
+        var updated = await repository.AddScheduleAsync(id, userReference, NormalizeSchedule(schedule), cancellationToken);
         if (updated is null)
         {
             throw new KeyNotFoundException("Medication not found.");
@@ -51,9 +51,9 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         return updated;
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(Guid id, string userReference, CancellationToken cancellationToken = default)
     {
-        var deleted = await repository.DeleteAsync(id, cancellationToken);
+        var deleted = await repository.DeleteAsync(id, userReference, cancellationToken);
         if (!deleted)
         {
             throw new KeyNotFoundException("Medication not found.");

@@ -7,11 +7,13 @@ namespace api.services.medication_persistence;
 
 public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedicationRepository
 {
-    public async Task<IReadOnlyCollection<MedicationRecord>> ListAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<MedicationRecord>> ListAsync(string userReference, CancellationToken cancellationToken = default)
     {
+        var normalizedUserReference = NormalizeUserReference(userReference);
         var items = await dbContext
             .Medications
             .AsNoTracking()
+            .Where(medication => medication.UserReference == normalizedUserReference)
             .Include(medication => medication.Schedules)
             .OrderByDescending(medication => medication.UpdatedAt)
             .ToListAsync(cancellationToken);
@@ -19,22 +21,25 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         return items.Select(ToRecord).ToArray();
     }
 
-    public async Task<MedicationRecord?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord?> GetByIdAsync(Guid id, string userReference, CancellationToken cancellationToken = default)
     {
+        var normalizedUserReference = NormalizeUserReference(userReference);
         var entity = await dbContext
             .Medications
             .AsNoTracking()
             .Include(medication => medication.Schedules)
-            .FirstOrDefaultAsync(medication => medication.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(medication => medication.Id == id && medication.UserReference == normalizedUserReference, cancellationToken);
 
         return entity is null ? null : ToRecord(entity);
     }
 
-    public async Task<MedicationRecord> CreateAsync(SaveMedicationCommand command, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
     {
+        var normalizedUserReference = NormalizeUserReference(userReference);
         var entity = new Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = normalizedUserReference,
             Name = command.Name,
             Dosage = command.Dosage,
             UsageType = command.UsageType,
@@ -60,9 +65,12 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         return ToRecord(entity);
     }
 
-    public async Task<MedicationRecord?> UpdateAsync(Guid id, SaveMedicationCommand command, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord?> UpdateAsync(Guid id, string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
     {
-        var entity = await dbContext.Medications.Include(x => x.Schedules).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var normalizedUserReference = NormalizeUserReference(userReference);
+        var entity = await dbContext.Medications
+            .Include(x => x.Schedules)
+            .FirstOrDefaultAsync(x => x.Id == id && x.UserReference == normalizedUserReference, cancellationToken);
         if (entity is null)
         {
             return null;
@@ -94,9 +102,12 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         return ToRecord(entity);
     }
 
-    public async Task<MedicationRecord?> AddScheduleAsync(Guid id, MedicationScheduleInput schedule, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord?> AddScheduleAsync(Guid id, string userReference, MedicationScheduleInput schedule, CancellationToken cancellationToken = default)
     {
-        var medication = await dbContext.Medications.Include(x => x.Schedules).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var normalizedUserReference = NormalizeUserReference(userReference);
+        var medication = await dbContext.Medications
+            .Include(x => x.Schedules)
+            .FirstOrDefaultAsync(x => x.Id == id && x.UserReference == normalizedUserReference, cancellationToken);
         if (medication is null)
         {
             return null;
@@ -126,9 +137,12 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         return ToRecord(medication);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, string userReference, CancellationToken cancellationToken = default)
     {
-        var medication = await dbContext.Medications.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var normalizedUserReference = NormalizeUserReference(userReference);
+        var medication = await dbContext.Medications.FirstOrDefaultAsync(
+            x => x.Id == id && x.UserReference == normalizedUserReference,
+            cancellationToken);
         if (medication is null)
         {
             return false;
@@ -193,6 +207,11 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         dbContext.Medications.Remove(medication);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private static string NormalizeUserReference(string userReference)
+    {
+        return userReference.Trim().ToLowerInvariant();
     }
 
     private static MedicationRecord ToRecord(Medication medication)

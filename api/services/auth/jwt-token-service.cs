@@ -19,7 +19,21 @@ public sealed class JwtTokenService(IConfiguration configuration) : IJwtTokenSer
 
     public string CreateAccessToken(UserAccount user, DateTimeOffset now)
     {
-        return CreateAccessToken(user.Id.ToString(), user.Email, user.FullName, now);
+        var role = user.Role;
+        if (!UserRole.IsValid(role))
+        {
+            role = UserRole.Member;
+        }
+
+        return CreateAccessToken(
+            user.Id.ToString(),
+            user.Email,
+            user.FullName,
+            now,
+            [
+                new Claim(ClaimTypes.Role, role),
+                new Claim("role", role),
+            ]);
     }
 
     public string CreateAccessToken(string subject, string email, string displayName, DateTimeOffset now, IReadOnlyCollection<Claim>? additionalClaims = null)

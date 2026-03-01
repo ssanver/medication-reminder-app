@@ -69,6 +69,7 @@ public sealed class AuthController(
                 CreatedAt = now,
                 UpdatedAt = now,
                 LastLoginAt = now,
+                Role = UserRole.Member,
             };
 
             dbContext.UserAccounts.Add(user);
@@ -93,13 +94,49 @@ public sealed class AuthController(
     }
 
     [HttpPost("guest/session")]
-    public ActionResult<EmailAuthResponse> CreateGuestSession([FromBody] GuestSessionRequest? request = null)
+    public async Task<ActionResult<EmailAuthResponse>> CreateGuestSession([FromBody] GuestSessionRequest? request = null)
     {
         var now = DateTimeOffset.UtcNow;
         var headerDeviceId = HttpContext?.Request?.Headers["X-Device-Id"].FirstOrDefault();
         var deviceId = NormalizeDeviceId(request?.DeviceId ?? headerDeviceId);
         var guestId = BuildGuestIdFromDevice(deviceId);
         var guestEmail = BuildGuestEmailFromDevice(deviceId);
+        var guestUser = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == guestEmail);
+        if (guestUser is null)
+        {
+            guestUser = new UserAccount
+            {
+                Id = guestId,
+                FirstName = "Guest",
+                LastName = "User",
+                Email = guestEmail,
+                PasswordHash = "guest-session-only-account",
+                FullName = "Guest User",
+                BirthDate = string.Empty,
+                Gender = string.Empty,
+                PhotoUri = string.Empty,
+                IsEmailVerified = true,
+                EmailVerifiedAt = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                LastLoginAt = now,
+                Role = UserRole.Visitor,
+            };
+            dbContext.UserAccounts.Add(guestUser);
+        }
+        else
+        {
+            guestUser.FirstName = "Guest";
+            guestUser.LastName = "User";
+            guestUser.FullName = "Guest User";
+            guestUser.IsEmailVerified = true;
+            guestUser.EmailVerifiedAt = now;
+            guestUser.LastLoginAt = now;
+            guestUser.UpdatedAt = now;
+            guestUser.Role = UserRole.Visitor;
+        }
+
+        await dbContext.SaveChangesAsync();
         var accessToken = jwtTokenService.CreateAccessToken(
             subject: guestId.ToString(),
             email: guestEmail,
@@ -109,8 +146,8 @@ public sealed class AuthController(
             {
                 new Claim("is_guest", "true"),
                 new Claim("device_id", deviceId),
-                new Claim(ClaimTypes.Role, "guest"),
-                new Claim("role", "guest"),
+                new Claim(ClaimTypes.Role, UserRole.Visitor),
+                new Claim("role", UserRole.Visitor),
             });
 
         return Ok(new EmailAuthResponse
@@ -180,6 +217,8 @@ public sealed class AuthController(
         }
 
         var now = DateTimeOffset.UtcNow;
+        var deviceId = NormalizeDeviceId(request.DeviceId ?? HttpContext?.Request?.Headers["X-Device-Id"].FirstOrDefault());
+        var guestEmail = BuildGuestEmailFromDevice(deviceId);
         var user = new UserAccount
         {
             Id = Guid.NewGuid(),
@@ -196,9 +235,11 @@ public sealed class AuthController(
             CreatedAt = now,
             UpdatedAt = now,
             LastLoginAt = now,
+            Role = UserRole.Member,
         };
 
         dbContext.UserAccounts.Add(user);
+        await MigrateGuestDataToUserAsync(guestEmail, normalizedEmail, now);
         await dbContext.SaveChangesAsync();
 
         return Ok(CreateEmailAuthResponse(user, now, false, jwtTokenService));
@@ -220,6 +261,13 @@ public sealed class AuthController(
         }
 
         var now = DateTimeOffset.UtcNow;
+        var deviceId = NormalizeDeviceId(request.DeviceId ?? HttpContext?.Request?.Headers["X-Device-Id"].FirstOrDefault());
+        var guestEmail = BuildGuestEmailFromDevice(deviceId);
+        await MigrateGuestDataToUserAsync(guestEmail, normalizedEmail, now);
+        if (!string.Equals(user.Role, UserRole.Vip, StringComparison.Ordinal))
+        {
+            user.Role = UserRole.Member;
+        }
         user.LastLoginAt = now;
         user.UpdatedAt = now;
         await dbContext.SaveChangesAsync();
@@ -284,16 +332,49 @@ public sealed class AuthController(
         var standaloneActions = dbContext.NotificationActions.Where(x => x.UserReference == normalizedEmail);
         dbContext.NotificationActions.RemoveRange(standaloneActions);
 
-        dbContext.Medications.RemoveRange(dbContext.Medications);
-        dbContext.SyncEvents.RemoveRange(dbContext.SyncEvents);
-        dbContext.HealthEvents.RemoveRange(dbContext.HealthEvents);
-        dbContext.SystemErrorReports.RemoveRange(dbContext.SystemErrorReports);
-        dbContext.FeedbackRecords.RemoveRange(dbContext.FeedbackRecords);
-        dbContext.ConsentRecords.RemoveRange(dbContext.ConsentRecords);
-        dbContext.AuditLogs.RemoveRange(dbContext.AuditLogs);
-        dbContext.CaregiverPermissions.RemoveRange(dbContext.CaregiverPermissions);
-        dbContext.CaregiverInvites.RemoveRange(dbContext.CaregiverInvites);
-        dbContext.EmergencyShareTokens.RemoveRange(dbContext.EmergencyShareTokens);
+        var medications = await dbContext.Medications.Where(x => x.UserReference == normalizedEmail).ToListAsync();
+        if (medications.Count > 0)
+        {
+            var medicationIds = medications.Select(x => x.Id).ToArray();
+            var schedules = await dbContext.MedicationSchedules.Where(x => medicationIds.Contains(x.MedicationId)).ToListAsync();
+            var doseEvents = await dbContext.DoseEvents.Where(x => medicationIds.Contains(x.MedicationId)).ToListAsync();
+            var inventoryRecords = await dbContext.InventoryRecords.Where(x => medicationIds.Contains(x.MedicationId)).ToListAsync();
+            var prescriptionReminders = await dbContext.PrescriptionReminders.Where(x => medicationIds.Contains(x.MedicationId)).ToListAsync();
+            var healthEvents = await dbContext.HealthEvents.Where(x => medicationIds.Contains(x.MedicationId)).ToListAsync();
+
+            if (schedules.Count > 0)
+            {
+                dbContext.MedicationSchedules.RemoveRange(schedules);
+            }
+
+            if (doseEvents.Count > 0)
+            {
+                dbContext.DoseEvents.RemoveRange(doseEvents);
+            }
+
+            if (inventoryRecords.Count > 0)
+            {
+                dbContext.InventoryRecords.RemoveRange(inventoryRecords);
+            }
+
+            if (prescriptionReminders.Count > 0)
+            {
+                dbContext.PrescriptionReminders.RemoveRange(prescriptionReminders);
+            }
+
+            if (healthEvents.Count > 0)
+            {
+                dbContext.HealthEvents.RemoveRange(healthEvents);
+            }
+
+            dbContext.Medications.RemoveRange(medications);
+        }
+
+        var consentRecords = await dbContext.ConsentRecords.Where(x => x.UserReference == normalizedEmail).ToListAsync();
+        if (consentRecords.Count > 0)
+        {
+            dbContext.ConsentRecords.RemoveRange(consentRecords);
+        }
 
         await dbContext.SaveChangesAsync();
         return NoContent();
@@ -506,6 +587,77 @@ public sealed class AuthController(
             Email = normalizedEmail,
             IsVerified = true,
         });
+    }
+
+    private async Task MigrateGuestDataToUserAsync(string guestEmail, string userEmail, DateTimeOffset now)
+    {
+        if (string.Equals(guestEmail, userEmail, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var medications = await dbContext.Medications.Where(x => x.UserReference == guestEmail).ToListAsync();
+        foreach (var medication in medications)
+        {
+            medication.UserReference = userEmail;
+            medication.UpdatedAt = now;
+        }
+
+        var deliveries = await dbContext.NotificationDeliveries.Where(x => x.UserReference == guestEmail).ToListAsync();
+        foreach (var delivery in deliveries)
+        {
+            delivery.UserReference = userEmail;
+        }
+
+        var actions = await dbContext.NotificationActions.Where(x => x.UserReference == guestEmail).ToListAsync();
+        foreach (var action in actions)
+        {
+            action.UserReference = userEmail;
+        }
+
+        var consents = await dbContext.ConsentRecords.Where(x => x.UserReference == guestEmail).ToListAsync();
+        foreach (var consent in consents)
+        {
+            consent.UserReference = userEmail;
+        }
+
+        var guestAccount = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == guestEmail);
+        if (guestAccount is null)
+        {
+            return;
+        }
+
+        var userAccount =
+            await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == userEmail)
+            ?? dbContext.UserAccounts.Local.FirstOrDefault(x => x.Email == userEmail);
+        if (userAccount is not null)
+        {
+            var guestPreference = await dbContext.UserPreferences.FirstOrDefaultAsync(x => x.UserAccountId == guestAccount.Id);
+            if (guestPreference is not null)
+            {
+                var userPreference = await dbContext.UserPreferences.FirstOrDefaultAsync(x => x.UserAccountId == userAccount.Id);
+                if (userPreference is null)
+                {
+                    dbContext.UserPreferences.Add(new UserPreference
+                    {
+                        Id = Guid.NewGuid(),
+                        UserAccountId = userAccount.Id,
+                        Locale = guestPreference.Locale,
+                        FontScale = guestPreference.FontScale,
+                        NotificationsEnabled = guestPreference.NotificationsEnabled,
+                        MedicationRemindersEnabled = guestPreference.MedicationRemindersEnabled,
+                        SnoozeMinutes = guestPreference.SnoozeMinutes,
+                        WeekStartsOn = guestPreference.WeekStartsOn,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                    });
+                }
+
+                dbContext.UserPreferences.Remove(guestPreference);
+            }
+        }
+
+        dbContext.UserAccounts.Remove(guestAccount);
     }
 
     private async Task<EmailVerificationToken?> GetLatestToken(string normalizedEmail)

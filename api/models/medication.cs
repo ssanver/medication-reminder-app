@@ -3,6 +3,7 @@ namespace api.models;
 public sealed class Medication
 {
     public Guid Id { get; set; }
+    public required string UserReference { get; set; }
     public required string Name { get; set; }
     public required string Dosage { get; set; }
     public string? UsageType { get; set; }

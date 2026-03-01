@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { signUpWithEmail } from '../email-auth-service';
 import { loginWithSocial, type SocialLoginResult } from '../social-auth';
 import { isSignUpFormValid } from '../signup-validation';
+import { loadOrCreateDeviceId } from '../auth-session-store';
 
 type AuthSessionTokens = {
   accessToken: string;
@@ -49,11 +50,13 @@ export function useSignUpScreenState({ onSuccess, t }: UseSignUpScreenStateInput
     setIsLoading(true);
     setErrorText('');
     try {
+      const deviceId = await loadOrCreateDeviceId();
       const response = await signUpWithEmail({
         firstName,
         lastName,
         email: email.trim().toLowerCase(),
         password,
+        deviceId,
       });
       if (!response.accessToken?.trim() || !response.refreshToken?.trim() || !response.email?.trim()) {
         throw new Error('Oturum oluşturulamadı. Lütfen tekrar kayıt olun.');

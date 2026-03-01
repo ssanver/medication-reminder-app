@@ -37,10 +37,10 @@ public sealed record MedicationScheduleInput(
 
 public interface IMedicationRepository
 {
-    Task<IReadOnlyCollection<MedicationRecord>> ListAsync(CancellationToken cancellationToken = default);
-    Task<MedicationRecord?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<MedicationRecord> CreateAsync(SaveMedicationCommand command, CancellationToken cancellationToken = default);
-    Task<MedicationRecord?> UpdateAsync(Guid id, SaveMedicationCommand command, CancellationToken cancellationToken = default);
-    Task<MedicationRecord?> AddScheduleAsync(Guid id, MedicationScheduleInput schedule, CancellationToken cancellationToken = default);
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<MedicationRecord>> ListAsync(string userReference, CancellationToken cancellationToken = default);
+    Task<MedicationRecord?> GetByIdAsync(Guid id, string userReference, CancellationToken cancellationToken = default);
+    Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default);
+    Task<MedicationRecord?> UpdateAsync(Guid id, string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default);
+    Task<MedicationRecord?> AddScheduleAsync(Guid id, string userReference, MedicationScheduleInput schedule, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(Guid id, string userReference, CancellationToken cancellationToken = default);
 }

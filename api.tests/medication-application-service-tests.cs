@@ -4,12 +4,14 @@ namespace api.tests;
 
 public sealed class MedicationApplicationServiceTests
 {
+    private const string UserReference = "user@example.com";
+
     [Fact]
     public async Task Create_ShouldThrow_WhenNoScheduleProvided()
     {
         var service = new MedicationApplicationService(new InMemoryMedicationRepository());
 
-        var act = async () => await service.CreateAsync(new SaveMedicationCommand(
+        var act = async () => await service.CreateAsync(UserReference, new SaveMedicationCommand(
             "Parol",
             "500mg",
             null,
@@ -28,7 +30,7 @@ public sealed class MedicationApplicationServiceTests
         var repository = new InMemoryMedicationRepository();
         var service = new MedicationApplicationService(repository);
 
-        var created = await service.CreateAsync(new SaveMedicationCommand(
+        var created = await service.CreateAsync(UserReference, new SaveMedicationCommand(
             "Parol",
             "500mg",
             null,
@@ -39,6 +41,7 @@ public sealed class MedicationApplicationServiceTests
 
         var act = async () => await service.AddScheduleAsync(
             created.Id,
+            UserReference,
             new MedicationScheduleInput("daily", 1, new TimeOnly(12, 0), "mon"));
 
         var error = await Assert.ThrowsAsync<ArgumentException>(act);
@@ -52,6 +55,7 @@ public sealed class MedicationApplicationServiceTests
 
         var act = async () => await service.UpdateAsync(
             Guid.NewGuid(),
+            UserReference,
             new SaveMedicationCommand(
                 "Parol",
                 "500mg",
@@ -71,7 +75,7 @@ public sealed class MedicationApplicationServiceTests
         var repository = new InMemoryMedicationRepository();
         var service = new MedicationApplicationService(repository);
 
-        var created = await service.CreateAsync(new SaveMedicationCommand(
+        var created = await service.CreateAsync(UserReference, new SaveMedicationCommand(
             "Parol",
             "500mg",
             null,
@@ -82,6 +86,7 @@ public sealed class MedicationApplicationServiceTests
 
         var act = async () => await service.AddScheduleAsync(
             created.Id,
+            UserReference,
             new MedicationScheduleInput("cycle", 21, new TimeOnly(8, 0), null));
 
         var error = await Assert.ThrowsAsync<ArgumentException>(act);
@@ -92,18 +97,18 @@ public sealed class MedicationApplicationServiceTests
     {
         private readonly Dictionary<Guid, MedicationRecord> _store = [];
 
-        public Task<IReadOnlyCollection<MedicationRecord>> ListAsync(CancellationToken cancellationToken = default)
+        public Task<IReadOnlyCollection<MedicationRecord>> ListAsync(string userReference, CancellationToken cancellationToken = default)
         {
             return Task.FromResult((IReadOnlyCollection<MedicationRecord>)_store.Values.ToArray());
         }
 
-        public Task<MedicationRecord?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<MedicationRecord?> GetByIdAsync(Guid id, string userReference, CancellationToken cancellationToken = default)
         {
             _store.TryGetValue(id, out var value);
             return Task.FromResult(value);
         }
 
-        public Task<MedicationRecord> CreateAsync(SaveMedicationCommand command, CancellationToken cancellationToken = default)
+        public Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
         {
             var record = new MedicationRecord(
                 Guid.NewGuid(),
@@ -120,7 +125,7 @@ public sealed class MedicationApplicationServiceTests
             return Task.FromResult(record);
         }
 
-        public Task<MedicationRecord?> UpdateAsync(Guid id, SaveMedicationCommand command, CancellationToken cancellationToken = default)
+        public Task<MedicationRecord?> UpdateAsync(Guid id, string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
         {
             if (!_store.ContainsKey(id))
             {
@@ -142,7 +147,7 @@ public sealed class MedicationApplicationServiceTests
             return Task.FromResult<MedicationRecord?>(updated);
         }
 
-        public Task<MedicationRecord?> AddScheduleAsync(Guid id, MedicationScheduleInput schedule, CancellationToken cancellationToken = default)
+        public Task<MedicationRecord?> AddScheduleAsync(Guid id, string userReference, MedicationScheduleInput schedule, CancellationToken cancellationToken = default)
         {
             if (!_store.TryGetValue(id, out var existing))
             {
@@ -160,7 +165,7 @@ public sealed class MedicationApplicationServiceTests
             return Task.FromResult<MedicationRecord?>(updated);
         }
 
-        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<bool> DeleteAsync(Guid id, string userReference, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_store.Remove(id));
         }

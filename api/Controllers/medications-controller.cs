@@ -3,6 +3,7 @@ using api.models;
 using api.services;
 using api_application.medication_application;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using AppMedicationScheduleInput = api_application.medication_application.MedicationScheduleInput;
 
 namespace api.Controllers;
@@ -12,18 +13,30 @@ namespace api.Controllers;
 public sealed class MedicationsController(MedicationApplicationService applicationService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyCollection<MedicationResponse>>> GetAll()
+    public async Task<ActionResult<IReadOnlyCollection<MedicationResponse>>> GetAll([FromQuery] string? userReference = null)
     {
-        var medications = await applicationService.ListAsync();
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        var medications = await applicationService.ListAsync(resolvedUserReference);
         return Ok(medications.Select(ToResponse).ToArray());
     }
 
     [HttpPost]
-    public async Task<ActionResult<MedicationResponse>> Create([FromBody] SaveMedicationRequest request)
+    public async Task<ActionResult<MedicationResponse>> Create([FromBody] SaveMedicationRequest request, [FromQuery] string? userReference = null)
     {
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         try
         {
-            var created = await applicationService.CreateAsync(ToSaveCommand(request));
+            var created = await applicationService.CreateAsync(resolvedUserReference, ToSaveCommand(request));
             return CreatedAtAction(nameof(GetAll), new { id = created.Id }, ToResponse(created));
         }
         catch (ArgumentException ex)
@@ -33,11 +46,17 @@ public sealed class MedicationsController(MedicationApplicationService applicati
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<ActionResult<MedicationResponse>> Update([FromRoute] Guid id, [FromBody] SaveMedicationRequest request)
+    public async Task<ActionResult<MedicationResponse>> Update([FromRoute] Guid id, [FromBody] SaveMedicationRequest request, [FromQuery] string? userReference = null)
     {
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         try
         {
-            var updated = await applicationService.UpdateAsync(id, ToSaveCommand(request));
+            var updated = await applicationService.UpdateAsync(id, resolvedUserReference, ToSaveCommand(request));
             return Ok(ToResponse(updated));
         }
         catch (KeyNotFoundException)
@@ -51,11 +70,17 @@ public sealed class MedicationsController(MedicationApplicationService applicati
     }
 
     [HttpPost("{id:guid}/schedules")]
-    public async Task<ActionResult<MedicationResponse>> AddSchedule([FromRoute] Guid id, [FromBody] api.contracts.MedicationScheduleInput request)
+    public async Task<ActionResult<MedicationResponse>> AddSchedule([FromRoute] Guid id, [FromBody] api.contracts.MedicationScheduleInput request, [FromQuery] string? userReference = null)
     {
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         try
         {
-            var updated = await applicationService.AddScheduleAsync(id, ToScheduleInput(request));
+            var updated = await applicationService.AddScheduleAsync(id, resolvedUserReference, ToScheduleInput(request));
             return Ok(ToResponse(updated));
         }
         catch (KeyNotFoundException)
@@ -69,9 +94,15 @@ public sealed class MedicationsController(MedicationApplicationService applicati
     }
 
     [HttpGet("{id:guid}/schedule-preview")]
-    public async Task<ActionResult<SchedulePreviewResponse>> GetSchedulePreview([FromRoute] Guid id, [FromQuery] int days = 30)
+    public async Task<ActionResult<SchedulePreviewResponse>> GetSchedulePreview([FromRoute] Guid id, [FromQuery] int days = 30, [FromQuery] string? userReference = null)
     {
-        var medication = await applicationService.GetByIdAsync(id);
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        var medication = await applicationService.GetByIdAsync(id, resolvedUserReference);
         if (medication is null)
         {
             return NotFound();
@@ -88,11 +119,17 @@ public sealed class MedicationsController(MedicationApplicationService applicati
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete([FromRoute] Guid id)
+    public async Task<IActionResult> Delete([FromRoute] Guid id, [FromQuery] string? userReference = null)
     {
+        var resolvedUserReference = ResolveUserReference(userReference, out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         try
         {
-            await applicationService.DeleteAsync(id);
+            await applicationService.DeleteAsync(id, resolvedUserReference);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -158,5 +195,44 @@ public sealed class MedicationsController(MedicationApplicationService applicati
             DaysOfWeek = schedule.DaysOfWeek,
             UpdatedAt = schedule.UpdatedAt,
         };
+    }
+
+    private string ResolveUserReference(string? userReference, out ActionResult? errorResult)
+    {
+        var principal = HttpContext?.User;
+        var claimedEmail =
+            principal?.FindFirstValue(ClaimTypes.Email)
+            ?? principal?.FindFirstValue("email");
+
+        if (!string.IsNullOrWhiteSpace(claimedEmail))
+        {
+            var normalizedClaimedEmail = NormalizeUserReference(claimedEmail);
+            if (!string.IsNullOrWhiteSpace(userReference))
+            {
+                var normalizedQueryEmail = NormalizeUserReference(userReference);
+                if (!string.Equals(normalizedClaimedEmail, normalizedQueryEmail, StringComparison.Ordinal))
+                {
+                    errorResult = Forbid();
+                    return string.Empty;
+                }
+            }
+
+            errorResult = null;
+            return normalizedClaimedEmail;
+        }
+
+        if (string.IsNullOrWhiteSpace(userReference))
+        {
+            errorResult = BadRequest("userReference query parameter is required.");
+            return string.Empty;
+        }
+
+        errorResult = null;
+        return NormalizeUserReference(userReference);
+    }
+
+    private static string NormalizeUserReference(string value)
+    {
+        return value.Trim().ToLowerInvariant();
     }
 }

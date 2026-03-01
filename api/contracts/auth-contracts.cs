@@ -57,12 +57,14 @@ public sealed class EmailSignUpRequest
     public required string LastName { get; set; }
     public required string Email { get; set; }
     public required string Password { get; set; }
+    public string? DeviceId { get; set; }
 }
 
 public sealed class EmailSignInRequest
 {
     public required string Email { get; set; }
     public required string Password { get; set; }
+    public string? DeviceId { get; set; }
 }
 
 public sealed class ChangePasswordRequest

@@ -33,10 +33,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.ToTable("medications");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserReference).HasMaxLength(160).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Dosage).HasMaxLength(60).IsRequired();
             entity.Property(x => x.UsageType).HasMaxLength(60);
             entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.HasIndex(x => new { x.UserReference, x.UpdatedAt });
         });
 
         modelBuilder.Entity<UserAccount>(entity =>
@@ -54,6 +56,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.IsEmailVerified).IsRequired();
             entity.Property(x => x.CreatedAt).IsRequired();
             entity.Property(x => x.UpdatedAt).IsRequired();
+            entity.Property(x => x.Role).HasMaxLength(20).IsRequired();
             entity.HasIndex(x => x.Email).IsUnique();
         });
 

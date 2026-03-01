@@ -18,6 +18,7 @@ export async function signUpWithEmail(payload: {
   lastName: string;
   email: string;
   password: string;
+  deviceId?: string;
 }): Promise<AuthSessionResponse> {
   return apiRequestJson<AuthSessionResponse>('/api/auth/email/sign-up', {
     method: 'POST',
@@ -26,7 +27,7 @@ export async function signUpWithEmail(payload: {
   });
 }
 
-export async function signInWithEmail(payload: { email: string; password: string }): Promise<EmailAuthResponse> {
+export async function signInWithEmail(payload: { email: string; password: string; deviceId?: string }): Promise<EmailAuthResponse> {
   return apiRequestJson<AuthSessionResponse>('/api/auth/email/sign-in', {
     method: 'POST',
     correlationPrefix: 'email-signin',

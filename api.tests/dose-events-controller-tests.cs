@@ -115,6 +115,7 @@ public sealed class DoseEventsControllerTests
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
             Name = "Parol",
             Dosage = "500mg",
             StartDate = new DateOnly(2026, 2, 20),
@@ -204,6 +205,7 @@ public sealed class DoseEventsControllerTests
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
             Name = "Parol",
             Dosage = "500mg",
             StartDate = targetDate,
@@ -251,6 +253,7 @@ public sealed class DoseEventsControllerTests
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
             Name = "Parol",
             Dosage = "500mg",
             StartDate = fromDate,
@@ -296,6 +299,7 @@ public sealed class DoseEventsControllerTests
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
             Name = "Parol",
             Dosage = "500mg",
             StartDate = new DateOnly(2026, 2, 20),

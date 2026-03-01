@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace api.tests;
 
@@ -70,12 +72,12 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
-    public void CreateGuestSession_ShouldReturnToken_WithoutCreatingUserAccount()
+    public async Task CreateGuestSession_ShouldPersistVisitorAccount_AndReturnToken()
     {
         using var dbContext = CreateInMemoryContext();
         var controller = CreateController(dbContext);
 
-        var result = controller.CreateGuestSession();
+        var result = await controller.CreateGuestSession();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var payload = Assert.IsType<EmailAuthResponse>(ok.Value);
@@ -83,7 +85,9 @@ public sealed class AuthControllerTests
         Assert.NotEmpty(payload.RefreshToken);
         Assert.Contains("@pillmind.local", payload.Email);
         Assert.True(payload.IsEmailVerified);
-        Assert.Equal(0, dbContext.UserAccounts.Count());
+        Assert.Equal(1, dbContext.UserAccounts.Count());
+        var user = await dbContext.UserAccounts.SingleAsync();
+        Assert.Equal("visitor", user.Role);
     }
 
     [Fact]
@@ -218,6 +222,54 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
+    public async Task SignInWithEmail_ShouldPromoteVisitorToMember_AndMigrateGuestMedication()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext);
+        const string deviceId = "device-auth-test-01";
+        var guestEmail = BuildGuestEmailFromDevice(deviceId);
+
+        var guestResult = await controller.CreateGuestSession(new GuestSessionRequest
+        {
+            DeviceId = deviceId,
+        });
+        Assert.IsType<OkObjectResult>(guestResult.Result);
+
+        dbContext.Medications.Add(new api.models.Medication
+        {
+            Id = Guid.NewGuid(),
+            UserReference = guestEmail,
+            Name = "Parol",
+            Dosage = "500mg",
+            StartDate = new DateOnly(2026, 2, 20),
+            IsBeforeMeal = false,
+        });
+        await dbContext.SaveChangesAsync();
+
+        _ = await controller.SignUpWithEmail(new EmailSignUpRequest
+        {
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            Password = "strong-pass-123",
+            DeviceId = deviceId,
+        });
+
+        var signInResult = await controller.SignInWithEmail(new EmailSignInRequest
+        {
+            Email = "suleyman@example.com",
+            Password = "strong-pass-123",
+            DeviceId = deviceId,
+        });
+        Assert.IsType<OkObjectResult>(signInResult.Result);
+
+        var user = await dbContext.UserAccounts.AsNoTracking().SingleAsync(x => x.Email == "suleyman@example.com");
+        Assert.Equal("member", user.Role);
+        Assert.Equal(0, await dbContext.UserAccounts.CountAsync(x => x.Email == guestEmail));
+        Assert.Equal(1, await dbContext.Medications.CountAsync(x => x.UserReference == "suleyman@example.com"));
+    }
+
+    [Fact]
     public async Task ChangePassword_ShouldReturnNoContent_WhenCurrentPasswordIsValid()
     {
         await using var dbContext = CreateInMemoryContext();
@@ -306,6 +358,13 @@ public sealed class AuthControllerTests
                 ["Authentication:Jwt:AccessTokenMinutes"] = "60",
             })
             .Build();
+    }
+
+    private static string BuildGuestEmailFromDevice(string deviceId)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(deviceId));
+        var prefix = Convert.ToHexString(hash.AsSpan(0, 10)).ToLowerInvariant();
+        return $"guest-{prefix}@pillmind.local";
     }
 
     private sealed class FakeHostEnvironment : IWebHostEnvironment

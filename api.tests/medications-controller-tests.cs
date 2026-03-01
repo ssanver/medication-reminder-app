@@ -2,8 +2,10 @@ using api.Controllers;
 using api.contracts;
 using api.data;
 using api.services.medication_persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace api.tests;
 
@@ -120,6 +122,7 @@ public sealed class MedicationsControllerTests
         var medication = new api.models.Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
             Name = "Aferin",
             Dosage = "200mg",
             IsBeforeMeal = false,
@@ -145,6 +148,7 @@ public sealed class MedicationsControllerTests
         dbContext.Medications.Add(new api.models.Medication
         {
             Id = medicationId,
+            UserReference = "user@example.com",
             Name = "Aferin",
             Dosage = "200mg",
             IsBeforeMeal = false,
@@ -259,6 +263,7 @@ public sealed class MedicationsControllerTests
         var medication = new api.models.Medication
         {
             Id = medicationId,
+            UserReference = "user@example.com",
             Name = "Aferin",
             Dosage = "200mg",
             IsBeforeMeal = false,
@@ -302,6 +307,7 @@ public sealed class MedicationsControllerTests
         var medication = new api.models.Medication
         {
             Id = medicationId,
+            UserReference = "user@example.com",
             Name = "Aferin",
             Dosage = "200mg",
             IsBeforeMeal = false,
@@ -369,8 +375,20 @@ public sealed class MedicationsControllerTests
 
     private static MedicationsController CreateController(AppDbContext dbContext)
     {
-        return new MedicationsController(
+        var controller = new MedicationsController(
             new api_application.medication_application.MedicationApplicationService(
                 new EfMedicationRepository(dbContext)));
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                        [new Claim(ClaimTypes.Email, "user@example.com")],
+                        "TestAuth")),
+            },
+        };
+
+        return controller;
     }
 }

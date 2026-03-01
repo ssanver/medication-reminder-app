@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { signInWithEmail } from '../email-auth-service';
 import { loginWithSocial, type SocialLoginResult } from '../social-auth';
+import { loadOrCreateDeviceId } from '../auth-session-store';
 
 type AuthSessionTokens = {
   accessToken: string;
@@ -36,9 +37,11 @@ export function useSignInScreenState({ onSuccess, t }: UseSignInScreenStateInput
     setIsLoading(true);
     setErrorText('');
     try {
+      const deviceId = await loadOrCreateDeviceId();
       const response = await signInWithEmail({
         email: email.trim().toLowerCase(),
         password,
+        deviceId,
       });
       if (!response.accessToken?.trim() || !response.refreshToken?.trim() || !response.email?.trim()) {
         throw new Error('Oturum oluşturulamadı. Lütfen tekrar giriş yapın.');

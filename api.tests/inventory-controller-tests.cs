@@ -75,6 +75,7 @@ public sealed class InventoryControllerTests
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
             Name = "Aferin",
             Dosage = "200mg",
             StartDate = new DateOnly(2026, 2, 20),
