@@ -20,7 +20,7 @@ type UserPreferencesApiResponse = {
   updatedAt: string;
 };
 
-function resolveDefaultLocale(): Locale {
+export function resolveDefaultLocale(): Locale {
   const rawLocale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
   const baseCode = rawLocale.split('-')[0] ?? '';
 

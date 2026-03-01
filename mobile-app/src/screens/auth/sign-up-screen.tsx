@@ -99,8 +99,9 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack, onContin
         disabled={isSocialLoading}
       />
       <Button label={t.continueAsGuest} variant="ghost" onPress={onContinueAsGuest} />
-      <Pressable testID="signup-open-signin-link" onPress={onOpenSignIn}>
-        <Text style={styles.signInText}>{t.alreadyHaveAccount}</Text>
+      <Pressable testID="signup-open-signin-link" onPress={onOpenSignIn} style={styles.signInCta}>
+        <Text style={styles.signInHint}>{t.alreadyHaveAccount}</Text>
+        <Text style={styles.signInText}>{t.signIn}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -171,9 +172,24 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  signInText: {
-    ...theme.typography.captionScale.lRegular,
+  signInCta: {
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[300],
+    borderRadius: theme.radius[16],
+    backgroundColor: theme.colors.primaryBlue[50],
+    paddingVertical: theme.spacing[8],
+    paddingHorizontal: theme.spacing[16],
+    alignItems: 'center',
+    gap: theme.spacing[4],
+  },
+  signInHint: {
+    ...theme.typography.captionScale.mRegular,
     color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
+  },
+  signInText: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.primaryBlue[700],
     textAlign: 'center',
   },
 });

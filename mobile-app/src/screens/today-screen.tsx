@@ -68,12 +68,12 @@ export function TodayScreen({
   } = useTodayScreenState({ locale, weekStartsOn });
   const dayStripRef = useRef<ScrollView>(null);
   const dayAnchorRef = useRef(new Date());
-  const DAY_ITEM_WIDTH = 52;
-  const DAY_ITEM_GAP = theme.spacing[8];
+  const DAY_ITEM_WIDTH = 44;
+  const DAY_ITEM_GAP = theme.spacing[4];
   const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
-  const DAY_ARROW_BUTTON_WIDTH = 48;
+  const DAY_ARROW_BUTTON_WIDTH = 44;
   const DAY_RANGE = 365;
-  const dayStripSidePadding = Math.max(theme.spacing[16], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
+  const dayStripSidePadding = Math.max(theme.spacing[8], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
     const anchor = dayAnchorRef.current;
     const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
@@ -126,15 +126,17 @@ export function TodayScreen({
       <View style={styles.profileRow}>
         <View style={styles.profileLeft}>
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{avatarEmoji}</Text></View>
-          <View>
-            <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
-            <Text style={styles.welcome}>{t.welcome}</Text>
-            {isGuestMode ? (
-              <Pressable style={styles.signUpInlineChip} onPress={onOpenSignUp}>
-                <Text style={styles.signUpInlineChipText}>{t.signUpNow}</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          {isGuestMode ? (
+            <Pressable style={styles.guestAlertRow} onPress={onOpenSignUp}>
+              <Text style={styles.guestAlertHello}>{`${t.hello},`}</Text>
+              <Text style={styles.guestAlertCta}>{t.signUpNow}</Text>
+            </Pressable>
+          ) : (
+            <View>
+              <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
+              <Text style={styles.welcome}>{t.welcome}</Text>
+            </View>
+          )}
         </View>
         <View style={styles.rightIcons}>
           {showEmailVerificationAlert ? (
@@ -192,7 +194,7 @@ export function TodayScreen({
             return (
               <Pressable
                 key={day.key}
-                style={[styles.dayCell, isSelected && styles.dayCellActive]}
+                style={[styles.dayCell, { width: DAY_ITEM_WIDTH, height: DAY_ITEM_WIDTH }, isSelected && styles.dayCellActive]}
                 onPress={() => setSelectedDate(day.date)}
               >
                 <Text style={[styles.dayText, isSelected && styles.dayTextActive]}>{day.label}</Text>
@@ -421,21 +423,24 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  signUpInlineChip: {
-    marginTop: theme.spacing[4],
-    alignSelf: 'flex-start',
-    minHeight: 28,
+  guestAlertRow: {
+    minHeight: 36,
     borderRadius: theme.radius[16],
     borderWidth: 1,
-    borderColor: theme.colors.primaryBlue[500],
-    backgroundColor: theme.colors.primaryBlue[50],
-    paddingHorizontal: theme.spacing[8],
+    borderColor: theme.colors.error[200],
+    backgroundColor: theme.colors.error[50],
+    paddingHorizontal: theme.spacing[16],
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: theme.spacing[8],
   },
-  signUpInlineChipText: {
-    ...theme.typography.captionScale.lRegular,
-    color: theme.colors.primaryBlue[500],
+  guestAlertHello: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.error[800],
+  },
+  guestAlertCta: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.error[800],
     fontWeight: '700',
   },
   dateTitle: {

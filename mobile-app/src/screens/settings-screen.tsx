@@ -18,7 +18,6 @@ type SettingsScreenProps = {
   onOpenProfile: () => void;
   onOpenSignUp: () => void;
   onOpenNotificationSettings: () => void;
-  onOpenReminderPreferences: () => void;
   onOpenChangePassword: () => void;
   onOpenFeedback: () => void;
   onLogout: () => void;
@@ -42,7 +41,6 @@ export function SettingsScreen({
   onOpenProfile,
   onOpenSignUp,
   onOpenNotificationSettings,
-  onOpenReminderPreferences,
   onOpenChangePassword,
   onOpenFeedback,
   onLogout,
@@ -132,7 +130,10 @@ export function SettingsScreen({
 
         <Section title={t.reminderAlarm}>
           <MenuRow testID="settings-notification-settings-row" label={t.notificationSettings} value={t.defaultAppSound} onPress={onOpenNotificationSettings} />
-          <MenuRow testID="settings-snooze-duration-row" label={t.snoozeDuration} value={`${snoozeMinutes} min`} onPress={onOpenReminderPreferences} />
+          <View style={styles.versionRow}>
+            <Text style={styles.rowTitle}>{t.snoozeDuration}</Text>
+            <Text style={styles.rowSubtitle}>{`${snoozeMinutes} min`}</Text>
+          </View>
         </Section>
 
         {!isGuestMode ? (

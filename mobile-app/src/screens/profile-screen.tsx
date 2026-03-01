@@ -53,7 +53,9 @@ export function ProfileScreen({ locale, isGuestMode, onOpenSignUp, onBack }: Pro
           {isGuestMode ? (
             <View style={styles.guestWarningCard}>
               <Text style={styles.guestWarningText}>{t.guestProfileWarning}</Text>
-              <Button label={t.signUpNow} size="s" onPress={onOpenSignUp} />
+              <Pressable style={styles.signUpInlineChip} onPress={onOpenSignUp}>
+                <Text style={styles.signUpInlineChipText}>{`⚠ ${t.signUpNow}`}</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -183,14 +185,30 @@ const styles = StyleSheet.create({
   guestWarningCard: {
     borderRadius: theme.radius[8],
     borderWidth: 1,
-    borderColor: theme.colors.semantic.stateWarning,
-    backgroundColor: theme.colors.semantic.stateWarningSoft,
+    borderColor: theme.colors.error[200],
+    backgroundColor: theme.colors.error[50],
     padding: theme.spacing[16],
     gap: theme.spacing[8],
   },
   guestWarningText: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textPrimary,
+  },
+  signUpInlineChip: {
+    alignSelf: 'flex-start',
+    minHeight: 28,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.error[200],
+    backgroundColor: theme.colors.semantic.cardBackground,
+    paddingHorizontal: theme.spacing[8],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signUpInlineChipText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.error[800],
+    fontWeight: '700',
   },
   fieldWrap: {
     gap: theme.spacing[4],

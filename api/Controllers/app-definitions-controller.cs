@@ -24,9 +24,19 @@ public sealed class AppDefinitionsController(AppDbContext dbContext) : Controlle
             ? rows.Max(x => x.UpdatedAt)
             : DateTimeOffset.UtcNow;
 
+        var definitions = rows.ToDictionary(x => x.DefinitionKey, x => x.JsonValue, StringComparer.OrdinalIgnoreCase);
+        var requiredKeys = new[] { "formOptions", "medicationIconOptions" };
+        foreach (var key in requiredKeys)
+        {
+            if (!definitions.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Missing required app definition: {key}");
+            }
+        }
+
         return Ok(new AppDefinitionsResponse
         {
-            Definitions = rows.ToDictionary(x => x.DefinitionKey, x => x.JsonValue),
+            Definitions = definitions,
             UpdatedAt = updatedAt,
         });
     }

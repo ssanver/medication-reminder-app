@@ -39,7 +39,7 @@ import {
   subscribeReminderPrompt,
   syncMedicationReminderNotifications,
 } from '../features/notifications/local-notifications';
-import { loadAppPreferences, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
+import { loadAppPreferences, resolveDefaultLocale, saveAppPreferences, updateLocalePreference } from '../features/settings/app-preferences';
 import { loadWeekStartPreference, saveWeekStartPreference } from '../features/settings/week-start-preference-service';
 import { clearProfile } from '../features/profile/profile-store';
 import { shareApplication } from '../features/share/app-share';
@@ -56,7 +56,6 @@ import { NotificationHistoryScreen } from '../screens/notification-history-scree
 import { NotificationSettingsScreen } from '../screens/notification-settings-screen';
 import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
-import { ReminderPreferencesScreen } from '../screens/reminder-preferences-screen';
 import { SettingsScreen } from '../screens/settings-screen';
 import { TodayScreen } from '../screens/today-screen';
 import { theme } from '../theme';
@@ -68,7 +67,6 @@ type OverlayScreen =
   | 'medication-details'
   | 'notification-history'
   | 'notification-settings'
-  | 'reminder-preferences'
   | 'change-password'
   | 'feedback'
   | 'email-verification'
@@ -107,6 +105,16 @@ export function AppNavigator() {
   async function requestGuestSession() {
     const deviceId = await loadOrCreateDeviceId();
     return createGuestSession({ deviceId });
+  }
+
+  async function applyGuestDeviceLocale() {
+    const deviceLocale = resolveDefaultLocale();
+    setLocale(deviceLocale);
+    try {
+      await updateLocalePreference(deviceLocale);
+    } catch {
+      // Keep locale from device even when preference sync is unavailable.
+    }
   }
 
   useEffect(() => {
@@ -150,6 +158,9 @@ export function AppNavigator() {
         void (async () => {
         setAccountEmail(session.email);
         setIsGuestMode(session.isGuestMode);
+        if (session.isGuestMode) {
+          await applyGuestDeviceLocale();
+        }
         setEmailVerifiedState(session.emailVerified || session.email.length === 0);
         if (session.email) {
           try {
@@ -179,11 +190,21 @@ export function AppNavigator() {
   useEffect(() => {
     void (async () => {
       const preferences = await loadAppPreferences();
-      setLocale(preferences.locale);
+      const session = await loadAuthSession();
+      const deviceLocale = resolveDefaultLocale();
+      const effectiveLocale = session.isGuestMode ? deviceLocale : preferences.locale;
+      setLocale(effectiveLocale);
       setFontScale(preferences.fontScale);
       setNotificationsEnabled(preferences.notificationsEnabled);
       setMedicationRemindersEnabled(preferences.medicationRemindersEnabled);
       setSnoozeMinutes(preferences.snoozeMinutes);
+      if (session.isGuestMode && preferences.locale !== deviceLocale) {
+        try {
+          await updateLocalePreference(deviceLocale);
+        } catch {
+          // Keep using device locale in-memory when API update is unavailable.
+        }
+      }
 
       try {
         const weekStart = await loadWeekStartPreference();
@@ -393,6 +414,7 @@ export function AppNavigator() {
                 const updatedSession = await loadAuthSession();
                 setAccountEmail(updatedSession.email);
                 setIsGuestMode(true);
+                await applyGuestDeviceLocale();
                 setEmailVerifiedState(true);
                 setPhase('app');
               })();
@@ -462,6 +484,7 @@ export function AppNavigator() {
                 const updatedSession = await loadAuthSession();
                 setAccountEmail(updatedSession.email);
                 setIsGuestMode(true);
+                await applyGuestDeviceLocale();
                 setEmailVerifiedState(true);
                 setPhase('app');
               })();
@@ -555,21 +578,6 @@ export function AppNavigator() {
 
               setMedicationRemindersEnabled(true);
             }}
-            onBack={() => setOverlayScreen('none')}
-          />
-        </View>
-      </View>
-    );
-  }
-
-  if (overlayScreen === 'reminder-preferences') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <ReminderPreferencesScreen
-            locale={locale}
-            snoozeMinutes={snoozeMinutes}
-            onSnoozeMinutesChange={setSnoozeMinutes}
             onBack={() => setOverlayScreen('none')}
           />
         </View>
@@ -695,7 +703,6 @@ export function AppNavigator() {
           () => setPhase('signup'),
           () => setOverlayScreen('notification-settings'),
           () => setOverlayScreen('notification-history'),
-          () => setOverlayScreen('reminder-preferences'),
           () => setOverlayScreen('change-password'),
           () => setOverlayScreen('feedback'),
           () => {
@@ -806,7 +813,6 @@ function renderTab(
   onOpenSignUp: () => void,
   onOpenNotificationSettings: () => void,
   onOpenNotificationHistory: () => void,
-  onOpenReminderPreferences: () => void,
   onOpenChangePassword: () => void,
   onOpenFeedback: () => void,
   onLogout: () => void,
@@ -862,7 +868,6 @@ function renderTab(
           onOpenProfile={onOpenProfile}
           onOpenSignUp={onOpenSignUp}
           onOpenNotificationSettings={onOpenNotificationSettings}
-          onOpenReminderPreferences={onOpenReminderPreferences}
           onOpenChangePassword={onOpenChangePassword}
           onOpenFeedback={onOpenFeedback}
           onLogout={onLogout}
