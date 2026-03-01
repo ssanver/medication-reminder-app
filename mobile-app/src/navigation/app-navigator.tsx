@@ -9,6 +9,7 @@ import {
   clearSessionForLogout,
   subscribeAuthSession,
   loadAuthSession,
+  markGuestMode,
   markAuthenticated,
   setEmailVerified,
   setOnboardingCompleted,
@@ -95,6 +96,7 @@ export function AppNavigator() {
   const [accountEmail, setAccountEmail] = useState('');
   const [emailVerified, setEmailVerifiedState] = useState(true);
   const [emailResendCooldown, setEmailResendCooldown] = useState(0);
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   const t = getTranslations(locale);
   const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
@@ -110,6 +112,7 @@ export function AppNavigator() {
       timer = setTimeout(() => {
         void (async () => {
         setAccountEmail(session.email);
+        setIsGuestMode(session.isGuestMode);
         setEmailVerifiedState(session.emailVerified || session.email.length === 0);
         if (session.email) {
           try {
@@ -224,8 +227,12 @@ export function AppNavigator() {
       void (async () => {
         const session = await loadAuthSession();
         if (!session.isLoggedIn && phase === 'app') {
+          if (session.isGuestMode) {
+            return;
+          }
           await clearMedicationStore();
           setAccountEmail('');
+          setIsGuestMode(false);
           setEmailVerifiedState(true);
           setOverlayScreen('none');
           setActiveTab('today');
@@ -312,6 +319,7 @@ export function AppNavigator() {
                   // Keep login flow resilient; periodic sync effects retry in app phase.
                 }
                 setAccountEmail(payload.email);
+                setIsGuestMode(false);
                 setEmailVerifiedState(payload.emailVerified);
                 if (!payload.emailVerified) {
                   try {
@@ -330,6 +338,17 @@ export function AppNavigator() {
             onBack={() => {
               setOnboardingStep(Math.max(steps.length - 1, 0));
               setPhase('onboarding');
+            }}
+            onContinueAsGuest={() => {
+              void (async () => {
+                await markGuestMode();
+                await clearMedicationStore();
+                await hydrateMedicationStore();
+                setAccountEmail('');
+                setIsGuestMode(true);
+                setEmailVerifiedState(true);
+                setPhase('app');
+              })();
             }}
           />
         </View>
@@ -373,11 +392,23 @@ export function AppNavigator() {
                   // Keep login flow resilient; periodic sync effects retry in app phase.
                 }
                 setAccountEmail(payload.email);
+                setIsGuestMode(false);
                 setEmailVerifiedState(isEmailVerified);
                 setPhase('app');
               })();
             }}
             onOpenSignUp={() => setPhase('signup')}
+            onContinueAsGuest={() => {
+              void (async () => {
+                await markGuestMode();
+                await clearMedicationStore();
+                await hydrateMedicationStore();
+                setAccountEmail('');
+                setIsGuestMode(true);
+                setEmailVerifiedState(true);
+                setPhase('app');
+              })();
+            }}
           />
         </View>
       </View>
@@ -606,6 +637,7 @@ export function AppNavigator() {
               await clearMedicationStore();
               await clearSessionForLogout();
               setAccountEmail('');
+              setIsGuestMode(false);
               setEmailVerifiedState(true);
               setOverlayScreen('none');
               setActiveTab('today');
@@ -628,6 +660,7 @@ export function AppNavigator() {
               await clearProfile();
               await clearSessionForLogout();
               setAccountEmail('');
+              setIsGuestMode(false);
               setEmailVerifiedState(true);
               setOverlayScreen('none');
               setActiveTab('today');
@@ -644,7 +677,8 @@ export function AppNavigator() {
             }
           },
           () => setOverlayScreen('email-verification'),
-          Boolean(accountEmail) && !emailVerified,
+          !isGuestMode && Boolean(accountEmail) && !emailVerified,
+          isGuestMode,
         )}
       </View>
       <BottomNav
@@ -714,6 +748,7 @@ function renderTab(
   onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>,
   onOpenEmailVerification: () => void,
   showEmailVerificationAlert: boolean,
+  isGuestMode: boolean,
 ) {
   switch (tab) {
     case 'today':
@@ -764,6 +799,7 @@ function renderTab(
           onShareApp={onShareApp}
           onOpenDonate={onOpenDonate}
           onCancelAccount={onCancelAccount}
+          isGuestMode={isGuestMode}
           notificationsEnabled={notificationsEnabled}
           medicationRemindersEnabled={medicationRemindersEnabled}
           snoozeMinutes={snoozeMinutes}

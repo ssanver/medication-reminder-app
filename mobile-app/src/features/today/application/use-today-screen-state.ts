@@ -3,6 +3,7 @@ import { getDateTitle, getWeekStrip } from '../../date/week-strip';
 import { loadAppDefinitions, type AppDefinitions } from '../../definitions/definitions-service';
 import { getLocaleTag, getTranslations, type Locale } from '../../localization/localization';
 import { getScheduledDosesForDate } from '../../medications/medication-store';
+import { getAdFreeStatus, subscribeAdFreeStatus } from '../../monetization/subscription-service';
 import { useMedicationStore } from '../../medications/use-medication-store';
 import { toShortDisplayName } from '../../profile/display-name';
 import { resolveProfileAvatarEmoji } from '../../profile/profile-avatar';
@@ -27,6 +28,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [doses, setDoses] = useState<Awaited<ReturnType<typeof getScheduledDosesForDate>>>([]);
   const [definitions, setDefinitions] = useState<AppDefinitions | null>(null);
+  const [isAdFree, setIsAdFree] = useState(false);
 
   const shortDisplayName = toShortDisplayName(profileName);
   const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
@@ -116,6 +118,15 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   }, []);
 
   useEffect(() => {
+    const unsubscribe = subscribeAdFreeStatus((status) => setIsAdFree(status.isAdFree));
+    void (async () => {
+      const status = await getAdFreeStatus();
+      setIsAdFree(status.isAdFree);
+    })();
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     void (async () => {
       try {
         const profile = await loadProfile();
@@ -133,6 +144,9 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const weekStrip = useMemo(() => getWeekStrip(selectedDate, locale, weekStartsOn), [selectedDate, locale, weekStartsOn]);
   const dateTitle = useMemo(() => getDateTitle(selectedDate, locale), [selectedDate, locale]);
   const sponsoredAd = useMemo(() => {
+    if (isAdFree) {
+      return null;
+    }
     const definition = definitions?.sponsoredAd;
     if (!definition) {
       return null;
@@ -148,7 +162,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
       ctaLabel: localized.ctaLabel,
       ctaUrl: definition.ctaUrl,
     };
-  }, [definitions, locale]);
+  }, [definitions, isAdFree, locale]);
   const sectionTitle = useMemo(() => {
     const localeTag = getLocaleTag(locale);
     const dateText = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'long' }).format(selectedDate);

@@ -9,9 +9,11 @@ const KEY_CACHED_USER = 'auth:cachedUser';
 const KEY_EMAIL = 'auth:email';
 const KEY_EMAIL_VERIFIED = 'auth:emailVerified';
 const KEY_HAS_SEEN_SPLASH_ONCE = 'auth:hasSeenSplashOnce';
+const KEY_IS_GUEST_MODE = 'auth:isGuestMode';
 
 export type AuthSession = {
   isLoggedIn: boolean;
+  isGuestMode: boolean;
   hasCompletedOnboarding: boolean;
   hasSeenPermissionScreen: boolean;
   hasSeenSplashOnce: boolean;
@@ -35,8 +37,9 @@ function parseFlag(value: string | null): boolean {
 }
 
 export async function loadAuthSession(): Promise<AuthSession> {
-  const [isLoggedInRaw, hasCompletedOnboardingRaw, hasSeenPermissionScreenRaw, hasSeenSplashOnceRaw, emailRaw, emailVerifiedRaw] = await Promise.all([
+  const [isLoggedInRaw, isGuestModeRaw, hasCompletedOnboardingRaw, hasSeenPermissionScreenRaw, hasSeenSplashOnceRaw, emailRaw, emailVerifiedRaw] = await Promise.all([
     AsyncStorage.getItem(KEY_IS_LOGGED_IN),
+    AsyncStorage.getItem(KEY_IS_GUEST_MODE),
     AsyncStorage.getItem(KEY_HAS_COMPLETED_ONBOARDING),
     AsyncStorage.getItem(KEY_HAS_SEEN_PERMISSION_SCREEN),
     AsyncStorage.getItem(KEY_HAS_SEEN_SPLASH_ONCE),
@@ -46,6 +49,7 @@ export async function loadAuthSession(): Promise<AuthSession> {
 
   return {
     isLoggedIn: parseFlag(isLoggedInRaw),
+    isGuestMode: parseFlag(isGuestModeRaw),
     hasCompletedOnboarding: parseFlag(hasCompletedOnboardingRaw),
     hasSeenPermissionScreen: parseFlag(hasSeenPermissionScreenRaw),
     hasSeenSplashOnce: parseFlag(hasSeenSplashOnceRaw),
@@ -78,6 +82,7 @@ export async function markAuthenticated(payload: {
   const hasValidSession = Boolean(payload.accessToken && payload.email);
   const writes: Array<Promise<void>> = [
     AsyncStorage.setItem(KEY_IS_LOGGED_IN, hasValidSession ? 'true' : 'false'),
+    AsyncStorage.setItem(KEY_IS_GUEST_MODE, 'false'),
     AsyncStorage.setItem(KEY_HAS_COMPLETED_ONBOARDING, 'true'),
   ];
 
@@ -105,6 +110,20 @@ export async function markAuthenticated(payload: {
   emitAuthSessionChanged();
 }
 
+export async function markGuestMode(): Promise<void> {
+  await Promise.all([
+    AsyncStorage.setItem(KEY_IS_LOGGED_IN, 'false'),
+    AsyncStorage.setItem(KEY_IS_GUEST_MODE, 'true'),
+    AsyncStorage.setItem(KEY_HAS_COMPLETED_ONBOARDING, 'true'),
+    AsyncStorage.removeItem(KEY_ACCESS_TOKEN),
+    AsyncStorage.removeItem(KEY_REFRESH_TOKEN),
+    AsyncStorage.removeItem(KEY_CACHED_USER),
+    AsyncStorage.removeItem(KEY_EMAIL),
+    AsyncStorage.setItem(KEY_EMAIL_VERIFIED, 'true'),
+  ]);
+  emitAuthSessionChanged();
+}
+
 export async function setEmailVerified(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_EMAIL_VERIFIED, value ? 'true' : 'false');
   emitAuthSessionChanged();
@@ -118,6 +137,7 @@ export async function setSplashSeen(value: boolean): Promise<void> {
 export async function clearSessionForLogout(): Promise<void> {
   await Promise.all([
     AsyncStorage.setItem(KEY_IS_LOGGED_IN, 'false'),
+    AsyncStorage.setItem(KEY_IS_GUEST_MODE, 'false'),
     AsyncStorage.removeItem(KEY_ACCESS_TOKEN),
     AsyncStorage.removeItem(KEY_REFRESH_TOKEN),
     AsyncStorage.removeItem(KEY_CACHED_USER),

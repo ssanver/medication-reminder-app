@@ -18,9 +18,10 @@ type SignUpScreenProps = {
   onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean }) => void;
   onOpenSignIn: () => void;
   onBack: () => void;
+  onContinueAsGuest: () => void;
 };
 
-export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUpScreenProps) {
+export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack, onContinueAsGuest }: SignUpScreenProps) {
   const t = getTranslations(locale);
   const {
     name,
@@ -97,6 +98,7 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack }: SignUp
         onPress={() => void signUpWithSocial('Google')}
         disabled={isSocialLoading}
       />
+      <Button label={t.continueAsGuest} variant="ghost" onPress={onContinueAsGuest} />
       <Pressable testID="signup-open-signin-link" onPress={onOpenSignIn}>
         <Text style={styles.signInText}>{t.alreadyHaveAccount}</Text>
       </Pressable>

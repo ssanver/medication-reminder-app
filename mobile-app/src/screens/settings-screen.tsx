@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/button';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { TextField } from '../components/ui/text-field';
+import { loadAppDefinitions } from '../features/definitions/definitions-service';
 import { fontScaleLevels } from '../features/accessibility/accessibility-settings';
 import { getLocaleOptions, getTranslations, type Locale } from '../features/localization/localization';
+import { activateAdFreeMode, getAdFreeStatus, type SubscriptionOffer, subscribeAdFreeStatus } from '../features/monetization/subscription-service';
 import { useSettingsScreenState } from '../features/settings/application/use-settings-screen-state';
 import { theme } from '../theme';
 
@@ -20,6 +23,7 @@ type SettingsScreenProps = {
   onLogout: () => void;
   onShareApp: () => void;
   onOpenDonate: () => void;
+  isGuestMode: boolean;
   onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>;
   notificationsEnabled: boolean;
   medicationRemindersEnabled: boolean;
@@ -42,6 +46,7 @@ export function SettingsScreen({
   onLogout,
   onShareApp,
   onOpenDonate,
+  isGuestMode,
   onCancelAccount,
   notificationsEnabled: _notificationsEnabled,
   medicationRemindersEnabled: _medicationRemindersEnabled,
@@ -77,6 +82,29 @@ export function SettingsScreen({
     isAppearanceDirty,
     version,
   } = useSettingsScreenState({ locale, fontScale, weekStartsOn });
+  const [offers, setOffers] = useState<SubscriptionOffer[]>([]);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [adFree, setAdFree] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const definitions = await loadAppDefinitions();
+        setOffers(definitions.subscriptionOffers ?? []);
+      } catch {
+        setOffers([]);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeAdFreeStatus((status) => setAdFree(status.isAdFree));
+    void (async () => {
+      const status = await getAdFreeStatus();
+      setAdFree(status.isAdFree);
+    })();
+    return unsubscribe;
+  }, []);
 
   return (
     <>
@@ -156,14 +184,22 @@ export function SettingsScreen({
         </Section>
 
         <Section title={t.supportAndSecurity}>
-          <MenuRow testID="settings-change-password-row" label={t.changePassword} onPress={onOpenChangePassword} />
+          {!isGuestMode ? <MenuRow testID="settings-change-password-row" label={t.changePassword} onPress={onOpenChangePassword} /> : null}
           <MenuRow testID="settings-contact-us-row" label={t.contactUs} onPress={onOpenFeedback} />
+          <MenuRow
+            testID="settings-remove-ads-row"
+            label={t.removeAds}
+            value={adFree ? t.adFreeActive : undefined}
+            onPress={() => setPaywallOpen(true)}
+          />
           <Pressable style={styles.logoutRow} onPress={() => setLogoutConfirmVisible(true)}>
             <Text style={styles.logoutText}>{t.logOut}</Text>
           </Pressable>
-          <Pressable testID="settings-delete-account-row" style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
-            <Text style={styles.dangerText}>{t.deleteAccount}</Text>
-          </Pressable>
+          {!isGuestMode ? (
+            <Pressable testID="settings-delete-account-row" style={styles.dangerRow} onPress={() => setCancelAccountVisible(true)}>
+              <Text style={styles.dangerText}>{t.deleteAccount}</Text>
+            </Pressable>
+          ) : null}
         </Section>
 
         <Section title={t.aboutUs}>
@@ -276,6 +312,32 @@ export function SettingsScreen({
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal transparent visible={paywallOpen} animationType="slide" onRequestClose={() => setPaywallOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setPaywallOpen(false)}>
+          <Pressable style={styles.sheet} onPress={() => undefined}>
+            <Text style={styles.sheetTitle}>{t.removeAds}</Text>
+            <Text style={styles.rowSubtitle}>{t.removeAdsDescription}</Text>
+            {offers.map((offer) => (
+              <Pressable
+                key={offer.id}
+                style={styles.subscriptionCard}
+                onPress={() => {
+                  void (async () => {
+                    await activateAdFreeMode(offer.id);
+                    setPaywallOpen(false);
+                  })();
+                }}
+              >
+                <Text style={styles.subscriptionTitle}>{offer.localized[locale]?.title ?? offer.localized.en?.title ?? offer.id}</Text>
+                <Text style={styles.rowSubtitle}>
+                  {offer.localized[locale]?.priceLabel ?? offer.localized.en?.priceLabel ?? ''}
+                </Text>
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
       </Modal>
     </>
   );
@@ -579,6 +641,21 @@ const styles = StyleSheet.create({
   languageOptionTextActive: {
     color: theme.colors.primaryBlue[500],
     fontWeight: '700',
+  },
+  subscriptionCard: {
+    minHeight: 58,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.neutral[50],
+    paddingHorizontal: theme.spacing[16],
+    paddingVertical: theme.spacing[8],
+    justifyContent: 'center',
+    gap: 2,
+  },
+  subscriptionTitle: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.semantic.textPrimary,
   },
   bottomSpacer: {
     height: theme.spacing[8],

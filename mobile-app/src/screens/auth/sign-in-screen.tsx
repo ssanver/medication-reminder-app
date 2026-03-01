@@ -16,9 +16,10 @@ type SignInScreenProps = {
   locale: Locale;
   onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean }) => void;
   onOpenSignUp: () => void;
+  onContinueAsGuest: () => void;
 };
 
-export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenProps) {
+export function SignInScreen({ locale, onSuccess, onOpenSignUp, onContinueAsGuest }: SignInScreenProps) {
   const t = getTranslations(locale);
   const {
     email,
@@ -79,6 +80,7 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp }: SignInScreenPr
         onPress={() => void signInWithSocial('Google')}
         disabled={isSocialLoading}
       />
+      <Button label={t.continueAsGuest} variant="ghost" onPress={onContinueAsGuest} />
 
       <Pressable testID="signin-open-signup-link" onPress={onOpenSignUp}>
         <Text style={styles.signUpText}>{t.noAccount}</Text>

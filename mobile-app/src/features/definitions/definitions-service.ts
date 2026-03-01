@@ -24,6 +24,10 @@ export type AppDefinitions = {
     ctaUrl: string;
     localized: Record<string, { title: string; body: string; ctaLabel: string }>;
   };
+  subscriptionOffers?: Array<{
+    id: string;
+    localized: Record<string, { title: string; priceLabel: string }>;
+  }>;
 };
 
 type AppDefinitionsApiResponse = {
@@ -94,6 +98,7 @@ function parseFormOptions(value: string | undefined): FormOption[] {
 function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
   const source = response.definitions ?? {};
   let sponsoredAd: AppDefinitions['sponsoredAd'] | undefined;
+  let subscriptionOffers: AppDefinitions['subscriptionOffers'] | undefined;
   try {
     const raw = source.sponsoredAd ? JSON.parse(source.sponsoredAd) : null;
     if (
@@ -114,6 +119,31 @@ function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
     sponsoredAd = undefined;
   }
 
+  try {
+    const raw = source.subscriptionOffers ? JSON.parse(source.subscriptionOffers) : null;
+    if (Array.isArray(raw)) {
+      subscriptionOffers = raw
+        .map((item) => {
+          if (
+            !item ||
+            typeof item !== 'object' ||
+            typeof item.id !== 'string' ||
+            !item.localized ||
+            typeof item.localized !== 'object'
+          ) {
+            return null;
+          }
+          return {
+            id: item.id,
+            localized: item.localized as Record<string, { title: string; priceLabel: string }>,
+          };
+        })
+        .filter((item): item is NonNullable<AppDefinitions['subscriptionOffers']>[number] => item !== null);
+    }
+  } catch {
+    subscriptionOffers = undefined;
+  }
+
   return {
     defaultDoseTimes: parseStringArray(source.defaultDoseTimes),
     dayIntervalOptions: parseNumberArray(source.dayIntervalOptions),
@@ -129,6 +159,7 @@ function fromApi(response: AppDefinitionsApiResponse): AppDefinitions {
     formOptions: parseFormOptions(source.formOptions),
     snoozeOptions: parseNumberArray(source.snoozeOptions),
     sponsoredAd,
+    subscriptionOffers,
   };
 }
 

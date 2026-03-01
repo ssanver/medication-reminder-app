@@ -1,5 +1,6 @@
 import { apiRequestJson, apiRequestVoid } from '../network/api-client';
 import { loadAccessToken } from '../auth/auth-session-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { type Locale } from '../localization/localization';
 
@@ -38,6 +39,9 @@ type MedicationStoreState = {
   events: DoseEvent[];
   isHydrated: boolean;
 };
+
+const LOCAL_MEDICATIONS_KEY = 'guest:medications';
+const LOCAL_DOSE_EVENTS_KEY = 'guest:dose-events';
 
 const listeners = new Set<() => void>();
 
@@ -155,10 +159,27 @@ function normalizeMedication(payload: Medication): Medication {
 }
 
 async function persist(): Promise<void> {
-  return Promise.resolve();
+  const accessToken = await loadAccessToken();
+  if (accessToken) {
+    return;
+  }
+
+  await Promise.all([
+    AsyncStorage.setItem(LOCAL_MEDICATIONS_KEY, JSON.stringify(state.medications)),
+    AsyncStorage.setItem(LOCAL_DOSE_EVENTS_KEY, JSON.stringify(state.events)),
+  ]);
 }
 
 export async function clearMedicationStore(): Promise<void> {
+  try {
+    await Promise.all([
+      AsyncStorage.removeItem(LOCAL_MEDICATIONS_KEY),
+      AsyncStorage.removeItem(LOCAL_DOSE_EVENTS_KEY),
+    ]);
+  } catch {
+    // Best-effort cleanup.
+  }
+
   state = {
     medications: [],
     events: [],
@@ -419,8 +440,40 @@ export async function hydrateMedicationStore(): Promise<void> {
 
   const accessToken = await loadAccessToken();
   if (!accessToken) {
-    // Auth yokken hydrate edilmez; login sonrası tekrar denenecek.
-    return;
+    try {
+      const [medicationsRaw, eventsRaw] = await Promise.all([
+        AsyncStorage.getItem(LOCAL_MEDICATIONS_KEY),
+        AsyncStorage.getItem(LOCAL_DOSE_EVENTS_KEY),
+      ]);
+
+      const medications = medicationsRaw ? (JSON.parse(medicationsRaw) as Medication[]).map(normalizeMedication) : [];
+      const events = eventsRaw ? (JSON.parse(eventsRaw) as DoseEvent[]) : [];
+
+      state = {
+        medications,
+        events,
+        isHydrated: true,
+      };
+      emit();
+      return;
+    } catch {
+      state = {
+        medications: [],
+        events: [],
+        isHydrated: true,
+      };
+      emit();
+      return;
+    }
+  }
+
+  try {
+    await Promise.all([
+      AsyncStorage.removeItem(LOCAL_MEDICATIONS_KEY),
+      AsyncStorage.removeItem(LOCAL_DOSE_EVENTS_KEY),
+    ]);
+  } catch {
+    // Best-effort local cache cleanup after authenticated mode starts.
   }
 
   try {
@@ -463,7 +516,9 @@ export async function hydrateMedicationStore(): Promise<void> {
     };
     emit();
     return;
-  } catch {
+  }
+
+  catch {
     // Keep medication list empty when API is unreachable.
   }
 
@@ -524,15 +579,24 @@ export async function addMedication(payload: {
     totalQuantity: payload.totalQuantity,
     active: payload.active ?? true,
   };
-  const created = await apiRequestJson<ApiMedication>('/api/medications', {
-    method: 'POST',
-    body: toApiSaveMedicationRequest(medicationDraft),
-    correlationPrefix: 'medication-create',
-  });
-  const medication = fromApiMedication(created);
-  if (typeof payload.totalQuantity === 'number' && Number.isFinite(payload.totalQuantity) && payload.totalQuantity > 0) {
-    await updateInventoryStock(medication.id, Math.floor(payload.totalQuantity));
-    medication.totalQuantity = Math.floor(payload.totalQuantity);
+  const accessToken = await loadAccessToken();
+  let medication: Medication;
+  if (!accessToken) {
+    medication = normalizeMedication({
+      ...medicationDraft,
+      id: `${Date.now()}-${Math.round(Math.random() * 1_000_000)}`,
+    });
+  } else {
+    const created = await apiRequestJson<ApiMedication>('/api/medications', {
+      method: 'POST',
+      body: toApiSaveMedicationRequest(medicationDraft),
+      correlationPrefix: 'medication-create',
+    });
+    medication = fromApiMedication(created);
+    if (typeof payload.totalQuantity === 'number' && Number.isFinite(payload.totalQuantity) && payload.totalQuantity > 0) {
+      await updateInventoryStock(medication.id, Math.floor(payload.totalQuantity));
+      medication.totalQuantity = Math.floor(payload.totalQuantity);
+    }
   }
 
   state = {
@@ -577,6 +641,17 @@ export async function updateMedication(
     cycleOffDays: resolvedCycleOffDays,
     frequencyLabel: toFrequencyLabel(resolvedIntervalUnit, resolvedIntervalCount, resolvedCycleOffDays),
   };
+  const accessToken = await loadAccessToken();
+  if (!accessToken) {
+    state = {
+      ...state,
+      medications: state.medications.map((item) => (item.id === medicationId ? nextWithRule : item)),
+    };
+    emit();
+    await persist();
+    return;
+  }
+
   try {
     const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
       method: 'PUT',
@@ -624,6 +699,11 @@ export async function setMedicationActive(medicationId: string, active: boolean)
   emit();
   await persist();
 
+  const accessToken = await loadAccessToken();
+  if (!accessToken) {
+    return;
+  }
+
   try {
     const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
       method: 'PUT',
@@ -644,10 +724,13 @@ export async function setMedicationActive(medicationId: string, active: boolean)
 }
 
 export async function deleteMedication(medicationId: string): Promise<void> {
-  await apiRequestVoid(`/api/medications/${medicationId}`, {
-    method: 'DELETE',
-    correlationPrefix: 'medication-delete',
-  });
+  const accessToken = await loadAccessToken();
+  if (accessToken) {
+    await apiRequestVoid(`/api/medications/${medicationId}`, {
+      method: 'DELETE',
+      correlationPrefix: 'medication-delete',
+    });
+  }
 
   state = {
     ...state,
@@ -661,16 +744,19 @@ export async function deleteMedication(medicationId: string): Promise<void> {
 export async function setDoseStatus(medicationId: string, date: Date, status: DoseStatus, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
-  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
-    method: 'POST',
-    body: {
-      medicationId,
-      actionType: status,
-      dateKey,
-      scheduledTime: normalizedScheduledTime,
-    },
-    correlationPrefix: 'dose-events-action',
-  });
+  const accessToken = await loadAccessToken();
+  if (accessToken) {
+    await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+      method: 'POST',
+      body: {
+        medicationId,
+        actionType: status,
+        dateKey,
+        scheduledTime: normalizedScheduledTime,
+      },
+      correlationPrefix: 'dose-events-action',
+    });
+  }
   const existing = state.events.find(
     (item) => item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime,
   );
@@ -698,16 +784,19 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
 export async function clearDoseStatus(medicationId: string, date: Date, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
-  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
-    method: 'POST',
-    body: {
-      medicationId,
-      actionType: 'clear',
-      dateKey,
-      scheduledTime: normalizedScheduledTime,
-    },
-    correlationPrefix: 'dose-events-action-clear',
-  });
+  const accessToken = await loadAccessToken();
+  if (accessToken) {
+    await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+      method: 'POST',
+      body: {
+        medicationId,
+        actionType: 'clear',
+        dateKey,
+        scheduledTime: normalizedScheduledTime,
+      },
+      correlationPrefix: 'dose-events-action-clear',
+    });
+  }
   state = {
     ...state,
     events: state.events.filter(
@@ -790,14 +879,102 @@ type ApiDoseReportResponse = {
   medicationRows: ApiDoseMedicationReportRowResponse[];
 };
 
+type ApiGuestSimulationRequest = {
+  medications: Array<{
+    id: string;
+    name: string;
+    dosage: string;
+    form: string;
+    frequencyLabel: string;
+    intervalUnit: string;
+    intervalCount: number;
+    cycleOffDays: number;
+    startDate: string;
+    endDate: string | null;
+    time: string;
+    times: string[];
+    weeklyDays: number[];
+    isBeforeMeal: boolean;
+    active: boolean;
+  }>;
+  events: Array<{
+    medicationId: string;
+    dateKey: string;
+    scheduledTime: string;
+    status: 'taken' | 'missed';
+  }>;
+};
+
+type ApiGuestDoseReportResponse = {
+  summary: {
+    plannedCount: number;
+    takenCount: number;
+    missedCount: number;
+    adherenceRate: number;
+  };
+  weeklyTrend: ApiDoseTrendPointResponse[];
+  medicationRows: ApiDoseMedicationReportRowResponse[];
+};
+
 function resolveDoseDetails(dosage: string, usageType?: string | null): string {
   const normalized = (usageType ?? '').trim().toLowerCase();
   const unit = normalized === 'drop' ? 'Drops' : normalized === 'injection' ? 'Injection' : 'Capsules';
   return `${dosage} ${unit}`;
 }
 
+function toGuestSimulationRequest(): ApiGuestSimulationRequest {
+  return {
+    medications: state.medications.map((item) => ({
+      id: item.id,
+      name: item.name,
+      dosage: item.dosage,
+      form: item.form,
+      frequencyLabel: item.frequencyLabel,
+      intervalUnit: item.intervalUnit,
+      intervalCount: Math.max(1, item.intervalCount),
+      cycleOffDays: Math.max(0, item.cycleOffDays ?? 0),
+      startDate: item.startDate,
+      endDate: item.endDate ?? null,
+      time: item.time,
+      times: getMedicationTimes(item),
+      weeklyDays: item.weeklyDays ?? [],
+      isBeforeMeal: item.isBeforeMeal,
+      active: item.active,
+    })),
+    events: state.events.map((item) => ({
+      medicationId: item.medicationId,
+      dateKey: item.dateKey,
+      scheduledTime: item.scheduledTime,
+      status: item.status,
+    })),
+  };
+}
+
 export async function getScheduledDosesForDate(date: Date, locale: Locale = 'en'): Promise<ScheduledDoseItem[]> {
+  const accessToken = await loadAccessToken();
   const dateKey = toDateKey(date);
+  if (!accessToken) {
+    const response = await apiRequestJson<ApiScheduledDoseResponse[]>('/api/guest-simulation/scheduled-doses', {
+      method: 'POST',
+      body: {
+        dateKey,
+        locale,
+        ...toGuestSimulationRequest(),
+      },
+      correlationPrefix: 'guest-scheduled-doses',
+    });
+    return response.map((item) => ({
+      id: item.id,
+      medicationId: item.medicationId,
+      scheduledTime: item.scheduledTime,
+      name: item.name,
+      details: resolveDoseDetails(item.dosage, item.usageType),
+      schedule: `${item.scheduledTime} | ${localizeFrequencyLabel(item.frequencyLabel, locale)}`,
+      status: item.status,
+      emoji: resolveMedicationIcon(item.usageType?.trim() || 'Capsule'),
+    }));
+  }
+
   const query = encodeURIComponent(dateKey);
   const response = await apiRequestJson<ApiScheduledDoseResponse[]>(`/api/dose-events/scheduled-doses?date=${query}`, {
     correlationPrefix: 'dose-events-scheduled',
@@ -820,6 +997,29 @@ export async function getDoseReport(referenceDate: Date, locale: Locale = 'en'):
   weekly: Array<{ label: string; value: number }>;
   medicationRows: Array<{ medication: string; taken: number; missed: number }>;
 }> {
+  const accessToken = await loadAccessToken();
+  if (!accessToken) {
+    const response = await apiRequestJson<ApiGuestDoseReportResponse>('/api/guest-simulation/report', {
+      method: 'POST',
+      body: {
+        referenceDate: toDateKey(referenceDate),
+        locale,
+        ...toGuestSimulationRequest(),
+      },
+      correlationPrefix: 'guest-dose-report',
+    });
+    return {
+      summary: {
+        adherence: Math.round((response.summary.adherenceRate ?? 0) * 100),
+        totalScheduled: response.summary.plannedCount,
+        taken: response.summary.takenCount,
+        missed: response.summary.missedCount,
+      },
+      weekly: response.weeklyTrend,
+      medicationRows: response.medicationRows,
+    };
+  }
+
   const toDate = toDateKey(referenceDate);
   const fromDateObject = new Date(referenceDate);
   fromDateObject.setDate(referenceDate.getDate() - 6);

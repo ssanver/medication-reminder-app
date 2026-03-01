@@ -8,6 +8,7 @@ using api.services.auth;
 using api_application.medication_application;
 using api_application.medicine_catalog_application;
 using api_application.notification_application;
+using api_application.guest_simulation_application;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -77,6 +78,7 @@ builder.Services.AddScoped<INotificationDeliveryRepository, EfNotificationDelive
 builder.Services.AddScoped<INotificationActionRepository, EfNotificationActionRepository>();
 builder.Services.AddScoped<NotificationDeliveryApplicationService>();
 builder.Services.AddScoped<NotificationActionApplicationService>();
+builder.Services.AddSingleton<GuestSimulationApplicationService>();
 builder.Logging.AddJsonConsole();
 
 var app = builder.Build();

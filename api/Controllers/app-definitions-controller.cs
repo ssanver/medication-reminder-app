@@ -1,5 +1,6 @@
 using api.contracts;
 using api.data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace api.Controllers;
 [Route("api/app-definitions")]
 public sealed class AppDefinitionsController(AppDbContext dbContext) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<AppDefinitionsResponse>> Get()
     {
