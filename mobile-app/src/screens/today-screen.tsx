@@ -425,8 +425,9 @@ const styles = StyleSheet.create({
   guestAlertRow: {
     minHeight: 36,
     borderRadius: theme.radius[16],
-    borderWidth: 0,
-    backgroundColor: theme.colors.error[600],
+    borderWidth: 1,
+    borderColor: theme.colors.error[400],
+    backgroundColor: theme.colors.error[50],
     paddingHorizontal: theme.spacing[16],
     flexDirection: 'row',
     alignItems: 'center',
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
   },
   guestAlertCta: {
     ...theme.typography.bodyScale.mBold,
-    color: theme.colors.semantic.onPrimary,
+    color: theme.colors.error[700],
     fontWeight: '700',
   },
   dateTitle: {

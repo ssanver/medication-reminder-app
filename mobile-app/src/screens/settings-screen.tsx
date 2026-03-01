@@ -102,7 +102,7 @@ export function SettingsScreen({
         <View style={styles.profileCard}>
           <View style={styles.avatar}><Text style={styles.avatarEmoji}>{profileAvatarEmoji}</Text></View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{shortDisplayName}</Text>
+            {!isGuestMode ? <Text style={styles.profileName}>{shortDisplayName}</Text> : null}
             {isGuestMode ? <Text style={styles.guestInfoText}>{t.guestProfileWarning}</Text> : null}
             {!isGuestMode ? (
               <Pressable onPress={onOpenProfile}>
@@ -401,15 +401,16 @@ const styles = StyleSheet.create({
   completeProfileCta: {
     minHeight: 34,
     borderRadius: theme.radius[16],
-    borderWidth: 0,
-    backgroundColor: theme.colors.error[600],
+    borderWidth: 1,
+    borderColor: theme.colors.error[400],
+    backgroundColor: theme.colors.error[50],
     paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
   },
   completeProfileCtaText: {
     ...theme.typography.captionScale.lRegular,
-    color: theme.colors.semantic.onPrimary,
+    color: theme.colors.error[700],
     fontWeight: '700',
   },
   sectionWrap: {

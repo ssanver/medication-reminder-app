@@ -201,13 +201,13 @@ export function AppNavigator() {
       const preferences = await loadAppPreferences();
       const session = await loadAuthSession();
       const deviceLocale = resolveDefaultLocale();
-      const effectiveLocale = session.isGuestMode ? deviceLocale : preferences.locale;
+      const effectiveLocale = session.isGuestMode || !session.isLoggedIn ? deviceLocale : preferences.locale;
       setLocale(effectiveLocale);
       setFontScale(preferences.fontScale);
       setNotificationsEnabled(preferences.notificationsEnabled);
       setMedicationRemindersEnabled(preferences.medicationRemindersEnabled);
       setSnoozeMinutes(preferences.snoozeMinutes);
-      if (session.isGuestMode && preferences.locale !== deviceLocale) {
+      if ((session.isGuestMode || !session.isLoggedIn) && preferences.locale !== deviceLocale) {
         try {
           await updateLocalePreference(deviceLocale);
         } catch {

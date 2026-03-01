@@ -1,6 +1,7 @@
 import { apiRequestJson } from '../network/api-client';
 import { isSupportedLocale, type Locale } from '../localization/localization';
 import { buildUserReferenceQuery } from '../auth/user-reference';
+import { NativeModules, Platform } from 'react-native';
 
 export type AppPreferences = {
   locale: Locale;
@@ -21,11 +22,46 @@ type UserPreferencesApiResponse = {
 };
 
 export function resolveDefaultLocale(): Locale {
-  const rawLocale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
-  const baseCode = rawLocale.split('-')[0] ?? '';
+  const candidates: string[] = [];
 
-  if (isSupportedLocale(baseCode)) {
-    return baseCode;
+  try {
+    const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale;
+    if (typeof intlLocale === 'string' && intlLocale.trim().length > 0) {
+      candidates.push(intlLocale);
+    }
+  } catch {
+    // Ignore Intl locale resolution errors.
+  }
+
+  const navigatorLanguage = (globalThis as { navigator?: { language?: string } }).navigator?.language;
+  if (typeof navigatorLanguage === 'string' && navigatorLanguage.trim().length > 0) {
+    candidates.push(navigatorLanguage);
+  }
+
+  if (Platform.OS === 'ios') {
+    const settings = (NativeModules as { SettingsManager?: { settings?: Record<string, unknown> } }).SettingsManager?.settings ?? {};
+    const appleLocale = settings.AppleLocale;
+    const appleLanguages = settings.AppleLanguages;
+
+    if (typeof appleLocale === 'string' && appleLocale.trim().length > 0) {
+      candidates.push(appleLocale);
+    }
+    if (Array.isArray(appleLanguages) && typeof appleLanguages[0] === 'string' && appleLanguages[0].trim().length > 0) {
+      candidates.push(appleLanguages[0]);
+    }
+  } else {
+    const localeIdentifier = (NativeModules as { I18nManager?: { localeIdentifier?: string } }).I18nManager?.localeIdentifier;
+    if (typeof localeIdentifier === 'string' && localeIdentifier.trim().length > 0) {
+      candidates.push(localeIdentifier);
+    }
+  }
+
+  for (const candidate of candidates) {
+    const normalized = candidate.trim().toLowerCase().replace('_', '-');
+    const baseCode = normalized.split('-')[0] ?? '';
+    if (isSupportedLocale(baseCode)) {
+      return baseCode;
+    }
   }
 
   return 'en';

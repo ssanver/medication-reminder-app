@@ -6,6 +6,7 @@ using api.services.security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Security.Claims;
 
 namespace api.Controllers;
 
@@ -24,17 +25,25 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
     [HttpPost("action")]
     public async Task<ActionResult<DoseEventResponse>> Action([FromBody] DoseActionRequest request)
     {
+        var userReference = ResolveUserReference(out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         if (!AllowedActions.Contains(request.ActionType))
         {
             return BadRequest("Action type must be one of: taken, missed, snooze, clear.");
         }
 
-        var medicationExists = await dbContext.Medications.AnyAsync(x => x.Id == request.MedicationId);
+        var medicationExists = string.IsNullOrWhiteSpace(userReference)
+            ? await dbContext.Medications.AnyAsync(x => x.Id == request.MedicationId)
+            : await dbContext.Medications.AnyAsync(x => x.Id == request.MedicationId && x.UserReference == userReference);
         if (!medicationExists)
         {
             await auditLogger.LogAsync(
                 "unauthorized-attempt",
-                $"medication-not-found medicationId={request.MedicationId} actionType={request.ActionType}");
+                $"medication-not-found medicationId={request.MedicationId} userReference={userReference} actionType={request.ActionType}");
             return NotFound("Medication not found.");
         }
 
@@ -116,7 +125,23 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
     [HttpGet("history")]
     public async Task<ActionResult<IReadOnlyCollection<DoseEventResponse>>> GetHistory([FromQuery] DoseHistoryQuery query)
     {
-        var eventsQuery = dbContext.DoseEvents.AsNoTracking();
+        var userReference = ResolveUserReference(out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        var ownedMedicationIdsQuery = dbContext.Medications.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(userReference))
+        {
+            ownedMedicationIdsQuery = ownedMedicationIdsQuery.Where(x => x.UserReference == userReference);
+        }
+
+        var ownedMedicationIds = ownedMedicationIdsQuery.Select(x => x.Id);
+
+        var eventsQuery = dbContext.DoseEvents
+            .AsNoTracking()
+            .Where(x => ownedMedicationIds.Contains(x.MedicationId));
 
         if (query.MedicationId.HasValue)
         {
@@ -154,23 +179,43 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
     [HttpGet("summary")]
     public async Task<ActionResult<DoseSummaryResponse>> GetSummary([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate)
     {
+        var userReference = ResolveUserReference(out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         if (toDate < fromDate)
         {
             return BadRequest("toDate cannot be earlier than fromDate.");
         }
 
+        var ownedMedicationIdsQuery = dbContext.Medications.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(userReference))
+        {
+            ownedMedicationIdsQuery = ownedMedicationIdsQuery.Where(x => x.UserReference == userReference);
+        }
+
+        var ownedMedicationIds = ownedMedicationIdsQuery.Select(x => x.Id);
+
         var events = await dbContext
             .DoseEvents
             .AsNoTracking()
+            .Where(x => ownedMedicationIds.Contains(x.MedicationId))
             .Where(x => x.ActionAt >= fromDate.ToDateTime(TimeOnly.MinValue) && x.ActionAt <= toDate.ToDateTime(TimeOnly.MaxValue))
             .ToListAsync();
 
-        var medications = await dbContext
+        var medicationsQuery = dbContext
             .Medications
             .AsNoTracking()
             .Include(x => x.Schedules)
-            .Where(x => x.IsActive)
-            .ToListAsync();
+            .Where(x => x.IsActive);
+        if (!string.IsNullOrWhiteSpace(userReference))
+        {
+            medicationsQuery = medicationsQuery.Where(x => x.UserReference == userReference);
+        }
+
+        var medications = await medicationsQuery.ToListAsync();
 
         var dayCount = (toDate.DayNumber - fromDate.DayNumber) + 1;
         var plannedCount = medications
@@ -205,15 +250,27 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
     public async Task<ActionResult<IReadOnlyCollection<ScheduledDoseResponse>>> GetScheduledDoses(
         [FromQuery] DateOnly? date = null)
     {
+        var userReference = ResolveUserReference(out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var targetDateKey = targetDate.ToString("yyyy-MM-dd");
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
 
-        var medications = await dbContext
+        var medicationsQuery = dbContext
             .Medications
             .AsNoTracking()
             .Include(x => x.Schedules)
-            .Where(x => x.IsActive)
+            .Where(x => x.IsActive);
+        if (!string.IsNullOrWhiteSpace(userReference))
+        {
+            medicationsQuery = medicationsQuery.Where(x => x.UserReference == userReference);
+        }
+
+        var medications = await medicationsQuery
             .OrderBy(x => x.Name)
             .ToListAsync();
 
@@ -275,6 +332,12 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         [FromQuery] DateOnly? toDate = null,
         [FromQuery] string locale = "en")
     {
+        var userReference = ResolveUserReference(out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         var resolvedToDate = toDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var resolvedFromDate = fromDate ?? resolvedToDate.AddDays(-6);
         if (resolvedToDate < resolvedFromDate)
@@ -282,17 +345,25 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
             return BadRequest("toDate cannot be earlier than fromDate.");
         }
 
-        var medications = await dbContext
+        var medicationsQuery = dbContext
             .Medications
             .AsNoTracking()
             .Include(x => x.Schedules)
-            .Where(x => x.IsActive)
+            .Where(x => x.IsActive);
+        if (!string.IsNullOrWhiteSpace(userReference))
+        {
+            medicationsQuery = medicationsQuery.Where(x => x.UserReference == userReference);
+        }
+
+        var medications = await medicationsQuery
             .OrderBy(x => x.Name)
             .ToListAsync();
 
+        var medicationIds = medications.Select(x => x.Id).ToArray();
         var eventRows = await dbContext
             .DoseEvents
             .AsNoTracking()
+            .Where(x => medicationIds.Contains(x.MedicationId))
             .Where(x =>
                 x.ActionAt >= resolvedFromDate.ToDateTime(TimeOnly.MinValue) &&
                 x.ActionAt <= resolvedToDate.ToDateTime(TimeOnly.MaxValue))
@@ -498,5 +569,22 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
 
         var numberText = value[4..];
         return int.TryParse(numberText, out var parsed) ? Math.Max(0, parsed) : 0;
+    }
+
+    private string? ResolveUserReference(out ActionResult? errorResult)
+    {
+        var principal = HttpContext?.User;
+        var claimedEmail =
+            principal?.FindFirstValue(ClaimTypes.Email)
+            ?? principal?.FindFirstValue("email");
+
+        if (string.IsNullOrWhiteSpace(claimedEmail))
+        {
+            errorResult = null;
+            return null;
+        }
+
+        errorResult = null;
+        return claimedEmail.Trim().ToLowerInvariant();
     }
 }
