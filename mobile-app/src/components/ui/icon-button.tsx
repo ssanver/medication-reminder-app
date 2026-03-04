@@ -3,7 +3,7 @@ import { theme } from '../../theme';
 import { AppIcon, type AppIconName } from './app-icon';
 
 type IconButtonVariant = 'filled' | 'outlined' | 'ghost';
-type IconButtonSize = 's' | 'm' | 'l';
+type IconButtonSize = 's' | 'm' | 'l' | 'xl';
 
 type IconButtonProps = {
   icon: AppIconName | string;
@@ -61,6 +61,7 @@ const sizeStyles: Record<IconButtonSize, ViewStyle> = {
   s: { width: 28, height: 28 },
   m: { width: 36, height: 36 },
   l: { width: 44, height: 44 },
+  xl: { width: 52, height: 52 },
 };
 
 const variantStyles: Record<IconButtonVariant, ViewStyle> = {
@@ -82,6 +83,7 @@ const iconSizeMap: Record<IconButtonSize, number> = {
   s: 14,
   m: 18,
   l: 20,
+  xl: 24,
 };
 
 const iconStyles = StyleSheet.create({
@@ -93,6 +95,9 @@ const iconStyles = StyleSheet.create({
   },
   l: {
     ...theme.typography.bodyScale.lRegular,
+  },
+  xl: {
+    ...theme.typography.heading.h6Medium,
   },
 });
 

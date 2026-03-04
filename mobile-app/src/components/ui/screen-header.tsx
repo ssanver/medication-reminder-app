@@ -16,13 +16,13 @@ export function ScreenHeader({ title, subtitle, leftAction, rightAction }: Scree
     <View style={styles.wrapper}>
       <View style={styles.row}>
         <View style={styles.side}>
-          {leftAction ? <IconButton icon={leftAction.icon} size="l" variant="outlined" onPress={leftAction.onPress} /> : null}
+          {leftAction ? <IconButton icon={leftAction.icon} size="xl" variant="outlined" onPress={leftAction.onPress} /> : null}
         </View>
         <Text numberOfLines={1} style={[styles.title, { fontSize: theme.typography.heading.h5Semibold.fontSize * fontScale }]}>
           {title}
         </Text>
         <View style={styles.side}>
-          {rightAction ? <IconButton icon={rightAction.icon} size="l" variant="outlined" onPress={rightAction.onPress} /> : null}
+          {rightAction ? <IconButton icon={rightAction.icon} size="xl" variant="outlined" onPress={rightAction.onPress} /> : null}
         </View>
       </View>
       {subtitle ? <Text style={[styles.subtitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{subtitle}</Text> : null}
@@ -36,12 +36,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing[8],
   },
   row: {
-    minHeight: 52,
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
   },
   side: {
-    width: 52,
+    width: 60,
     alignItems: 'center',
   },
   title: {

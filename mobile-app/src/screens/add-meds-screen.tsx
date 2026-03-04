@@ -922,7 +922,7 @@ export function AddMedsScreen({
       <View style={styles.screen}>
         <View style={styles.headerRow}>
           <Pressable onPress={onNavigateBack} style={styles.headerIconButton}>
-            <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} />
+            <AppIcon name="back" size={22} color={theme.colors.semantic.textSecondary} />
           </Pressable>
           <Text style={styles.headerTitle}>{t.medicationNotFound}</Text>
           <View style={styles.headerIconButton} />
@@ -939,7 +939,7 @@ export function AddMedsScreen({
 
       <View style={styles.headerRow}>
         <Pressable onPress={handleBack} disabled={stepIndex === 0 && !onNavigateBack} style={styles.headerIconButton}>
-          {stepIndex > 0 || onNavigateBack ? <AppIcon name="back" size={16} color={theme.colors.semantic.textSecondary} /> : null}
+          {stepIndex > 0 || onNavigateBack ? <AppIcon name="back" size={22} color={theme.colors.semantic.textSecondary} /> : null}
         </Pressable>
         <Text style={[styles.headerTitle, { fontSize: theme.typography.heading.h8Semibold.fontSize * _fontScale }]}>{headerTitle}</Text>
         <View style={styles.headerIconButton}>
@@ -1035,13 +1035,13 @@ export function AddMedsScreen({
             {sheet === 'date' ? (
               <View style={styles.calendarWrap}>
                 <View style={styles.calendarHeader}>
-                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, -1))} hitSlop={8}>
+                  <Pressable style={styles.monthArrowButton} onPress={() => setCalendarMonth((prev) => shiftMonth(prev, -1))} hitSlop={12}>
                     <Text style={styles.monthArrow}>‹</Text>
                   </Pressable>
                   <Text style={styles.monthTitle}>
                     {calendarMonth.toLocaleDateString(getLocaleTag(locale), { month: 'short', year: 'numeric' })}
                   </Text>
-                  <Pressable onPress={() => setCalendarMonth((prev) => shiftMonth(prev, 1))} hitSlop={8}>
+                  <Pressable style={styles.monthArrowButton} onPress={() => setCalendarMonth((prev) => shiftMonth(prev, 1))} hitSlop={12}>
                     <Text style={styles.monthArrow}>›</Text>
                   </Pressable>
                 </View>
@@ -1163,14 +1163,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryBlue[500],
   },
   headerRow: {
-    minHeight: 44,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: theme.spacing[8],
   },
   headerIconButton: {
-    width: 32,
-    minHeight: 24,
+    width: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1599,8 +1599,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  monthArrowButton: {
+    width: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   monthArrow: {
-    ...theme.typography.heading.h6Medium,
+    ...theme.typography.heading.h5Semibold,
     color: theme.colors.semantic.textSecondary,
   },
   monthTitle: {

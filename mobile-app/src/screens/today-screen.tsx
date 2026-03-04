@@ -179,10 +179,10 @@ export function TodayScreen({
       <View style={styles.calendarStrip}>
         <Pressable
           style={styles.calendarArrowButton}
-          hitSlop={14}
+          hitSlop={18}
           onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1))}
         >
-          <AppIcon name="back" size={20} color={theme.colors.semantic.textSecondary} />
+          <AppIcon name="back" size={24} color={theme.colors.semantic.textSecondary} />
         </Pressable>
         <ScrollView
           ref={dayStripRef}
@@ -209,10 +209,10 @@ export function TodayScreen({
         </ScrollView>
         <Pressable
           style={styles.calendarArrowButton}
-          hitSlop={14}
+          hitSlop={18}
           onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1))}
         >
-          <AppIcon name="forward" size={20} color={theme.colors.semantic.textSecondary} />
+          <AppIcon name="forward" size={24} color={theme.colors.semantic.textSecondary} />
         </Pressable>
       </View>
 
@@ -459,9 +459,9 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   calendarArrowButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },

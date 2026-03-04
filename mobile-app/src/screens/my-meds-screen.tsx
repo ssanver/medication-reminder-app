@@ -140,7 +140,7 @@ type SwipeToDeleteRowProps = {
 };
 
 function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: SwipeToDeleteRowProps) {
-  const actionWidth = 108;
+  const actionWidth = 132;
   const [isOpen, setIsOpen] = useState(false);
   const translateX = useState(() => new Animated.Value(0))[0];
   const actionButtonColor = actionVariant === 'deactivate' ? theme.colors.error[500] : theme.colors.success[500];
@@ -163,7 +163,7 @@ function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: Sw
         onPanResponderRelease: (_, gesture) => {
           const base = isOpen ? -actionWidth : 0;
           const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
-          const shouldOpen = next < -actionWidth * 0.22 || gesture.vx < -0.18;
+          const shouldOpen = next < -actionWidth * 0.3 || gesture.vx < -0.22;
           Animated.spring(translateX, {
             toValue: shouldOpen ? -actionWidth : 0,
             bounciness: 0,
@@ -221,19 +221,20 @@ const styles = StyleSheet.create({
     paddingRight: 0,
   },
   swipeDeleteButton: {
-    width: 96,
-    minHeight: 52,
+    width: 132,
+    minHeight: 68,
     borderTopRightRadius: theme.radius[16],
     borderBottomRightRadius: theme.radius[16],
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: theme.spacing[4],
   },
   swipeDeleteButtonText: {
-    ...theme.typography.bodyScale.xmMedium,
+    ...theme.typography.captionScale.lRegular,
     color: '#FFFFFF',
     textAlign: 'center',
+    paddingHorizontal: theme.spacing[4],
   },
   emptyCard: {
     borderRadius: theme.radius[16],
