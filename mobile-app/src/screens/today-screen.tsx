@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SponsoredBanner } from '../components/ui/sponsored-banner';
 import { SegmentedControl } from '../components/ui/segmented-control';
-import { getTranslations, type Locale } from '../features/localization/localization';
+import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { clearDoseStatus, setDoseStatus } from '../features/medications/medication-store';
 import { scheduleSnoozeReminder } from '../features/notifications/local-notifications';
 import { useTodayScreenState, type TodayDoseFilter } from '../features/today/application/use-today-screen-state';
@@ -24,6 +25,22 @@ type TodayScreenProps = {
   onOpenNotificationHistory: () => void;
   onOpenEmailVerification: () => void;
 };
+
+function toDateKey(value: Date) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    const now = new Date();
+    return `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+  }
+  return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`;
+}
+
+function normalizeDate(value: Date) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
 
 export function TodayScreen({
   locale,
@@ -62,21 +79,22 @@ export function TodayScreen({
     isFutureDate,
     isPastDate,
     weekStrip: _weekStrip,
-    dateTitle,
     sponsoredAd,
-    sectionTitle,
   } = useTodayScreenState({ locale, weekStartsOn });
   const dayStripRef = useRef<ScrollView>(null);
-  const dayAnchorRef = useRef(new Date());
+  const isProgrammaticScrollRef = useRef(false);
+  const [dateFilterVisible, setDateFilterVisible] = useState(false);
+  const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
+  const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
+  const [dayAnchorDate, setDayAnchorDate] = useState<Date>(normalizeDate(selectedDate));
   const DAY_ITEM_WIDTH = 44;
-  const DAY_ITEM_GAP = theme.spacing[4];
+  const DAY_ITEM_GAP = theme.spacing[8];
   const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
   const DAY_ARROW_BUTTON_WIDTH = 44;
   const DAY_RANGE = 365;
   const dayStripSidePadding = Math.max(theme.spacing[8], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
-    const anchor = dayAnchorRef.current;
-    const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+    const anchorDate = normalizeDate(dayAnchorDate);
     return Array.from({ length: DAY_RANGE * 2 + 1 }, (_, idx) => {
       const diff = idx - DAY_RANGE;
       const date = new Date(anchorDate);
@@ -89,14 +107,34 @@ export function TodayScreen({
         isToday: new Date().toDateString() === date.toDateString(),
       };
     });
-  }, [locale]);
+  }, [locale, dayAnchorDate]);
   const selectedIndex = useMemo(() => {
-    const anchor = dayAnchorRef.current;
-    const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-    const current = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    const anchorDate = normalizeDate(dayAnchorDate);
+    const current = normalizeDate(selectedDate);
     const diffDays = Math.round((current.getTime() - anchorDate.getTime()) / (24 * 60 * 60 * 1000));
+    if (!Number.isFinite(diffDays)) {
+      return DAY_RANGE;
+    }
     return Math.max(0, Math.min(dayStripItems.length - 1, DAY_RANGE + diffDays));
-  }, [dayStripItems.length, selectedDate]);
+  }, [dayStripItems.length, selectedDate, dayAnchorDate]);
+  const selectedDateKey = useMemo(() => toDateKey(normalizeDate(selectedDate)), [selectedDate]);
+  const monthYearMedicationsTitle = useMemo(() => {
+    const fullDate = new Intl.DateTimeFormat(locale, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(normalizeDate(selectedDate));
+    return `${fullDate} Medications`;
+  }, [locale, selectedDate]);
+  const todayDate = useMemo(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }, []);
+  const isTodaySelected = selectedDateKey === toDateKey(todayDate);
+  const hasSelectedDayInStrip = useMemo(
+    () => dayStripItems.some((day) => toDateKey(day.date) === selectedDateKey),
+    [dayStripItems, selectedDateKey],
+  );
 
   useEffect(() => {
     const now = new Date();
@@ -104,13 +142,30 @@ export function TodayScreen({
   }, [setSelectedDate]);
 
   useEffect(() => {
+    isProgrammaticScrollRef.current = true;
     dayStripRef.current?.scrollTo({
       x: selectedIndex * DAY_ITEM_SNAP,
       animated: true,
     });
   }, [selectedIndex, DAY_ITEM_SNAP]);
 
+  useEffect(() => {
+    setDraftDate(normalizeDate(selectedDate));
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (hasSelectedDayInStrip) {
+      return;
+    }
+    setDayAnchorDate(normalizeDate(selectedDate));
+  }, [hasSelectedDayInStrip, selectedDate]);
+
   function selectDayFromOffset(offsetX: number) {
+    if (isProgrammaticScrollRef.current) {
+      isProgrammaticScrollRef.current = false;
+      return;
+    }
+    // `snapToInterval` uses content offset directly; rounding by snap interval keeps backward/forward selection stable.
     const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
     const target = dayStripItems[index];
     if (!target) {
@@ -121,20 +176,35 @@ export function TodayScreen({
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.brandRow}>
-        <View style={styles.brandLogo}>
-          <Text style={styles.brandLogoText}>💊</Text>
+      <View style={styles.brandHeader}>
+        <View style={styles.brandRow}>
+          <View style={styles.brandLogo}>
+            <Text style={styles.brandLogoText}>💊</Text>
+          </View>
+          <Text style={styles.brandTitle}>Pill Mind</Text>
         </View>
-        <Text style={styles.brandTitle}>Pill Mind</Text>
+        <View style={styles.brandRightIcons}>
+          {showEmailVerificationAlert ? (
+            <Pressable style={styles.warnButton} onPress={onOpenEmailVerification}>
+              <Text style={styles.warnIcon}>!</Text>
+            </Pressable>
+          ) : null}
+          <Pressable style={styles.bellButton} onPress={onOpenNotificationHistory}>
+            <AppIcon name="alarm" size={22} color={theme.colors.semantic.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.profileRow}>
         <View style={styles.profileLeft}>
-          <View style={styles.avatar}><Text style={styles.avatarEmoji}>{avatarEmoji}</Text></View>
           {isGuestMode ? (
-            <Pressable style={styles.guestAlertRow} onPress={onOpenSignUp}>
-              <Text style={styles.guestAlertCta}>{t.signUpNow}</Text>
-            </Pressable>
+            <View style={styles.guestProfileCard}>
+              <View style={styles.avatar}><Text style={styles.avatarEmoji}>{avatarEmoji}</Text></View>
+              <Text style={styles.guestCardWarningText}>{t.guestProfileWarning}</Text>
+              <Pressable style={styles.guestCardCta} onPress={onOpenSignUp}>
+                <Text style={styles.guestCardCtaText}>{t.signUpNow}</Text>
+              </Pressable>
+            </View>
           ) : (
             <View>
               <Text style={styles.hello}>{`${t.hello}, ${shortDisplayName}`}</Text>
@@ -142,19 +212,8 @@ export function TodayScreen({
             </View>
           )}
         </View>
-        <View style={styles.rightIcons}>
-          {showEmailVerificationAlert ? (
-            <Pressable style={styles.warnButton} onPress={onOpenEmailVerification}>
-              <Text style={styles.warnIcon}>!</Text>
-            </Pressable>
-          ) : null}
-          <Pressable style={styles.bellButton} onPress={onOpenNotificationHistory}>
-            <AppIcon name="alarm" size={18} color={theme.colors.semantic.textSecondary} />
-          </Pressable>
-        </View>
       </View>
 
-      <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{dateTitle}</Text>
       {sponsoredAd ? (
         <SponsoredBanner
           title={sponsoredAd.title}
@@ -176,11 +235,37 @@ export function TodayScreen({
           }}
         />
       ) : null}
+      <View style={styles.dateTitleRow}>
+        <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{monthYearMedicationsTitle}</Text>
+        <View style={styles.dateActionsRow}>
+          <Pressable
+            style={styles.dateFilterButton}
+            onPress={() => {
+              setDraftDate(normalizeDate(selectedDate));
+              setHasDateSelectionChanged(false);
+              setDateFilterVisible(true);
+            }}
+          >
+            <Text style={styles.dateFilterButtonText}>{t.selectDate}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.todayButton, isTodaySelected && styles.todayButtonActive]}
+            onPress={() => setSelectedDate(todayDate)}
+          >
+            <Text style={[styles.todayButtonText, isTodaySelected && styles.todayButtonTextActive]}>{t.today}</Text>
+          </Pressable>
+        </View>
+      </View>
       <View style={styles.calendarStrip}>
         <Pressable
           style={styles.calendarArrowButton}
           hitSlop={18}
-          onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1))}
+          onPress={() =>
+            setSelectedDate((prev) => {
+              const safePrev = normalizeDate(prev);
+              return new Date(safePrev.getFullYear(), safePrev.getMonth(), safePrev.getDate() - 1);
+            })
+          }
         >
           <AppIcon name="back" size={24} color={theme.colors.semantic.textSecondary} />
         </Pressable>
@@ -189,19 +274,26 @@ export function TodayScreen({
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={DAY_ITEM_SNAP}
-          decelerationRate="fast"
+          decelerationRate="normal"
+          disableIntervalMomentum
           contentContainerStyle={[styles.calendarStripContent, { paddingHorizontal: dayStripSidePadding }]}
+          onScrollEndDrag={(event) => selectDayFromOffset(event.nativeEvent.contentOffset.x)}
           onMomentumScrollEnd={(event) => selectDayFromOffset(event.nativeEvent.contentOffset.x)}
         >
           {dayStripItems.map((day, index) => {
-            const isSelected = index === selectedIndex;
+            const isSelected = toDateKey(day.date) === selectedDateKey;
             return (
               <Pressable
                 key={day.key}
-                style={[styles.dayCell, { width: DAY_ITEM_WIDTH, height: DAY_ITEM_WIDTH }, isSelected && styles.dayCellActive]}
+                style={[
+                  styles.dayCell,
+                  { width: DAY_ITEM_WIDTH, height: DAY_ITEM_WIDTH },
+                  isSelected && styles.dayCellActive,
+                  !isSelected && day.isToday && styles.dayCellTodayOutline,
+                ]}
                 onPress={() => setSelectedDate(day.date)}
               >
-                <Text style={[styles.dayText, isSelected && styles.dayTextActive]}>{day.label}</Text>
+                <Text style={[styles.dayText, isSelected && styles.dayTextActive, day.isToday && styles.dayTextToday]}>{day.label}</Text>
                 <Text style={[styles.dayDate, isSelected && styles.dayTextActive, day.isToday && styles.dayDateToday]}>{day.dateLabel}</Text>
               </Pressable>
             );
@@ -210,13 +302,17 @@ export function TodayScreen({
         <Pressable
           style={styles.calendarArrowButton}
           hitSlop={18}
-          onPress={() => setSelectedDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1))}
+          onPress={() =>
+            setSelectedDate((prev) => {
+              const safePrev = normalizeDate(prev);
+              return new Date(safePrev.getFullYear(), safePrev.getMonth(), safePrev.getDate() + 1);
+            })
+          }
         >
           <AppIcon name="forward" size={24} color={theme.colors.semantic.textSecondary} />
         </Pressable>
       </View>
 
-      <Text style={styles.sectionTitle}>{sectionTitle}</Text>
       <SegmentedControl
         options={[
           { label: t.all, value: 'All', count: counts.all },
@@ -320,6 +416,41 @@ export function TodayScreen({
       <View style={styles.bottomSpacer} />
       <Text style={styles.hidden}>{`${t.today}-${selectedDate.getTime()}`}</Text>
 
+      <Modal transparent visible={dateFilterVisible} animationType="slide" onRequestClose={() => setDateFilterVisible(false)}>
+        <Pressable style={styles.popupOverlay} onPress={() => undefined}>
+          <Pressable style={styles.dateFilterSheet} onPress={() => undefined}>
+            <Text style={styles.dateFilterTitle}>{t.selectDate}</Text>
+            <View style={styles.datePickerWrap}>
+              <DateTimePicker
+                value={draftDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                locale={getLocaleTag(locale)}
+                onChange={(_, date) => {
+                  if (!date) {
+                    return;
+                  }
+                  setDraftDate(normalizeDate(date));
+                  setHasDateSelectionChanged(true);
+                }}
+              />
+            </View>
+            <View style={styles.dateFilterActions}>
+              <Button label={t.cancel} variant="outlined" size="s" fullWidth={false} onPress={() => setDateFilterVisible(false)} />
+              <Button
+                label={t.save}
+                size="s"
+                fullWidth={false}
+                onPress={() => {
+                  setSelectedDate(normalizeDate(draftDate));
+                  setDateFilterVisible(false);
+                }}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal transparent visible={showFutureActionPopup} animationType="fade" onRequestClose={() => setShowFutureActionPopup(false)}>
         <Pressable style={styles.popupOverlay} onPress={() => setShowFutureActionPopup(false)}>
           <Pressable style={styles.popupCard} onPress={() => undefined}>
@@ -345,12 +476,24 @@ const styles = StyleSheet.create({
     gap: theme.spacing[16],
     paddingBottom: theme.spacing[16],
   },
+  brandHeader: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',
     gap: theme.spacing[8],
     paddingTop: theme.spacing[4],
+  },
+  brandRightIcons: {
+    position: 'absolute',
+    right: 0,
+    top: theme.spacing[2],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
   },
   brandLogo: {
     width: 28,
@@ -370,29 +513,22 @@ const styles = StyleSheet.create({
   },
   profileRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: theme.spacing[8],
   },
   profileLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing[8],
+    flex: 1,
   },
   bellButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  rightIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing[8],
   },
   warnButton: {
     width: 34,
@@ -427,25 +563,89 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
   },
-  guestAlertRow: {
-    minHeight: 36,
+  guestProfileCard: {
+    minHeight: 56,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.semantic.cardBackground,
+    paddingHorizontal: theme.spacing[16],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+    ...theme.elevation.card,
+  },
+  guestCardWarningText: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+    flex: 1,
+  },
+  guestCardCta: {
+    minHeight: 34,
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.error[400],
     backgroundColor: theme.colors.error[50],
     paddingHorizontal: theme.spacing[16],
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing[8],
+    justifyContent: 'center',
   },
-  guestAlertCta: {
-    ...theme.typography.bodyScale.mBold,
+  guestCardCtaText: {
+    ...theme.typography.captionScale.lRegular,
     color: theme.colors.error[700],
     fontWeight: '700',
   },
   dateTitle: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textPrimary,
+  },
+  dateTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+  },
+  dateFilterButton: {
+    minHeight: 42,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[300],
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[16],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateFilterButtonText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.primaryBlue[700],
+    fontWeight: '700',
+  },
+  todayButton: {
+    minHeight: 36,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[300],
+    backgroundColor: theme.colors.primaryBlue[50],
+    paddingHorizontal: theme.spacing[16],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todayButtonActive: {
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: theme.colors.primaryBlue[500],
+  },
+  todayButtonText: {
+    ...theme.typography.bodyScale.xmMedium,
+    color: theme.colors.primaryBlue[700],
+    fontWeight: '600',
+  },
+  todayButtonTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   calendarStrip: {
     flexDirection: 'row',
@@ -477,13 +677,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCellActive: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: theme.colors.primaryBlue[500],
     backgroundColor: theme.colors.primaryBlue[50],
+  },
+  dayCellTodayOutline: {
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBlue[300],
+    backgroundColor: '#FFFFFF',
   },
   dayText: {
     ...theme.typography.captionScale.mRegular,
     color: theme.colors.semantic.textSecondary,
+  },
+  dayTextToday: {
+    color: theme.colors.semantic.textPrimary,
+    fontWeight: '700',
   },
   dayDate: {
     ...theme.typography.captionScale.lRegular,
@@ -495,10 +704,6 @@ const styles = StyleSheet.create({
   },
   dayDateToday: {
     textDecorationLine: 'underline',
-  },
-  sectionTitle: {
-    ...theme.typography.bodyScale.mMedium,
-    color: theme.colors.semantic.textPrimary,
   },
   list: {
     gap: theme.spacing[16],
@@ -570,6 +775,27 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textSecondary,
     textAlign: 'center',
+  },
+  dateFilterSheet: {
+    borderRadius: theme.radius[24],
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    padding: theme.spacing[16],
+    gap: theme.spacing[12],
+  },
+  dateFilterTitle: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+  },
+  datePickerWrap: {
+    alignItems: 'center',
+  },
+  dateFilterActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: theme.spacing[8],
   },
   hidden: {
     height: 0,

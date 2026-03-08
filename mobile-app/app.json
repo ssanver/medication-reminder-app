@@ -3,6 +3,7 @@
     "name": "Pill Mind",
     "slug": "medication-reminder",
     "scheme": "medication-reminder",
+    "icon": "./assets/icon.png",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -15,10 +16,24 @@
     "ios": {
       "supportsTablet": true,
       "buildNumber": "2",
-      "bundleIdentifier": "com.suleymansanver.medicationreminder"
+      "icon": "./assets/icon.png",
+      "bundleIdentifier": "com.suleymansanver.medicationreminder",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true,
+          "NSExceptionDomains": {
+            "suleymansanver-001-site1.stempurl.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1256DB"
       }
     },
