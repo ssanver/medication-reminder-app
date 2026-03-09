@@ -13,7 +13,19 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-project 'PillMind.xcodeproj'
+preferred_project = 'PillMind.xcodeproj'
+legacy_project = 'MedicationReminder.xcodeproj'
+preferred_project_path = File.join(__dir__, preferred_project)
+
+unless File.exist?(preferred_project_path)
+  raise "[Podfile] Expected #{preferred_project} but it was not found in ios/. Ensure the iOS project name stays aligned."
+end
+
+if File.exist?(File.join(__dir__, legacy_project))
+  Pod::UI.warn "[Podfile] Legacy #{legacy_project} detected. CocoaPods will still use #{preferred_project}."
+end
+
+project preferred_project
 
 target 'PillMind' do
   use_expo_modules!
