@@ -60,6 +60,8 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>RCTNewArchEnabled</key>
+	<false/>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
