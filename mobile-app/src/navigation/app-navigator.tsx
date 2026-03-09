@@ -163,28 +163,36 @@ export function AppNavigator() {
       }
       timer = setTimeout(() => {
         void (async () => {
-        setAccountEmail(session.email);
-        setIsGuestMode(session.isGuestMode);
-        await applyRoleToMonetizationStatus(session.role);
-        await refreshMonetizationStatus();
-        if (session.isGuestMode) {
-          await applyGuestDeviceLocale();
-        }
-        setEmailVerifiedState(session.emailVerified || session.email.length === 0);
-        if (session.email) {
           try {
-            const status = await getEmailVerificationStatus(session.email);
-            setEmailVerifiedState(status.isVerified);
-            setEmailResendCooldown(status.resendAvailableInSeconds ?? 0);
-            if (status.isVerified) {
-              await setEmailVerified(true);
+            setAccountEmail(session.email);
+            setIsGuestMode(session.isGuestMode);
+
+            await applyRoleToMonetizationStatus(session.role);
+            await refreshMonetizationStatus();
+
+            if (session.isGuestMode) {
+              await applyGuestDeviceLocale();
             }
+
+            setEmailVerifiedState(session.emailVerified || session.email.length === 0);
+            if (session.email) {
+              try {
+                const status = await getEmailVerificationStatus(session.email);
+                setEmailVerifiedState(status.isVerified);
+                setEmailResendCooldown(status.resendAvailableInSeconds ?? 0);
+                if (status.isVerified) {
+                  await setEmailVerified(true);
+                }
+              } catch {
+                // Keep local session fallback when API is not reachable.
+              }
+            }
+            await setSplashSeen(true);
           } catch {
-            // Keep local session fallback when API is not reachable.
+            // Always continue past splash even if startup side-effects fail.
+          } finally {
+            setPhase(resolveInitialPhase(session));
           }
-        }
-        await setSplashSeen(true);
-        setPhase(resolveInitialPhase(session));
         })();
       }, session.hasSeenSplashOnce ? 500 : 1600);
     })();
