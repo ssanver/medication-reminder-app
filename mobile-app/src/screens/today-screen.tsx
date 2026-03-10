@@ -88,12 +88,14 @@ export function TodayScreen({
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
   const [dayAnchorDate, setDayAnchorDate] = useState<Date>(normalizeDate(selectedDate));
-  const DAY_ITEM_WIDTH = 44;
-  const DAY_ITEM_GAP = theme.spacing[8];
+  const DAY_ITEM_WIDTH = isCompactScreen ? 40 : 44;
+  const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
   const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
-  const DAY_ARROW_BUTTON_WIDTH = 44;
+  const DAY_ARROW_BUTTON_WIDTH = isCompactScreen ? 40 : 44;
   const DAY_RANGE = 365;
-  const dayStripSidePadding = Math.max(theme.spacing[8], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
+  const dayStripSidePadding = isCompactScreen
+    ? theme.spacing[4]
+    : Math.max(theme.spacing[8], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
     const anchorDate = normalizeDate(dayAnchorDate);
     return Array.from({ length: DAY_RANGE * 2 + 1 }, (_, idx) => {
@@ -724,9 +726,9 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   calendarArrowButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
