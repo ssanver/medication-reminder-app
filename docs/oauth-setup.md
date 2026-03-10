@@ -30,7 +30,7 @@ Google Cloud Console üzerinde OAuth Client oluşturun:
 - iOS simulator’da Apple ID ile giriş yapılmış olmalı.
 - Uygulama iOS development build olarak açılmalı (`npm run ios`).
 - Xcode > Signing & Capabilities altında `Sign In with Apple` capability aktif olmalı.
-- `mobile-app/ios/MedicationReminder/MedicationReminder.entitlements` içinde `com.apple.developer.applesignin = Default` bulunmalı.
+- `mobile-app/ios/PillMind/PillMind.entitlements` içinde `com.apple.developer.applesignin = Default` bulunmalı.
 - Sadece Expo Go yerine development build kullanın.
 
 ## 4. Çalıştırma

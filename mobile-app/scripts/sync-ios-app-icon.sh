@@ -6,7 +6,6 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SOURCE_ICON="$ROOT_DIR/assets/icon.png"
 TARGETS=(
   "$ROOT_DIR/ios/PillMind/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png"
-  "$ROOT_DIR/ios/MedicationReminder/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png"
 )
 
 if [[ ! -f "$SOURCE_ICON" ]]; then
