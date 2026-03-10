@@ -295,7 +295,7 @@ export function TodayScreen({
           snapToInterval={DAY_ITEM_SNAP}
           decelerationRate="normal"
           disableIntervalMomentum
-          contentContainerStyle={[styles.calendarStripContent, { paddingHorizontal: dayStripSidePadding }]}
+          contentContainerStyle={[styles.calendarStripContent, { paddingHorizontal: dayStripSidePadding, gap: DAY_ITEM_GAP }]}
           onScrollEndDrag={(event) => selectDayFromOffset(event.nativeEvent.contentOffset.x)}
           onMomentumScrollEnd={(event) => selectDayFromOffset(event.nativeEvent.contentOffset.x)}
         >
@@ -731,7 +731,6 @@ const styles = StyleSheet.create({
   },
   calendarStripContent: {
     alignItems: 'center',
-    gap: theme.spacing[8],
   },
   dayCell: {
     width: 52,
