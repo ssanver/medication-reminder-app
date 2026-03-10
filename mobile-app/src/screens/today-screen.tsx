@@ -88,13 +88,13 @@ export function TodayScreen({
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
   const [dayAnchorDate, setDayAnchorDate] = useState<Date>(normalizeDate(selectedDate));
-  const DAY_ITEM_WIDTH = isCompactScreen ? 40 : 44;
+  const DAY_ITEM_WIDTH = isCompactScreen ? 36 : 44;
   const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
   const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
-  const DAY_ARROW_BUTTON_WIDTH = isCompactScreen ? 40 : 44;
+  const DAY_ARROW_BUTTON_WIDTH = isCompactScreen ? 36 : 44;
   const DAY_RANGE = 365;
   const dayStripSidePadding = isCompactScreen
-    ? theme.spacing[4]
+    ? 0
     : Math.max(theme.spacing[8], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
     const anchorDate = normalizeDate(dayAnchorDate);
@@ -275,9 +275,9 @@ export function TodayScreen({
           </Pressable>
         </View>
       </View>
-      <View style={styles.calendarStrip}>
+      <View style={[styles.calendarStrip, isCompactScreen && styles.calendarStripCompact]}>
         <Pressable
-          style={styles.calendarArrowButton}
+          style={[styles.calendarArrowButton, isCompactScreen && styles.calendarArrowButtonCompact]}
           hitSlop={18}
           onPress={() =>
             setSelectedDate((prev) => {
@@ -337,7 +337,7 @@ export function TodayScreen({
           })}
         </ScrollView>
         <Pressable
-          style={styles.calendarArrowButton}
+          style={[styles.calendarArrowButton, isCompactScreen && styles.calendarArrowButtonCompact]}
           hitSlop={18}
           onPress={() =>
             setSelectedDate((prev) => {
@@ -725,12 +725,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[4],
     minHeight: 72,
   },
+  calendarStripCompact: {
+    paddingHorizontal: 0,
+  },
   calendarArrowButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  calendarArrowButtonCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   calendarStripContent: {
     alignItems: 'center',
