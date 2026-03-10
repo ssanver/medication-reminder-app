@@ -242,7 +242,10 @@ export function TodayScreen({
           style={[
             styles.dateTitle,
             isCompactScreen && styles.dateTitleCompact,
-            { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale },
+            {
+              fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale * (isCompactScreen ? 0.93 : 1),
+              lineHeight: theme.typography.bodyScale.mRegular.fontSize * fontScale * (isCompactScreen ? 1.2 : 1.3),
+            },
           ]}
         >
           {monthYearMedicationsTitle}
@@ -250,19 +253,23 @@ export function TodayScreen({
         <View style={[styles.dateActionsRow, isCompactScreen && styles.dateActionsRowCompact]}>
           <Pressable
             style={[styles.dateFilterButton, isCompactScreen && styles.dateFilterButtonCompact]}
+            accessibilityRole="button"
+            accessibilityLabel={t.selectDate}
             onPress={() => {
               setDraftDate(normalizeDate(selectedDate));
               setHasDateSelectionChanged(false);
               setDateFilterVisible(true);
             }}
           >
-            <Text style={styles.dateFilterButtonText}>{t.selectDate}</Text>
+            <AppIcon name="calendar" size={18} color={theme.colors.primaryBlue[700]} />
           </Pressable>
           <Pressable
             style={[styles.todayButton, isCompactScreen && styles.todayButtonCompact, isTodaySelected && styles.todayButtonActive]}
+            accessibilityRole="button"
+            accessibilityLabel={t.today}
             onPress={() => setSelectedDate(todayDate)}
           >
-            <Text style={[styles.todayButtonText, isTodaySelected && styles.todayButtonTextActive]}>{t.today}</Text>
+            <AppIcon name="today" size={18} color={isTodaySelected ? '#FFFFFF' : theme.colors.primaryBlue[700]} />
           </Pressable>
         </View>
       </View>
@@ -303,8 +310,26 @@ export function TodayScreen({
                 ]}
                 onPress={() => setSelectedDate(day.date)}
               >
-                <Text style={[styles.dayText, isSelected && styles.dayTextActive, day.isToday && styles.dayTextToday]}>{day.label}</Text>
-                <Text style={[styles.dayDate, isSelected && styles.dayTextActive, day.isToday && styles.dayDateToday]}>{day.dateLabel}</Text>
+                <Text
+                  style={[
+                    styles.dayText,
+                    isCompactScreen && styles.dayTextCompact,
+                    isSelected && styles.dayTextActive,
+                    day.isToday && styles.dayTextToday,
+                  ]}
+                >
+                  {day.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.dayDate,
+                    isCompactScreen && styles.dayDateCompact,
+                    isSelected && styles.dayTextActive,
+                    day.isToday && styles.dayDateToday,
+                  ]}
+                >
+                  {day.dateLabel}
+                </Text>
               </Pressable>
             );
           })}
@@ -636,19 +661,21 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   dateFilterButton: {
-    minHeight: 42,
+    minHeight: 40,
+    minWidth: 50,
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.primaryBlue[300],
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: theme.spacing[16],
+    paddingHorizontal: theme.spacing[12],
     alignItems: 'center',
     justifyContent: 'center',
   },
   dateFilterButtonCompact: {
-    minHeight: 38,
+    minHeight: 36,
     borderRadius: theme.radius[14],
-    paddingHorizontal: theme.spacing[12],
+    minWidth: 46,
+    paddingHorizontal: theme.spacing[10],
   },
   dateFilterButtonText: {
     ...theme.typography.bodyScale.xmMedium,
@@ -656,19 +683,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   todayButton: {
-    minHeight: 36,
+    minHeight: 40,
+    minWidth: 50,
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.primaryBlue[300],
     backgroundColor: theme.colors.primaryBlue[50],
-    paddingHorizontal: theme.spacing[16],
+    paddingHorizontal: theme.spacing[12],
     alignItems: 'center',
     justifyContent: 'center',
   },
   todayButtonCompact: {
-    minHeight: 38,
+    minHeight: 36,
     borderRadius: theme.radius[14],
-    paddingHorizontal: theme.spacing[12],
+    minWidth: 46,
+    paddingHorizontal: theme.spacing[10],
   },
   todayButtonActive: {
     borderColor: theme.colors.primaryBlue[500],
@@ -726,6 +755,10 @@ const styles = StyleSheet.create({
     ...theme.typography.captionScale.mRegular,
     color: theme.colors.semantic.textSecondary,
   },
+  dayTextCompact: {
+    fontSize: theme.typography.captionScale.mRegular.fontSize - 1,
+    lineHeight: theme.typography.captionScale.mRegular.lineHeight - 1,
+  },
   dayTextToday: {
     color: theme.colors.semantic.textPrimary,
     fontWeight: '700',
@@ -733,6 +766,10 @@ const styles = StyleSheet.create({
   dayDate: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.semantic.textPrimary,
+  },
+  dayDateCompact: {
+    fontSize: theme.typography.captionScale.lRegular.fontSize - 1,
+    lineHeight: theme.typography.captionScale.lRegular.lineHeight - 1,
   },
   dayTextActive: {
     color: theme.colors.primaryBlue[500],
