@@ -238,12 +238,12 @@ export function TodayScreen({
           }}
         />
       ) : null}
-      <View style={[styles.dateTitleRow, isCompactScreen && styles.dateTitleRowCompact]}>
+      <View style={styles.dateTitleRow}>
         <Text
-          numberOfLines={isCompactScreen ? 2 : 1}
+          numberOfLines={1}
+          ellipsizeMode="tail"
           style={[
             styles.dateTitle,
-            isCompactScreen && styles.dateTitleCompact,
             {
               fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale * (isCompactScreen ? 0.93 : 1),
               lineHeight: theme.typography.bodyScale.mRegular.fontSize * fontScale * (isCompactScreen ? 1.2 : 1.3),
@@ -252,7 +252,7 @@ export function TodayScreen({
         >
           {monthYearMedicationsTitle}
         </Text>
-        <View style={[styles.dateActionsRow, isCompactScreen && styles.dateActionsRowCompact]}>
+        <View style={styles.dateActionsRow}>
           <Pressable
             style={[styles.dateFilterButton, isCompactScreen && styles.dateFilterButtonCompact]}
             accessibilityRole="button"
@@ -644,24 +644,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing[8],
-    flexWrap: 'wrap',
-  },
-  dateTitleRowCompact: {
-    alignItems: 'flex-start',
-  },
-  dateTitleCompact: {
-    width: '100%',
   },
   dateActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing[8],
     marginLeft: 'auto',
-  },
-  dateActionsRowCompact: {
-    width: '100%',
-    marginLeft: 0,
-    justifyContent: 'flex-end',
   },
   dateFilterButton: {
     minHeight: 40,
