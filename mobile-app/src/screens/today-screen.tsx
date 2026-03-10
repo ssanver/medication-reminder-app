@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { LayoutChangeEvent, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
@@ -92,10 +92,9 @@ export function TodayScreen({
   const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
   const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
   const DAY_ARROW_BUTTON_WIDTH = isCompactScreen ? 36 : 44;
+  const [dayStripViewportWidth, setDayStripViewportWidth] = useState<number>(Math.max(0, windowWidth - DAY_ARROW_BUTTON_WIDTH * 2));
   const DAY_RANGE = 365;
-  const dayStripSidePadding = isCompactScreen
-    ? 0
-    : Math.max(theme.spacing[8], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
+  const dayStripSidePadding = Math.max(0, (dayStripViewportWidth - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
     const anchorDate = normalizeDate(dayAnchorDate);
     return Array.from({ length: DAY_RANGE * 2 + 1 }, (_, idx) => {
@@ -175,6 +174,14 @@ export function TodayScreen({
       return;
     }
     setSelectedDate(target.date);
+  }
+
+  function handleDayStripLayout(event: LayoutChangeEvent) {
+    const width = event.nativeEvent.layout.width;
+    if (!Number.isFinite(width) || width <= 0) {
+      return;
+    }
+    setDayStripViewportWidth(width);
   }
 
   return (
@@ -291,6 +298,7 @@ export function TodayScreen({
         <ScrollView
           ref={dayStripRef}
           horizontal
+          onLayout={handleDayStripLayout}
           showsHorizontalScrollIndicator={false}
           snapToInterval={DAY_ITEM_SNAP}
           decelerationRate="normal"
