@@ -3,10 +3,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ICON_GENERATOR="$ROOT_DIR/scripts/generate-app-icon.py"
 SOURCE_ICON="$ROOT_DIR/assets/icon.png"
 TARGETS=(
   "$ROOT_DIR/ios/PillMind/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png"
 )
+
+python3 "$ICON_GENERATOR"
 
 if [[ ! -f "$SOURCE_ICON" ]]; then
   echo "source icon not found: $SOURCE_ICON" >&2
