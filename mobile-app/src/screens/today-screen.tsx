@@ -56,6 +56,7 @@ export function TodayScreen({
   onOpenEmailVerification,
 }: TodayScreenProps) {
   const { width: windowWidth } = useWindowDimensions();
+  const isCompactScreen = windowWidth <= 430;
   const t = getTranslations(locale);
   const {
     filter,
@@ -235,11 +236,20 @@ export function TodayScreen({
           }}
         />
       ) : null}
-      <View style={styles.dateTitleRow}>
-        <Text style={[styles.dateTitle, { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale }]}>{monthYearMedicationsTitle}</Text>
-        <View style={styles.dateActionsRow}>
+      <View style={[styles.dateTitleRow, isCompactScreen && styles.dateTitleRowCompact]}>
+        <Text
+          numberOfLines={isCompactScreen ? 2 : 1}
+          style={[
+            styles.dateTitle,
+            isCompactScreen && styles.dateTitleCompact,
+            { fontSize: theme.typography.bodyScale.mRegular.fontSize * fontScale },
+          ]}
+        >
+          {monthYearMedicationsTitle}
+        </Text>
+        <View style={[styles.dateActionsRow, isCompactScreen && styles.dateActionsRowCompact]}>
           <Pressable
-            style={styles.dateFilterButton}
+            style={[styles.dateFilterButton, isCompactScreen && styles.dateFilterButtonCompact]}
             onPress={() => {
               setDraftDate(normalizeDate(selectedDate));
               setHasDateSelectionChanged(false);
@@ -249,7 +259,7 @@ export function TodayScreen({
             <Text style={styles.dateFilterButtonText}>{t.selectDate}</Text>
           </Pressable>
           <Pressable
-            style={[styles.todayButton, isTodaySelected && styles.todayButtonActive]}
+            style={[styles.todayButton, isCompactScreen && styles.todayButtonCompact, isTodaySelected && styles.todayButtonActive]}
             onPress={() => setSelectedDate(todayDate)}
           >
             <Text style={[styles.todayButtonText, isTodaySelected && styles.todayButtonTextActive]}>{t.today}</Text>
@@ -598,16 +608,32 @@ const styles = StyleSheet.create({
   dateTitle: {
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textPrimary,
+    flexShrink: 1,
+    minWidth: 0,
   },
   dateTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: theme.spacing[8],
+    flexWrap: 'wrap',
+  },
+  dateTitleRowCompact: {
+    alignItems: 'flex-start',
+  },
+  dateTitleCompact: {
+    width: '100%',
   },
   dateActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing[8],
+    marginLeft: 'auto',
+  },
+  dateActionsRowCompact: {
+    width: '100%',
+    marginLeft: 0,
+    justifyContent: 'flex-end',
   },
   dateFilterButton: {
     minHeight: 42,
@@ -618,6 +644,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dateFilterButtonCompact: {
+    minHeight: 38,
+    borderRadius: theme.radius[14],
+    paddingHorizontal: theme.spacing[12],
   },
   dateFilterButtonText: {
     ...theme.typography.bodyScale.xmMedium,
@@ -633,6 +664,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  todayButtonCompact: {
+    minHeight: 38,
+    borderRadius: theme.radius[14],
+    paddingHorizontal: theme.spacing[12],
   },
   todayButtonActive: {
     borderColor: theme.colors.primaryBlue[500],
