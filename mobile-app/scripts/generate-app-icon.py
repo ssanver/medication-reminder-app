@@ -15,7 +15,6 @@ SCALE = 4  # Supersampling for smooth edges
 CANVAS = SIZE * SCALE
 
 # Color palette
-BACKGROUND = (200, 209, 228)  # #C8D1E4
 BLUE = (34, 89, 201)          # #2259C9
 YELLOW = (236, 201, 39)       # #ECC927
 RED = (238, 66, 66)           # #EE4242
@@ -49,15 +48,9 @@ def rotated_rect(
 
 
 def draw_icon() -> Image.Image:
-  img = Image.new("RGB", (CANVAS, CANVAS), BACKGROUND)
+  # Full-bleed blue background to avoid white/gray halo on iOS icon mask.
+  img = Image.new("RGB", (CANVAS, CANVAS), BLUE)
   draw = ImageDraw.Draw(img)
-
-  # Blue circular background
-  circle_margin = int(70 * SCALE)
-  draw.ellipse(
-    (circle_margin, circle_margin, CANVAS - circle_margin, CANVAS - circle_margin),
-    fill=BLUE,
-  )
 
   # Capsule local coordinates before rotation
   capsule_center = (CANVAS * 0.50, CANVAS * 0.50)
