@@ -88,7 +88,7 @@ export function TodayScreen({
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
   const [dayAnchorDate, setDayAnchorDate] = useState<Date>(normalizeDate(selectedDate));
-  const DAY_ITEM_WIDTH = isCompactScreen ? 36 : 44;
+  const DAY_ITEM_WIDTH = isCompactScreen ? 38 : 44;
   const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
   const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
   const DAY_ARROW_BUTTON_WIDTH = isCompactScreen ? 36 : 44;
@@ -308,6 +308,7 @@ export function TodayScreen({
                   styles.dayCell,
                   { width: DAY_ITEM_WIDTH, height: DAY_ITEM_WIDTH },
                   isSelected && styles.dayCellActive,
+                  isCompactScreen && isSelected && styles.dayCellActiveCompact,
                   !isSelected && day.isToday && styles.dayCellTodayOutline,
                 ]}
                 onPress={() => setSelectedDate(day.date)}
@@ -755,6 +756,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.primaryBlue[500],
     backgroundColor: theme.colors.primaryBlue[50],
+  },
+  dayCellActiveCompact: {
+    borderWidth: 2.5,
+    borderRadius: 14,
+    borderColor: theme.colors.primaryBlue[500],
+    backgroundColor: '#E9F1FF',
   },
   dayCellTodayOutline: {
     borderWidth: 1,
