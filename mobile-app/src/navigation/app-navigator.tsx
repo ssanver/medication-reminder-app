@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { AppState, StyleSheet, View } from 'react-native';
 import { BottomNav } from '../components/ui/bottom-nav';
 import type { AppIconName } from '../components/ui/app-icon';
 import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
@@ -14,7 +14,6 @@ import {
   markGuestMode,
   markAuthenticated,
   setEmailVerified,
-  setOnboardingCompleted,
   setSplashSeen,
 } from '../features/auth/auth-session-store';
 import { cancelAccount } from '../features/auth/email-auth-service';
@@ -31,7 +30,6 @@ import { clearMedicationStore, hydrateMedicationStore } from '../features/medica
 import { applyRoleToMonetizationStatus, refreshMonetizationStatus } from '../features/monetization/subscription-service';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { handleReminderSkip, handleReminderSnooze, handleReminderTakeNow } from '../features/notifications/notification-center-service';
-import { getOnboardingSteps, isOnboardingStepCountValid } from '../features/onboarding/onboarding-steps';
 import {
   emitDueReminderPrompt,
   ensureNotificationPermissions,
@@ -44,7 +42,6 @@ import { loadWeekStartPreference, saveWeekStartPreference } from '../features/se
 import { clearProfile } from '../features/profile/profile-store';
 import { shareApplication } from '../features/share/app-share';
 import { AddMedsScreen } from '../screens/add-meds-screen';
-import { OnboardingScreen } from '../screens/auth/onboarding-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
 import { ChangePasswordScreen } from '../screens/change-password-screen';
@@ -75,7 +72,7 @@ type OverlayScreen =
   | 'about-us'
   | 'premium'
   | 'donate';
-type AppPhase = 'splash' | 'onboarding' | 'signup' | 'signin' | 'app';
+type AppPhase = 'splash' | 'signup' | 'signin' | 'app';
 
 const tabGlyph: Record<TabKey, AppIconName> = {
   today: 'home',
@@ -95,7 +92,6 @@ export function AppNavigator() {
   const [medicationRemindersEnabled, setMedicationRemindersEnabled] = useState(true);
   const [snoozeMinutes, setSnoozeMinutes] = useState(10);
   const [activeTab, setActiveTab] = useState<TabKey>('today');
-  const [onboardingStep, setOnboardingStep] = useState(0);
   const [overlayScreen, setOverlayScreen] = useState<OverlayScreen>('none');
   const [selectedMedicationId, setSelectedMedicationId] = useState('');
   const [accountEmail, setAccountEmail] = useState('');
@@ -105,7 +101,6 @@ export function AppNavigator() {
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   const t = getTranslations(locale);
-  const steps = useMemo(() => getOnboardingSteps(locale), [locale]);
 
   async function requestGuestSession() {
     const deviceId = await loadOrCreateDeviceId();
@@ -324,53 +319,8 @@ export function AppNavigator() {
     return unsubscribe;
   }, [phase]);
 
-  if (!isOnboardingStepCountValid(steps)) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Onboarding step count must be between 1 and 5.</Text>
-      </View>
-    );
-  }
-
   if (phase === 'splash') {
     return <SplashScreen />;
-  }
-
-  if (phase === 'onboarding') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <OnboardingScreen
-            locale={locale}
-            stepIndex={onboardingStep}
-            onSkip={() => {
-              void (async () => {
-                await setOnboardingCompleted(true);
-                setPhase('signup');
-              })();
-            }}
-            onOpenSignIn={() => {
-              void (async () => {
-                await setOnboardingCompleted(true);
-                setPhase('signin');
-              })();
-            }}
-            onNextStep={() => {
-              const lastStepIndex = steps.length - 1;
-
-              if (onboardingStep < lastStepIndex) {
-                setOnboardingStep((prev) => prev + 1);
-              } else {
-                void (async () => {
-                  await setOnboardingCompleted(true);
-                  setPhase('signup');
-                })();
-              }
-            }}
-          />
-        </View>
-      </View>
-    );
   }
 
   if (phase === 'signup') {
@@ -418,10 +368,7 @@ export function AppNavigator() {
               })();
             }}
             onOpenSignIn={() => setPhase('signin')}
-            onBack={() => {
-              setOnboardingStep(Math.max(steps.length - 1, 0));
-              setPhase('onboarding');
-            }}
+            onBack={() => setPhase('signin')}
             onContinueAsGuest={() => {
               void (async () => {
                 try {
