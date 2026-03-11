@@ -1,6 +1,5 @@
 using api.contracts;
 using api.data;
-using api.models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,33 +25,13 @@ public sealed class AppDefinitionsController(AppDbContext dbContext) : Controlle
             : DateTimeOffset.UtcNow;
 
         var definitions = rows.ToDictionary(x => x.DefinitionKey, x => x.JsonValue, StringComparer.OrdinalIgnoreCase);
-        var requiredDefinitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["formOptions"] = """[{"key":"Capsule","emoji":"💊"},{"key":"Pill","emoji":"💊"},{"key":"Drop","emoji":"🫙"},{"key":"Syrup","emoji":"🧴"},{"key":"Injection","emoji":"💉"},{"key":"Other","emoji":"🧩"}]""",
-            ["medicationIconOptions"] = """["💊","🧴","💉","🫙","🩹","🌿","🟡","🔵"]""",
-            ["snoozeOptions"] = "[5,10,15,30,60]",
-        };
-        var hasDbBackfill = false;
-        var now = DateTimeOffset.UtcNow;
-        foreach (var (key, defaultValue) in requiredDefinitions)
+        var requiredKeys = new[] { "formOptions", "medicationIconOptions", "snoozeOptions" };
+        foreach (var key in requiredKeys)
         {
             if (!definitions.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
             {
-                dbContext.AppDefinitions.Add(new AppDefinition
-                {
-                    Id = Guid.NewGuid(),
-                    DefinitionKey = key,
-                    JsonValue = defaultValue,
-                    UpdatedAt = now,
-                });
-                definitions[key] = defaultValue;
-                hasDbBackfill = true;
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Missing required app definition: {key}");
             }
-        }
-        if (hasDbBackfill)
-        {
-            await dbContext.SaveChangesAsync();
-            updatedAt = now;
         }
 
         return Ok(new AppDefinitionsResponse

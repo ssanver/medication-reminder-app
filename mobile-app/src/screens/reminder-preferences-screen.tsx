@@ -20,7 +20,7 @@ export function ReminderPreferencesScreen({ locale, snoozeMinutes, onSnoozeMinut
     let isMounted = true;
     void (async () => {
       try {
-        const definitions = await loadAppDefinitions();
+        const definitions = await loadAppDefinitions(true);
         if (isMounted) {
           setSnoozeOptions(definitions.snoozeOptions.filter((item) => Number.isFinite(item) && item > 0));
         }
