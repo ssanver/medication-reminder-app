@@ -8,12 +8,13 @@ type ScreenHeaderProps = {
   subtitle?: string;
   leftAction?: { icon: string; onPress: () => void };
   rightAction?: { icon: string; onPress: () => void };
+  compactBottomSpacing?: boolean;
 };
 
-export function ScreenHeader({ title, subtitle, leftAction, rightAction }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, leftAction, rightAction, compactBottomSpacing = false }: ScreenHeaderProps) {
   const fontScale = useAppFontScale();
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, compactBottomSpacing && styles.wrapperCompact]}>
       <View style={styles.row}>
         <View style={styles.side}>
           {leftAction ? <IconButton icon={leftAction.icon} size="xl" variant="outlined" onPress={leftAction.onPress} /> : null}
@@ -34,6 +35,9 @@ const styles = StyleSheet.create({
   wrapper: {
     marginBottom: theme.spacing[16],
     gap: theme.spacing[8],
+  },
+  wrapperCompact: {
+    marginBottom: theme.spacing[8],
   },
   row: {
     minHeight: 60,

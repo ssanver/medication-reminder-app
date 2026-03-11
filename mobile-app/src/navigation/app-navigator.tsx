@@ -55,6 +55,7 @@ import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
 import { PremiumScreen } from '../screens/premium-screen';
 import { DonateScreen } from '../screens/donate-screen';
+import { ReminderPreferencesScreen } from '../screens/reminder-preferences-screen';
 import { SettingsScreen } from '../screens/settings-screen';
 import { TodayScreen } from '../screens/today-screen';
 import { theme } from '../theme';
@@ -66,6 +67,7 @@ type OverlayScreen =
   | 'medication-details'
   | 'notification-history'
   | 'notification-settings'
+  | 'reminder-preferences'
   | 'change-password'
   | 'feedback'
   | 'email-verification'
@@ -562,6 +564,21 @@ export function AppNavigator() {
     );
   }
 
+  if (overlayScreen === 'reminder-preferences') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <ReminderPreferencesScreen
+            locale={locale}
+            snoozeMinutes={snoozeMinutes}
+            onSnoozeMinutesChange={setSnoozeMinutes}
+            onBack={() => setOverlayScreen('none')}
+          />
+        </View>
+      </View>
+    );
+  }
+
   if (overlayScreen === 'change-password') {
     return (
       <View style={styles.container}>
@@ -707,6 +724,7 @@ export function AppNavigator() {
           () => setOverlayScreen('profile'),
           () => setPhase('signup'),
           () => setOverlayScreen('notification-settings'),
+          () => setOverlayScreen('reminder-preferences'),
           () => setOverlayScreen('notification-history'),
           () => setOverlayScreen('change-password'),
           () => setOverlayScreen('feedback'),
@@ -818,6 +836,7 @@ function renderTab(
   onOpenProfile: () => void,
   onOpenSignUp: () => void,
   onOpenNotificationSettings: () => void,
+  onOpenReminderPreferences: () => void,
   onOpenNotificationHistory: () => void,
   onOpenChangePassword: () => void,
   onOpenFeedback: () => void,
@@ -875,6 +894,7 @@ function renderTab(
           onOpenProfile={onOpenProfile}
           onOpenSignUp={onOpenSignUp}
           onOpenNotificationSettings={onOpenNotificationSettings}
+          onOpenReminderPreferences={onOpenReminderPreferences}
           onOpenChangePassword={onOpenChangePassword}
           onOpenFeedback={onOpenFeedback}
           onLogout={onLogout}

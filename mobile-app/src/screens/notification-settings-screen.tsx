@@ -24,26 +24,33 @@ export function NotificationSettingsScreen({
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader title={t.notificationSettings} leftAction={{ icon: 'back', onPress: onBack }} />
+      <View style={styles.topSection}>
+        <ScreenHeader title={t.notificationSettings} leftAction={{ icon: 'back', onPress: onBack }} />
 
-      <View style={styles.group}>
-        <View style={styles.row}>
-          <View>
-            <Text style={styles.title}>{t.appNotifications}</Text>
-            <Text style={styles.subtitle}>{t.openMedicationReminders}</Text>
+        <View style={styles.group}>
+          <View style={styles.row}>
+            <View style={styles.textBlock}>
+              <Text style={styles.title}>{t.appNotifications}</Text>
+              <Text style={styles.subtitle}>{t.openMedicationReminders}</Text>
+            </View>
+            <View style={styles.switchWrap}>
+              <Switch value={notificationsEnabled} onValueChange={onNotificationsChange} />
+            </View>
           </View>
-          <Switch value={notificationsEnabled} onValueChange={onNotificationsChange} />
-        </View>
-        <View style={[styles.row, styles.divider]}>
-          <View>
-            <Text style={styles.title}>{t.medicationReminders}</Text>
-            <Text style={styles.subtitle}>{t.dailyMedicationAlerts}</Text>
+          <View style={[styles.row, styles.divider]}>
+            <View style={styles.textBlock}>
+              <Text style={styles.title}>{t.medicationReminders}</Text>
+              <Text style={styles.subtitle}>{t.dailyMedicationAlerts}</Text>
+            </View>
+            <View style={styles.switchWrap}>
+              <Switch value={remindersEnabled} onValueChange={onRemindersChange} />
+            </View>
           </View>
-          <Switch value={remindersEnabled} onValueChange={onRemindersChange} />
         </View>
+
+        {!notificationsEnabled ? <Text style={styles.warning}>{t.notificationPermissionRequired}</Text> : null}
       </View>
 
-      {!notificationsEnabled ? <Text style={styles.warning}>{t.notificationPermissionRequired}</Text> : null}
       <Pressable testID="notification-settings-done-button" style={styles.doneBtn} onPress={onBack}>
         <Text style={styles.doneText}>{t.done}</Text>
       </Pressable>
@@ -57,8 +64,12 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.semantic.screenBackground,
   },
   content: {
+    flexGrow: 1,
     gap: theme.spacing[16],
-    paddingBottom: theme.spacing[16],
+    paddingBottom: theme.spacing[24],
+  },
+  topSection: {
+    gap: theme.spacing[16],
   },
   group: {
     borderRadius: theme.radius[16],
@@ -68,11 +79,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   row: {
-    minHeight: 52,
+    minHeight: 64,
     paddingHorizontal: theme.spacing[16],
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
+    gap: theme.spacing[8],
+  },
+  textBlock: {
+    flex: 1,
+    paddingRight: theme.spacing[8],
+    justifyContent: 'center',
+  },
+  switchWrap: {
+    justifyContent: 'center',
   },
   divider: {
     borderTopWidth: 1,
@@ -92,6 +112,7 @@ const styles = StyleSheet.create({
   },
   doneBtn: {
     minHeight: 44,
+    marginTop: 'auto',
     borderRadius: theme.radius[16],
     alignItems: 'center',
     justifyContent: 'center',

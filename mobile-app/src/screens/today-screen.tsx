@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
@@ -82,25 +82,17 @@ export function TodayScreen({
     weekStrip: _weekStrip,
     sponsoredAd,
   } = useTodayScreenState({ locale, weekStartsOn });
-  const dayStripRef = useRef<ScrollView>(null);
-  const isProgrammaticScrollRef = useRef(false);
   const [dateFilterVisible, setDateFilterVisible] = useState(false);
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
-  const [dayAnchorDate, setDayAnchorDate] = useState<Date>(normalizeDate(selectedDate));
-  const DAY_ITEM_WIDTH = isCompactScreen ? 38 : 44;
-  const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
-  const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
+  const DAY_ITEM_SIZE = isCompactScreen ? 38 : 44;
   const DAY_ARROW_BUTTON_WIDTH = isCompactScreen ? 36 : 44;
-  const [dayStripViewportWidth, setDayStripViewportWidth] = useState<number>(Math.max(0, windowWidth - DAY_ARROW_BUTTON_WIDTH * 2));
-  const DAY_RANGE = 365;
-  const dayStripSidePadding = Math.max(0, (dayStripViewportWidth - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
-    const anchorDate = normalizeDate(dayAnchorDate);
-    return Array.from({ length: DAY_RANGE * 2 + 1 }, (_, idx) => {
-      const diff = idx - DAY_RANGE;
-      const date = new Date(anchorDate);
-      date.setDate(anchorDate.getDate() + diff);
+    const centerDate = normalizeDate(selectedDate);
+    return Array.from({ length: 7 }, (_, idx) => {
+      const diff = idx - 3;
+      const date = new Date(centerDate);
+      date.setDate(centerDate.getDate() + diff);
       return {
         key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
         date,
@@ -109,16 +101,7 @@ export function TodayScreen({
         isToday: new Date().toDateString() === date.toDateString(),
       };
     });
-  }, [locale, dayAnchorDate]);
-  const selectedIndex = useMemo(() => {
-    const anchorDate = normalizeDate(dayAnchorDate);
-    const current = normalizeDate(selectedDate);
-    const diffDays = Math.round((current.getTime() - anchorDate.getTime()) / (24 * 60 * 60 * 1000));
-    if (!Number.isFinite(diffDays)) {
-      return DAY_RANGE;
-    }
-    return Math.max(0, Math.min(dayStripItems.length - 1, DAY_RANGE + diffDays));
-  }, [dayStripItems.length, selectedDate, dayAnchorDate]);
+  }, [locale, selectedDate]);
   const selectedDateKey = useMemo(() => toDateKey(normalizeDate(selectedDate)), [selectedDate]);
   const monthYearMedicationsTitle = useMemo(() => {
     const fullDate = new Intl.DateTimeFormat(locale, {
@@ -133,10 +116,6 @@ export function TodayScreen({
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }, []);
   const isTodaySelected = selectedDateKey === toDateKey(todayDate);
-  const hasSelectedDayInStrip = useMemo(
-    () => dayStripItems.some((day) => toDateKey(day.date) === selectedDateKey),
-    [dayStripItems, selectedDateKey],
-  );
 
   useEffect(() => {
     const now = new Date();
@@ -144,45 +123,8 @@ export function TodayScreen({
   }, [setSelectedDate]);
 
   useEffect(() => {
-    isProgrammaticScrollRef.current = true;
-    dayStripRef.current?.scrollTo({
-      x: selectedIndex * DAY_ITEM_SNAP,
-      animated: true,
-    });
-  }, [selectedIndex, DAY_ITEM_SNAP]);
-
-  useEffect(() => {
     setDraftDate(normalizeDate(selectedDate));
   }, [selectedDate]);
-
-  useEffect(() => {
-    if (hasSelectedDayInStrip) {
-      return;
-    }
-    setDayAnchorDate(normalizeDate(selectedDate));
-  }, [hasSelectedDayInStrip, selectedDate]);
-
-  function selectDayFromOffset(offsetX: number) {
-    if (isProgrammaticScrollRef.current) {
-      isProgrammaticScrollRef.current = false;
-      return;
-    }
-    // `snapToInterval` uses content offset directly; rounding by snap interval keeps backward/forward selection stable.
-    const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
-    const target = dayStripItems[index];
-    if (!target) {
-      return;
-    }
-    setSelectedDate(target.date);
-  }
-
-  function handleDayStripLayout(event: LayoutChangeEvent) {
-    const width = event.nativeEvent.layout.width;
-    if (!Number.isFinite(width) || width <= 0) {
-      return;
-    }
-    setDayStripViewportWidth(width);
-  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -295,56 +237,51 @@ export function TodayScreen({
         >
           <AppIcon name="back" size={24} color={theme.colors.semantic.textSecondary} />
         </Pressable>
-        <ScrollView
-          ref={dayStripRef}
-          horizontal
-          onLayout={handleDayStripLayout}
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={DAY_ITEM_SNAP}
-          decelerationRate="normal"
-          disableIntervalMomentum
-          contentContainerStyle={[styles.calendarStripContent, { paddingHorizontal: dayStripSidePadding, gap: DAY_ITEM_GAP }]}
-          onScrollEndDrag={(event) => selectDayFromOffset(event.nativeEvent.contentOffset.x)}
-          onMomentumScrollEnd={(event) => selectDayFromOffset(event.nativeEvent.contentOffset.x)}
-        >
-          {dayStripItems.map((day, index) => {
+        <View style={styles.calendarDaysRow}>
+          {dayStripItems.map((day) => {
             const isSelected = toDateKey(day.date) === selectedDateKey;
             return (
               <Pressable
                 key={day.key}
                 style={[
-                  styles.dayCell,
-                  { width: DAY_ITEM_WIDTH, height: DAY_ITEM_WIDTH },
-                  isSelected && styles.dayCellActive,
-                  isCompactScreen && isSelected && styles.dayCellActiveCompact,
-                  !isSelected && day.isToday && styles.dayCellTodayOutline,
+                  styles.dayCellSlot,
                 ]}
                 onPress={() => setSelectedDate(day.date)}
               >
-                <Text
+                <View
                   style={[
-                    styles.dayText,
-                    isCompactScreen && styles.dayTextCompact,
-                    isSelected && styles.dayTextActive,
-                    day.isToday && styles.dayTextToday,
+                    styles.dayCell,
+                    { width: DAY_ITEM_SIZE, height: DAY_ITEM_SIZE },
+                    isSelected && styles.dayCellActive,
+                    isCompactScreen && isSelected && styles.dayCellActiveCompact,
+                    !isSelected && day.isToday && styles.dayCellTodayOutline,
                   ]}
                 >
-                  {day.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.dayDate,
-                    isCompactScreen && styles.dayDateCompact,
-                    isSelected && styles.dayTextActive,
-                    day.isToday && styles.dayDateToday,
-                  ]}
-                >
-                  {day.dateLabel}
-                </Text>
+                  <Text
+                    style={[
+                      styles.dayText,
+                      isCompactScreen && styles.dayTextCompact,
+                      isSelected && styles.dayTextActive,
+                      day.isToday && styles.dayTextToday,
+                    ]}
+                  >
+                    {day.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dayDate,
+                      isCompactScreen && styles.dayDateCompact,
+                      isSelected && styles.dayTextActive,
+                      day.isToday && styles.dayDateToday,
+                    ]}
+                  >
+                    {day.dateLabel}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
         <Pressable
           style={[styles.calendarArrowButton, isCompactScreen && styles.calendarArrowButtonCompact]}
           hitSlop={18}
@@ -737,8 +674,18 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
-  calendarStripContent: {
+  calendarDaysRow: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 0,
+  },
+  dayCellSlot: {
+    width: '14.2857%',
+    maxWidth: '14.2857%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayCell: {
     width: 52,

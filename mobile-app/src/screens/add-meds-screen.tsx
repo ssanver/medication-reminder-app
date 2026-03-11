@@ -82,8 +82,7 @@ export function AddMedsScreen({
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
   const [dateField, setDateField] = useState<DateField>('start');
-  const [draftHour, setDraftHour] = useState('09');
-  const [draftMinute, setDraftMinute] = useState('00');
+  const [draftTime, setDraftTime] = useState(new Date(2000, 0, 1, 9, 0, 0));
   const [editingTimeIndex, setEditingTimeIndex] = useState(0);
   const editingMedication = useMemo(
     () => (mode === 'edit' && medicationId ? getMedicationById(medicationId) : undefined),
@@ -456,8 +455,7 @@ export function AddMedsScreen({
     setEditingTimeIndex(index);
     const initialTime = doseTimes[index] ?? defaultDoseTimes[index] ?? '';
     const { hour, minute } = splitTime(initialTime);
-    setDraftHour(hour);
-    setDraftMinute(minute);
+    setDraftTime(new Date(2000, 0, 1, Number(hour), Number(minute), 0));
     setSheet('time');
   }
 
@@ -1112,7 +1110,7 @@ export function AddMedsScreen({
               <View style={styles.timeWrap}>
                 <View style={styles.timePickerWrap}>
                   <DateTimePicker
-                    value={new Date(2000, 0, 1, Number(draftHour), Number(draftMinute), 0)}
+                    value={draftTime}
                     mode="time"
                     display={Platform.OS === 'ios' ? 'spinner' : 'spinner'}
                     locale={getLocaleTag(locale)}
@@ -1120,10 +1118,7 @@ export function AddMedsScreen({
                       if (!date) {
                         return;
                       }
-                      const hours = `${date.getHours()}`.padStart(2, '0');
-                      const minutes = `${date.getMinutes()}`.padStart(2, '0');
-                      setDraftHour(hours);
-                      setDraftMinute(minutes);
+                      setDraftTime(date);
                     }}
                   />
                 </View>
@@ -1131,7 +1126,9 @@ export function AddMedsScreen({
                 <Button
                   label={t.done}
                   onPress={() => {
-                    const normalized = `${draftHour}:${draftMinute}`;
+                    const hour = `${draftTime.getHours()}`.padStart(2, '0');
+                    const minute = `${draftTime.getMinutes()}`.padStart(2, '0');
+                    const normalized = `${hour}:${minute}`;
                     setDoseTimes((prev) => {
                       const next = [...prev];
                       next[editingTimeIndex] = normalized;

@@ -22,7 +22,7 @@ export function ReminderPreferencesScreen({ locale, snoozeMinutes, onSnoozeMinut
       try {
         const definitions = await loadAppDefinitions();
         if (isMounted) {
-          setSnoozeOptions(definitions.snoozeOptions);
+          setSnoozeOptions(definitions.snoozeOptions.filter((item) => Number.isFinite(item) && item > 0));
         }
       } catch {
         if (isMounted) {
