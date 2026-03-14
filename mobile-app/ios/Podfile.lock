@@ -95,6 +95,8 @@ PODS:
   - hermes-engine (0.81.5):
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
+  - PurchasesHybridCommon (17.46.1):
+    - RevenueCat (= 5.61.0)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -2340,9 +2342,13 @@ PODS:
     - React-perflogger (= 0.81.5)
     - React-utils (= 0.81.5)
     - SocketRocket
+  - RevenueCat (5.61.0)
   - RNCAsyncStorage (2.2.0):
     - React-Core
   - RNDateTimePicker (8.4.4):
+    - React-Core
+  - RNPurchases (9.12.0):
+    - PurchasesHybridCommon (= 17.46.1)
     - React-Core
   - RNSVG (15.12.1):
     - React-Core
@@ -2438,12 +2444,15 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - SocketRocket (~> 0.7.1)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
   trunk:
+    - PurchasesHybridCommon
+    - RevenueCat
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -2622,6 +2631,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNDateTimePicker:
     :path: "../node_modules/@react-native-community/datetimepicker"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNSVG:
     :path: "../node_modules/react-native-svg"
   Yoga:
@@ -2650,6 +2661,7 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
+  PurchasesHybridCommon: afaf46e9650f9399984196a6966c6d697d6122a2
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: 5eb1d2eeff5fb91151e8a8eef45b6c7658b6c897
   RCTRequired: cebcf9442fc296c9b89ac791dfd463021d9f6f23
@@ -2713,12 +2725,14 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 1bcd3527ac0390a1c898c114f81ff954be35ed79
   ReactCodegen: 6c26f8c25d0b5ae66f86a1cce1777076ac8bcbd8
   ReactCommon: 5f0e5c09a64a2717215dd84380e1a747810406f2
+  RevenueCat: 9acbd29a62000b57d59efa16166290c4a119847b
   RNCAsyncStorage: b44e8a4e798c3e1f56bffccd0f591f674fb9198f
   RNDateTimePicker: 7d93eacf4bdf56350e4b7efd5cfc47639185e10c
+  RNPurchases: 1f7952aadbf745361711070e06286b9496628692
   RNSVG: d3f55b1e5f680744764389119f1cb7512058672b
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 728df40394d49f3f471688747cf558158b3a3bd1
 
-PODFILE CHECKSUM: 3f722e1cc1d7e15e9bfb2586994a27e0c46dd029
+PODFILE CHECKSUM: 68cbeb0f0e6328988592e87264ad68e3de93a134
 
 COCOAPODS: 1.16.2

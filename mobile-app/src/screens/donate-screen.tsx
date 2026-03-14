@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { loadAppDefinitions } from '../features/definitions/definitions-service';
 import { getTranslations, type Locale } from '../features/localization/localization';
-import { getDonationUrl, getSupportEmail } from '../features/monetization/monetization-service';
+import { useDonateScreenState } from '../features/monetization/application/use-donate-screen-state';
 import { theme } from '../theme';
-import * as Linking from 'expo-linking';
 
 type DonateScreenProps = {
   locale: Locale;
@@ -14,98 +11,7 @@ type DonateScreenProps = {
 
 export function DonateScreen({ locale, onBack }: DonateScreenProps) {
   const t = getTranslations(locale);
-  const [campaign, setCampaign] = useState<{ title: string; body: string; ctaLabel: string; ctaUrl: string } | null>(null);
-  const [errorText, setErrorText] = useState('');
-  const [isOpening, setIsOpening] = useState(false);
-  const supportEmail = getSupportEmail();
-
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const definitions = await loadAppDefinitions();
-        const donationCampaign = definitions.donationCampaign;
-        if (donationCampaign) {
-          const localized = donationCampaign.localized[locale] ?? donationCampaign.localized.en ?? Object.values(donationCampaign.localized)[0];
-          if (!localized?.title || !localized.body || !localized.ctaLabel || !donationCampaign.ctaUrl) {
-            throw new Error(t.error);
-          }
-
-          if (!active) {
-            return;
-          }
-
-          setCampaign({
-            title: localized.title,
-            body: localized.body,
-            ctaLabel: localized.ctaLabel,
-            ctaUrl: donationCampaign.ctaUrl,
-          });
-          setErrorText('');
-          return;
-        }
-
-        if (!active) {
-          return;
-        }
-
-        setCampaign({
-          title: t.donateHeroTitle,
-          body: t.donateHeroBody,
-          ctaLabel: t.donatePrimaryCta,
-          ctaUrl: getDonationUrl(),
-        });
-        setErrorText('');
-      } catch (error) {
-        if (!active) {
-          return;
-        }
-        setCampaign(null);
-        setErrorText(error instanceof Error && error.message ? error.message : t.error);
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [locale, t.donateHeroBody, t.donateHeroTitle, t.donatePrimaryCta, t.error]);
-
-  async function handleOpenDonation(): Promise<void> {
-    if (!campaign?.ctaUrl) {
-      setErrorText(t.donationUnavailable);
-      return;
-    }
-
-    try {
-      setIsOpening(true);
-      setErrorText('');
-      const supported = await Linking.canOpenURL(campaign.ctaUrl);
-      if (!supported) {
-        throw new Error(t.openDonationFailed);
-      }
-
-      await Linking.openURL(campaign.ctaUrl);
-    } catch (error) {
-      setErrorText(error instanceof Error && error.message ? error.message : t.openDonationFailed);
-    } finally {
-      setIsOpening(false);
-    }
-  }
-
-  async function handleOpenSupport(): Promise<void> {
-    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent('Pill Mind Support')}`;
-
-    try {
-      const supported = await Linking.canOpenURL(mailtoUrl);
-      if (!supported) {
-        throw new Error(t.openSupportFailed);
-      }
-
-      await Linking.openURL(mailtoUrl);
-    } catch (error) {
-      setErrorText(error instanceof Error && error.message ? error.message : t.openSupportFailed);
-    }
-  }
+  const { campaign, errorText, isOpening, supportEmail, openDonation, openSupport } = useDonateScreenState({ locale });
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -122,7 +28,7 @@ export function DonateScreen({ locale, onBack }: DonateScreenProps) {
           <Pressable
             style={styles.donateCard}
             onPress={() => {
-              void handleOpenDonation();
+              void openDonation();
             }}
           >
             <Text style={styles.cardEyebrow}>{t.donateImpactTitle}</Text>
@@ -141,7 +47,7 @@ export function DonateScreen({ locale, onBack }: DonateScreenProps) {
           <Text style={styles.cardBody}>{t.donateHowItWorksBody}</Text>
         </View>
 
-        <Pressable style={styles.infoCard} onPress={() => void handleOpenSupport()}>
+        <Pressable style={styles.infoCard} onPress={() => void openSupport()}>
           <Text style={styles.cardTitle}>{t.donateSupportTitle}</Text>
           <Text style={styles.cardBody}>{t.donateSupportBody}</Text>
           <Text style={styles.supportEmail}>{supportEmail}</Text>

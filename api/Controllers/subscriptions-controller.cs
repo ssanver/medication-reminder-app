@@ -1,8 +1,6 @@
 using api.contracts;
-using api.data;
-using api.models;
+using api_application.monetization_application;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 
@@ -10,7 +8,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/subscriptions")]
-public sealed class SubscriptionsController(AppDbContext dbContext, IConfiguration configuration) : ControllerBase
+public sealed class SubscriptionsController(MonetizationApplicationService monetizationApplicationService, IConfiguration configuration) : ControllerBase
 {
     [HttpGet("status")]
     public async Task<ActionResult<SubscriptionStatusResponse>> GetStatus()
@@ -21,13 +19,19 @@ public sealed class SubscriptionsController(AppDbContext dbContext, IConfigurati
             return errorResult;
         }
 
-        var user = await dbContext.UserAccounts.AsNoTracking().FirstOrDefaultAsync(x => x.Email == resolvedEmail);
-        if (user is null)
+        try
         {
-            return NotFound("User account not found.");
+            var status = await monetizationApplicationService.GetStatusAsync(resolvedEmail);
+            return Ok(ToResponse(status));
         }
-
-        return Ok(ToResponse(user));
+        catch (KeyNotFoundException error)
+        {
+            return NotFound(error.Message);
+        }
+        catch (UnauthorizedAccessException error)
+        {
+            return Unauthorized(error.Message);
+        }
     }
 
     [HttpPost("activate")]
@@ -39,34 +43,41 @@ public sealed class SubscriptionsController(AppDbContext dbContext, IConfigurati
             return errorResult;
         }
 
-        var normalizedPlanId = request.PlanId?.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(normalizedPlanId))
+        try
         {
-            return BadRequest("PlanId is required.");
-        }
+            var status = await monetizationApplicationService.ActivatePlanAsync(
+                new ActivateMonetizationPlanCommand(
+                    resolvedEmail,
+                    request.PlanId,
+                    configuration.GetValue<bool>("AllowUnsafeDirectSubscriptionActivation")));
 
-        var user = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == resolvedEmail);
-        if (user is null)
+            if (string.Equals(status.Role, "visitor", StringComparison.Ordinal))
+            {
+                return BadRequest("Guest accounts cannot activate subscriptions. Please sign up first.");
+            }
+
+            return Ok(ToResponse(status));
+        }
+        catch (ArgumentException error)
         {
-            return NotFound("User account not found.");
+            return BadRequest(error.Message);
         }
-
-        if (string.Equals(user.Role, UserRole.Visitor, StringComparison.Ordinal))
+        catch (NotSupportedException error)
         {
-            return BadRequest("Guest accounts cannot activate subscriptions. Please sign up first.");
+            return StatusCode(StatusCodes.Status501NotImplemented, error.Message);
         }
-
-        if (!configuration.GetValue<bool>("AllowUnsafeDirectSubscriptionActivation"))
+        catch (KeyNotFoundException error)
         {
-            return StatusCode(StatusCodes.Status501NotImplemented, "Store purchase validation is not implemented yet.");
+            return NotFound(error.Message);
         }
-
-        user.SubscriptionPlanId = normalizedPlanId;
-        user.Role = IsPremiumPlan(normalizedPlanId) ? UserRole.Vip : UserRole.Member;
-        user.UpdatedAt = DateTimeOffset.UtcNow;
-        await dbContext.SaveChangesAsync();
-
-        return Ok(ToResponse(user));
+        catch (InvalidOperationException error)
+        {
+            return BadRequest(error.Message);
+        }
+        catch (UnauthorizedAccessException error)
+        {
+            return Unauthorized(error.Message);
+        }
     }
 
     private string ResolveUserEmail(out ActionResult? errorResult)
@@ -86,22 +97,14 @@ public sealed class SubscriptionsController(AppDbContext dbContext, IConfigurati
         return claimedEmail.Trim().ToLowerInvariant();
     }
 
-    private static SubscriptionStatusResponse ToResponse(UserAccount user)
+    private static SubscriptionStatusResponse ToResponse(MonetizationStatusRecord status)
     {
-        var role = UserRole.IsValid(user.Role) ? user.Role : UserRole.Member;
         return new SubscriptionStatusResponse
         {
-            Role = role,
-            AdsEnabled = !string.Equals(role, UserRole.Vip, StringComparison.Ordinal),
-            ActivePlanId = user.SubscriptionPlanId,
-            UpdatedAt = user.UpdatedAt,
+            Role = status.Role,
+            AdsEnabled = status.AdsEnabled,
+            ActivePlanId = status.ActivePlanId,
+            UpdatedAt = status.UpdatedAt,
         };
-    }
-
-    private static bool IsPremiumPlan(string normalizedPlanId)
-    {
-        return normalizedPlanId.Contains("premium", StringComparison.Ordinal)
-            || normalizedPlanId.Contains("vip", StringComparison.Ordinal)
-            || normalizedPlanId.Contains("pro", StringComparison.Ordinal);
     }
 }

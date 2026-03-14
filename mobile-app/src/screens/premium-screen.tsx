@@ -1,23 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
-import { loadAppDefinitions } from '../features/definitions/definitions-service';
 import { getTranslations, type Locale } from '../features/localization/localization';
-import {
-  activateSubscriptionPlan,
-  getMonetizationStatus,
-  refreshMonetizationStatus,
-  type MonetizationStatus,
-  type SubscriptionOffer,
-  subscribeMonetizationStatus,
-} from '../features/monetization/subscription-service';
-import {
-  isRevenueCatConfigured,
-  loadRevenueCatOffers,
-  purchaseRevenueCatPackage,
-  restoreRevenueCatPurchases,
-  type StoreSubscriptionOffer,
-} from '../features/monetization/revenuecat-service';
+import { usePremiumScreenState } from '../features/monetization/application/use-premium-screen-state';
 import { theme } from '../theme';
 
 type PremiumScreenProps = {
@@ -29,51 +14,10 @@ type PremiumScreenProps = {
 
 export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: PremiumScreenProps) {
   const t = getTranslations(locale);
-  const [offers, setOffers] = useState<Array<SubscriptionOffer | StoreSubscriptionOffer>>([]);
-  const [status, setStatus] = useState<MonetizationStatus>({
-    role: 'visitor',
-    adsEnabled: true,
-    activePlanId: null,
-    updatedAt: null,
+  const { offers, status, errorText, loadingPlanId, purchaseMode, restoreLoading, selectOffer, restorePurchases } = usePremiumScreenState({
+    locale,
+    isGuestMode,
   });
-  const [errorText, setErrorText] = useState('');
-  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
-  const [purchaseMode, setPurchaseMode] = useState<'store' | 'direct' | 'disabled'>('disabled');
-  const [restoreLoading, setRestoreLoading] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = subscribeMonetizationStatus((next) => setStatus(next));
-    void (async () => {
-      try {
-        if (isRevenueCatConfigured()) {
-          const storeOffers = await loadRevenueCatOffers(locale);
-          if (storeOffers.length === 0) {
-            throw new Error(t.purchasesUnavailable);
-          }
-          setOffers(storeOffers);
-          setPurchaseMode('store');
-        } else {
-          const definitions = await loadAppDefinitions();
-          if (!definitions.subscriptionOffers || definitions.subscriptionOffers.length === 0) {
-            throw new Error(t.purchasesUnavailable);
-          }
-          setOffers(definitions.subscriptionOffers);
-          setPurchaseMode(process.env.EXPO_PUBLIC_ALLOW_DIRECT_SUBSCRIPTION_ACTIVATION === 'true' ? 'direct' : 'disabled');
-        }
-        setErrorText('');
-      } catch (error) {
-        setOffers([]);
-        setPurchaseMode('disabled');
-        setErrorText(error instanceof Error && error.message ? error.message : t.error);
-      }
-
-      const persisted = await getMonetizationStatus();
-      setStatus(persisted);
-      await refreshMonetizationStatus();
-    })();
-
-    return unsubscribe;
-  }, []);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -109,27 +53,23 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
             'localized' in offer ? offer.localized[locale] ?? offer.localized.en ?? Object.values(offer.localized)[0] : offer;
           const isSelected = status.activePlanId === offer.id;
           const isLoading = loadingPlanId === offer.id;
+          const isUnavailable = purchaseMode === 'disabled';
           return (
             <Pressable
               key={offer.id}
-              style={[styles.planCard, isSelected && styles.planCardActive]}
-              disabled={isGuestMode || isLoading || purchaseMode === 'disabled'}
+              style={[styles.planCard, isSelected && styles.planCardActive, isUnavailable && styles.planCardDisabled]}
+              disabled={isLoading}
               onPress={() => {
                 void (async () => {
-                  try {
-                    setErrorText('');
-                    setLoadingPlanId(offer.id);
-                    if (purchaseMode === 'store') {
-                      await purchaseRevenueCatPackage(offer.id);
-                    } else if (purchaseMode === 'direct') {
-                      await activateSubscriptionPlan(offer.id);
-                    } else {
-                      throw new Error(t.purchasesUnavailable);
-                    }
-                  } catch (error) {
-                    setErrorText(error instanceof Error ? error.message : t.error);
-                  } finally {
-                    setLoadingPlanId(null);
+                  const result = await selectOffer(offer.id);
+                  if (result === 'guest' || result === 'unavailable' || result === 'error') {
+                    const message =
+                      result === 'guest'
+                        ? t.guestPremiumSignupRequired
+                        : result === 'unavailable'
+                          ? t.purchasesUnavailable
+                          : errorText || t.error;
+                    Alert.alert(t.removeAds, message);
                   }
                 })();
               }}
@@ -142,7 +82,9 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
               {localized?.badge ? <Text style={styles.planBadge}>{localized.badge}</Text> : null}
               <Text style={styles.planHint}>{localized?.description ?? t.removeAdsDescription}</Text>
               <View style={styles.planCtaRow}>
-                <Text style={styles.planCta}>{localized?.ctaLabel ?? t.removeAds}</Text>
+                <Text style={[styles.planCta, isUnavailable && styles.planCtaDisabled]}>
+                  {isUnavailable ? t.comingSoon : localized?.ctaLabel ?? t.removeAds}
+                </Text>
               </View>
               {isLoading ? <Text style={styles.planLoading}>{t.loading}</Text> : null}
             </Pressable>
@@ -150,20 +92,22 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
         })}
       </View>
 
+      {purchaseMode === 'disabled' ? (
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>{t.premiumActivationTitle}</Text>
+          <Text style={styles.infoBody}>{t.premiumActivationBody}</Text>
+        </View>
+      ) : null}
+
       {purchaseMode === 'store' ? (
         <Pressable
           style={[styles.restoreButton, restoreLoading && styles.restoreButtonDisabled]}
           disabled={restoreLoading}
           onPress={() => {
             void (async () => {
-              try {
-                setRestoreLoading(true);
-                setErrorText('');
-                await restoreRevenueCatPurchases();
-              } catch (error) {
-                setErrorText(error instanceof Error ? error.message : t.error);
-              } finally {
-                setRestoreLoading(false);
+              const restored = await restorePurchases();
+              if (!restored && errorText) {
+                Alert.alert(t.removeAds, errorText);
               }
             })();
           }}
@@ -268,6 +212,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primaryBlue[400],
     backgroundColor: theme.colors.primaryBlue[50],
   },
+  planCardDisabled: {
+    opacity: 0.72,
+  },
   planHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -301,9 +248,28 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.primaryBlue[700],
   },
+  planCtaDisabled: {
+    color: theme.colors.semantic.textSecondary,
+  },
   planLoading: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[700],
+  },
+  infoCard: {
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    backgroundColor: theme.colors.semantic.cardMutedBackground,
+    padding: theme.spacing[16],
+    gap: theme.spacing[8],
+  },
+  infoTitle: {
+    ...theme.typography.bodyScale.mBold,
+    color: theme.colors.semantic.textPrimary,
+  },
+  infoBody: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
   },
   restoreButton: {
     minHeight: 44,

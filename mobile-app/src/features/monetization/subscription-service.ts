@@ -1,26 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequestJson } from '../network/api-client';
 import type { UserRole } from '../auth/auth-session-store';
+import type { AdFreeStatus, MonetizationStatus, SubscriptionOffer } from './domain/monetization-types';
 
 const KEY_MONETIZATION_STATUS = 'monetization:status';
-
-export type SubscriptionOffer = {
-  id: string;
-  localized: Record<string, { title: string; priceLabel: string; description?: string; badge?: string; ctaLabel?: string }>;
-};
-
-export type MonetizationStatus = {
-  role: UserRole;
-  adsEnabled: boolean;
-  activePlanId: string | null;
-  updatedAt: string | null;
-};
-
-export type AdFreeStatus = {
-  isAdFree: boolean;
-  planId: string | null;
-  activatedAt: string | null;
-};
 
 type SubscriptionStatusApiResponse = {
   role: string;

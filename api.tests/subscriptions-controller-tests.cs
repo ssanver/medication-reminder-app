@@ -2,6 +2,8 @@ using api.Controllers;
 using api.contracts;
 using api.data;
 using api.models;
+using api.services.monetization_persistence;
+using api_application.monetization_application;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -149,7 +151,8 @@ public sealed class SubscriptionsControllerTests
             })
             .Build();
 
-        var controller = new SubscriptionsController(dbContext, configuration);
+        var service = new MonetizationApplicationService(new EfMonetizationUserRepository(dbContext), new EfAppDefinitionsRepository(dbContext));
+        var controller = new SubscriptionsController(service, configuration);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

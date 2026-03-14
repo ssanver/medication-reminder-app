@@ -3,16 +3,7 @@ import Purchases, { LOG_LEVEL, type CustomerInfo, type PurchasesOffering, type P
 import { loadAuthSession } from '../auth/auth-session-store';
 import { getTranslations, type Locale } from '../localization/localization';
 import { setMonetizationStatus } from './subscription-service';
-
-export type StoreSubscriptionOffer = {
-  id: string;
-  packageId: string;
-  title: string;
-  description: string;
-  priceLabel: string;
-  badge?: string;
-  ctaLabel: string;
-};
+import type { StoreSubscriptionOffer } from './domain/monetization-types';
 
 const DEFAULT_ENTITLEMENT_ID = 'premium';
 
