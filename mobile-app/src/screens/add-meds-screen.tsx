@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
@@ -83,6 +83,7 @@ export function AddMedsScreen({
   const [draftDate, setDraftDate] = useState(startDate);
   const [dateField, setDateField] = useState<DateField>('start');
   const [draftTime, setDraftTime] = useState(new Date(2000, 0, 1, 9, 0, 0));
+  const draftTimeRef = useRef(draftTime);
   const [editingTimeIndex, setEditingTimeIndex] = useState(0);
   const editingMedication = useMemo(
     () => (mode === 'edit' && medicationId ? getMedicationById(medicationId) : undefined),
@@ -455,7 +456,9 @@ export function AddMedsScreen({
     setEditingTimeIndex(index);
     const initialTime = doseTimes[index] ?? defaultDoseTimes[index] ?? '';
     const { hour, minute } = splitTime(initialTime);
-    setDraftTime(new Date(2000, 0, 1, Number(hour), Number(minute), 0));
+    const nextDraftTime = new Date(2000, 0, 1, Number(hour), Number(minute), 0);
+    draftTimeRef.current = nextDraftTime;
+    setDraftTime(nextDraftTime);
     setSheet('time');
   }
 
@@ -1118,6 +1121,7 @@ export function AddMedsScreen({
                       if (!date) {
                         return;
                       }
+                      draftTimeRef.current = date;
                       setDraftTime(date);
                     }}
                   />
@@ -1126,8 +1130,9 @@ export function AddMedsScreen({
                 <Button
                   label={t.done}
                   onPress={() => {
-                    const hour = `${draftTime.getHours()}`.padStart(2, '0');
-                    const minute = `${draftTime.getMinutes()}`.padStart(2, '0');
+                    const selectedTime = draftTimeRef.current;
+                    const hour = `${selectedTime.getHours()}`.padStart(2, '0');
+                    const minute = `${selectedTime.getMinutes()}`.padStart(2, '0');
                     const normalized = `${hour}:${minute}`;
                     setDoseTimes((prev) => {
                       const next = [...prev];
