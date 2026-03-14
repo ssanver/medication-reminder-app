@@ -10,9 +10,14 @@ export type SponsoredAd = {
 };
 
 const defaultDonationUrl = 'https://buymeacoffee.com/pillmind';
+const defaultSupportEmail = 'support@pillmind.app';
 
 export function getDonationUrl(): string {
   return process.env.EXPO_PUBLIC_DONATION_URL ?? defaultDonationUrl;
+}
+
+export function getSupportEmail(): string {
+  return process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? defaultSupportEmail;
 }
 
 export async function openDonationPage(): Promise<boolean> {

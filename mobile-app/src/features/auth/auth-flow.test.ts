@@ -11,6 +11,7 @@ describe('resolveInitialPhase', () => {
       hasSeenSplashOnce: true,
       email: 'test@example.com',
       emailVerified: true,
+      role: 'member',
     });
 
     expect(phase).toBe('app');
@@ -25,6 +26,7 @@ describe('resolveInitialPhase', () => {
       hasSeenSplashOnce: true,
       email: '',
       emailVerified: false,
+      role: 'visitor',
     });
 
     expect(phase).toBe('app');
@@ -39,6 +41,7 @@ describe('resolveInitialPhase', () => {
       hasSeenSplashOnce: true,
       email: 'suleyman@example.com',
       emailVerified: true,
+      role: 'member',
     });
 
     expect(phase).toBe('app');
@@ -53,6 +56,7 @@ describe('resolveInitialPhase', () => {
       hasSeenSplashOnce: false,
       email: '',
       emailVerified: false,
+      role: 'visitor',
     });
 
     expect(phase).toBe('app');
@@ -67,6 +71,7 @@ describe('resolveInitialPhase', () => {
       hasSeenSplashOnce: true,
       email: '',
       emailVerified: true,
+      role: 'visitor',
     });
 
     expect(phase).toBe('app');

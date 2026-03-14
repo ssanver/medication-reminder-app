@@ -3,13 +3,14 @@ using api.data;
 using api.models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/subscriptions")]
-public sealed class SubscriptionsController(AppDbContext dbContext) : ControllerBase
+public sealed class SubscriptionsController(AppDbContext dbContext, IConfiguration configuration) : ControllerBase
 {
     [HttpGet("status")]
     public async Task<ActionResult<SubscriptionStatusResponse>> GetStatus()
@@ -53,6 +54,11 @@ public sealed class SubscriptionsController(AppDbContext dbContext) : Controller
         if (string.Equals(user.Role, UserRole.Visitor, StringComparison.Ordinal))
         {
             return BadRequest("Guest accounts cannot activate subscriptions. Please sign up first.");
+        }
+
+        if (!configuration.GetValue<bool>("AllowUnsafeDirectSubscriptionActivation"))
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented, "Store purchase validation is not implemented yet.");
         }
 
         user.SubscriptionPlanId = normalizedPlanId;

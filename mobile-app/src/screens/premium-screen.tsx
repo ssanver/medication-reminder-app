@@ -11,6 +11,13 @@ import {
   type SubscriptionOffer,
   subscribeMonetizationStatus,
 } from '../features/monetization/subscription-service';
+import {
+  isRevenueCatConfigured,
+  loadRevenueCatOffers,
+  purchaseRevenueCatPackage,
+  restoreRevenueCatPurchases,
+  type StoreSubscriptionOffer,
+} from '../features/monetization/revenuecat-service';
 import { theme } from '../theme';
 
 type PremiumScreenProps = {
@@ -22,7 +29,7 @@ type PremiumScreenProps = {
 
 export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: PremiumScreenProps) {
   const t = getTranslations(locale);
-  const [offers, setOffers] = useState<SubscriptionOffer[]>([]);
+  const [offers, setOffers] = useState<Array<SubscriptionOffer | StoreSubscriptionOffer>>([]);
   const [status, setStatus] = useState<MonetizationStatus>({
     role: 'visitor',
     adsEnabled: true,
@@ -31,20 +38,33 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
   });
   const [errorText, setErrorText] = useState('');
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [purchaseMode, setPurchaseMode] = useState<'store' | 'direct' | 'disabled'>('disabled');
+  const [restoreLoading, setRestoreLoading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeMonetizationStatus((next) => setStatus(next));
     void (async () => {
       try {
-        const definitions = await loadAppDefinitions();
-        if (!definitions.subscriptionOffers || definitions.subscriptionOffers.length === 0) {
-          throw new Error(t.error);
+        if (isRevenueCatConfigured()) {
+          const storeOffers = await loadRevenueCatOffers(locale);
+          if (storeOffers.length === 0) {
+            throw new Error(t.purchasesUnavailable);
+          }
+          setOffers(storeOffers);
+          setPurchaseMode('store');
+        } else {
+          const definitions = await loadAppDefinitions();
+          if (!definitions.subscriptionOffers || definitions.subscriptionOffers.length === 0) {
+            throw new Error(t.purchasesUnavailable);
+          }
+          setOffers(definitions.subscriptionOffers);
+          setPurchaseMode(process.env.EXPO_PUBLIC_ALLOW_DIRECT_SUBSCRIPTION_ACTIVATION === 'true' ? 'direct' : 'disabled');
         }
-        setOffers(definitions.subscriptionOffers);
         setErrorText('');
-      } catch {
+      } catch (error) {
         setOffers([]);
-        setErrorText(t.error);
+        setPurchaseMode('disabled');
+        setErrorText(error instanceof Error && error.message ? error.message : t.error);
       }
 
       const persisted = await getMonetizationStatus();
@@ -62,6 +82,7 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
       <View style={styles.heroCard}>
         <Text style={styles.heroTitle}>{t.removeAds}</Text>
         <Text style={styles.heroBody}>{t.removeAdsDescription}</Text>
+        <Text style={styles.heroCaption}>{purchaseMode === 'store' ? t.secureStorePurchase : t.purchasesUnavailable}</Text>
         <View style={styles.badgesRow}>
           <View style={[styles.badge, status.adsEnabled ? styles.badgeNeutral : styles.badgeSuccess]}>
             <Text style={styles.badgeText}>{status.adsEnabled ? t.sponsoredTitle : t.adFreeActive}</Text>
@@ -84,20 +105,27 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
 
       <View style={styles.plansWrap}>
         {offers.map((offer) => {
-          const localized = offer.localized[locale] ?? offer.localized.en ?? Object.values(offer.localized)[0];
+          const localized =
+            'localized' in offer ? offer.localized[locale] ?? offer.localized.en ?? Object.values(offer.localized)[0] : offer;
           const isSelected = status.activePlanId === offer.id;
           const isLoading = loadingPlanId === offer.id;
           return (
             <Pressable
               key={offer.id}
               style={[styles.planCard, isSelected && styles.planCardActive]}
-              disabled={isGuestMode || isLoading}
+              disabled={isGuestMode || isLoading || purchaseMode === 'disabled'}
               onPress={() => {
                 void (async () => {
                   try {
                     setErrorText('');
                     setLoadingPlanId(offer.id);
-                    await activateSubscriptionPlan(offer.id);
+                    if (purchaseMode === 'store') {
+                      await purchaseRevenueCatPackage(offer.id);
+                    } else if (purchaseMode === 'direct') {
+                      await activateSubscriptionPlan(offer.id);
+                    } else {
+                      throw new Error(t.purchasesUnavailable);
+                    }
                   } catch (error) {
                     setErrorText(error instanceof Error ? error.message : t.error);
                   } finally {
@@ -121,6 +149,28 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
           );
         })}
       </View>
+
+      {purchaseMode === 'store' ? (
+        <Pressable
+          style={[styles.restoreButton, restoreLoading && styles.restoreButtonDisabled]}
+          disabled={restoreLoading}
+          onPress={() => {
+            void (async () => {
+              try {
+                setRestoreLoading(true);
+                setErrorText('');
+                await restoreRevenueCatPurchases();
+              } catch (error) {
+                setErrorText(error instanceof Error ? error.message : t.error);
+              } finally {
+                setRestoreLoading(false);
+              }
+            })();
+          }}
+        >
+          <Text style={styles.restoreButtonText}>{restoreLoading ? t.loading : t.restorePurchases}</Text>
+        </Pressable>
+      ) : null}
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
     </ScrollView>
@@ -150,14 +200,18 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mRegular,
     color: '#E6E6E6',
   },
+  heroCaption: {
+    ...theme.typography.captionScale.lRegular,
+    color: '#C7CBD4',
+  },
   badgesRow: {
     flexDirection: 'row',
     gap: theme.spacing[8],
   },
   badge: {
-    borderRadius: theme.radius[12],
+    borderRadius: theme.radius[8],
     backgroundColor: '#2F2F36',
-    paddingHorizontal: theme.spacing[10],
+    paddingHorizontal: theme.spacing[8],
     paddingVertical: theme.spacing[4],
   },
   badgeNeutral: {
@@ -189,7 +243,7 @@ const styles = StyleSheet.create({
   signUpButton: {
     minHeight: 36,
     borderRadius: theme.radius[16],
-    backgroundColor: theme.colors.error[600],
+    backgroundColor: theme.colors.error[500],
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing[16],
@@ -200,15 +254,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   plansWrap: {
-    gap: theme.spacing[10],
+    gap: theme.spacing[8],
   },
   planCard: {
     borderRadius: theme.radius[16],
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
     backgroundColor: theme.colors.semantic.cardBackground,
-    padding: theme.spacing[14],
-    gap: theme.spacing[6],
+    padding: theme.spacing[16],
+    gap: theme.spacing[8],
   },
   planCardActive: {
     borderColor: theme.colors.primaryBlue[400],
@@ -238,7 +292,7 @@ const styles = StyleSheet.create({
   },
   planBadge: {
     ...theme.typography.captionScale.mRegular,
-    color: theme.colors.warning[700],
+    color: theme.colors.warning[800],
   },
   planCtaRow: {
     marginTop: theme.spacing[4],
@@ -250,6 +304,23 @@ const styles = StyleSheet.create({
   planLoading: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[700],
+  },
+  restoreButton: {
+    minHeight: 44,
+    borderRadius: theme.radius[16],
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.semantic.cardBackground,
+    paddingHorizontal: theme.spacing[16],
+  },
+  restoreButtonDisabled: {
+    opacity: 0.6,
+  },
+  restoreButtonText: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.semantic.textPrimary,
   },
   errorText: {
     ...theme.typography.captionScale.lRegular,

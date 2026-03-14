@@ -46,7 +46,7 @@ function toRole(value: string | undefined): UserRole {
   return 'visitor';
 }
 
-function toStatus(value: Partial<MonetizationStatus> & { role?: string }): MonetizationStatus {
+function toStatus(value: { role?: string; adsEnabled?: boolean; activePlanId?: string | null; updatedAt?: string | null }): MonetizationStatus {
   return {
     role: toRole(value.role),
     adsEnabled: value.adsEnabled !== false,
@@ -128,6 +128,13 @@ export async function activateSubscriptionPlan(planId: string): Promise<Monetiza
   await persistStatus(status);
   emit(status);
   return status;
+}
+
+export async function setMonetizationStatus(status: MonetizationStatus): Promise<MonetizationStatus> {
+  const normalized = toStatus(status);
+  await persistStatus(normalized);
+  emit(normalized);
+  return normalized;
 }
 
 export async function applyRoleToMonetizationStatus(role: UserRole): Promise<MonetizationStatus> {

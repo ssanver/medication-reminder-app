@@ -5,6 +5,7 @@ using api.models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 
 namespace api.tests;
@@ -95,7 +96,7 @@ public sealed class SubscriptionsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = CreateController(dbContext, "suleyman@example.com");
+        var controller = CreateController(dbContext, "suleyman@example.com", allowUnsafeDirectActivation: true);
         var result = await controller.Activate(new ActivateSubscriptionRequest
         {
             PlanId = "premium-monthly",
@@ -107,9 +108,48 @@ public sealed class SubscriptionsControllerTests
         Assert.Equal("premium-monthly", payload.ActivePlanId);
     }
 
-    private static SubscriptionsController CreateController(AppDbContext dbContext, string email)
+    [Fact]
+    public async Task Activate_ShouldReturnNotImplemented_WhenUnsafeActivationDisabled()
     {
-        var controller = new SubscriptionsController(dbContext);
+        await using var dbContext = CreateInMemoryContext();
+        dbContext.UserAccounts.Add(new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            PasswordHash = "PBKDF2$100000$abc$def",
+            FullName = "Suleyman Sanver",
+            BirthDate = string.Empty,
+            Gender = string.Empty,
+            PhotoUri = string.Empty,
+            IsEmailVerified = true,
+            Role = UserRole.Member,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = CreateController(dbContext, "suleyman@example.com");
+        var result = await controller.Activate(new ActivateSubscriptionRequest
+        {
+            PlanId = "premium-monthly",
+        });
+        var notImplemented = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status501NotImplemented, notImplemented.StatusCode);
+        Assert.Equal("Store purchase validation is not implemented yet.", notImplemented.Value);
+    }
+
+    private static SubscriptionsController CreateController(AppDbContext dbContext, string email, bool allowUnsafeDirectActivation = false)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AllowUnsafeDirectSubscriptionActivation"] = allowUnsafeDirectActivation.ToString(),
+            })
+            .Build();
+
+        var controller = new SubscriptionsController(dbContext, configuration);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

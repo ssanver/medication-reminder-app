@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
   brandRightIcons: {
     position: 'absolute',
     right: 0,
-    top: theme.spacing[2],
+    top: theme.spacing[4],
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing[8],
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     minHeight: 34,
     borderRadius: theme.radius[16],
     borderWidth: 1,
-    borderColor: theme.colors.error[400],
+    borderColor: theme.colors.error[500],
     backgroundColor: theme.colors.error[50],
     paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
   },
   guestCardCtaText: {
     ...theme.typography.captionScale.lRegular,
-    color: theme.colors.error[700],
+    color: theme.colors.error[800],
     fontWeight: '700',
   },
   dateTitle: {
@@ -603,15 +603,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.primaryBlue[300],
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: theme.spacing[12],
+    paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
   },
   dateFilterButtonCompact: {
     minHeight: 36,
-    borderRadius: theme.radius[14],
+    borderRadius: theme.radius[16],
     minWidth: 46,
-    paddingHorizontal: theme.spacing[10],
+    paddingHorizontal: theme.spacing[8],
   },
   dateFilterButtonText: {
     ...theme.typography.bodyScale.xmMedium,
@@ -625,15 +625,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.primaryBlue[300],
     backgroundColor: theme.colors.primaryBlue[50],
-    paddingHorizontal: theme.spacing[12],
+    paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
   },
   todayButtonCompact: {
     minHeight: 36,
-    borderRadius: theme.radius[14],
+    borderRadius: theme.radius[16],
     minWidth: 46,
-    paddingHorizontal: theme.spacing[10],
+    paddingHorizontal: theme.spacing[8],
   },
   todayButtonActive: {
     borderColor: theme.colors.primaryBlue[500],
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
     padding: theme.spacing[16],
-    gap: theme.spacing[12],
+    gap: theme.spacing[16],
   },
   dateFilterTitle: {
     ...theme.typography.bodyScale.mBold,

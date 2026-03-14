@@ -41,6 +41,7 @@ import { loadAppPreferences, resolveDefaultLocale, saveAppPreferences, updateLoc
 import { loadWeekStartPreference, saveWeekStartPreference } from '../features/settings/week-start-preference-service';
 import { clearProfile } from '../features/profile/profile-store';
 import { shareApplication } from '../features/share/app-share';
+import { initializeRevenueCatPurchases, isRevenueCatConfigured } from '../features/monetization/revenuecat-service';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
@@ -258,6 +259,29 @@ export function AppNavigator() {
       snoozeMinutes,
     });
   }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes, preferencesLoaded]);
+
+  useEffect(() => {
+    if (!isRevenueCatConfigured()) {
+      return;
+    }
+
+    let active = true;
+    void (async () => {
+      try {
+        const appUserId = accountEmail.trim().toLowerCase() || (await loadOrCreateDeviceId());
+        if (!active) {
+          return;
+        }
+        await initializeRevenueCatPurchases(appUserId, locale);
+      } catch {
+        // Premium screen provides explicit fallback messaging if store setup is incomplete.
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [accountEmail, locale]);
 
   useEffect(() => {
     setAppFontScale(fontScale);

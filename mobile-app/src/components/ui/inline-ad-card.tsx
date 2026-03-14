@@ -22,12 +22,12 @@ export function InlineAdCard({ title, body, ctaLabel, onPress }: InlineAdCardPro
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: theme.radius[12],
+    borderRadius: theme.radius[8],
     borderWidth: 1,
     borderColor: theme.colors.warning[200],
     backgroundColor: '#FFF8E8',
-    padding: theme.spacing[12],
-    gap: theme.spacing[6],
+    padding: theme.spacing[16],
+    gap: theme.spacing[8],
   },
   badge: {
     ...theme.typography.captionScale.mRegular,
@@ -40,10 +40,10 @@ const styles = StyleSheet.create({
   ctaButton: {
     alignSelf: 'flex-start',
     minHeight: 30,
-    borderRadius: theme.radius[12],
+    borderRadius: theme.radius[8],
     backgroundColor: '#F6B500',
     justifyContent: 'center',
-    paddingHorizontal: theme.spacing[12],
+    paddingHorizontal: theme.spacing[16],
   },
   ctaText: {
     ...theme.typography.captionScale.lRegular,

@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     minHeight: 34,
     borderRadius: theme.radius[16],
     borderWidth: 1,
-    borderColor: theme.colors.error[400],
+    borderColor: theme.colors.error[500],
     backgroundColor: theme.colors.error[50],
     paddingHorizontal: theme.spacing[16],
     alignItems: 'center',
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   },
   completeProfileCtaText: {
     ...theme.typography.captionScale.lRegular,
-    color: theme.colors.error[700],
+    color: theme.colors.error[800],
     fontWeight: '700',
   },
   sectionWrap: {
