@@ -263,6 +263,7 @@
   "feedbackCategoryOther": "Other",
   "feedbackReceived": "Feedback received.",
   "feedbackSendFailed": "Submission failed. Please try again.",
+  "feedbackMinLengthHint": "Write at least {{count}} more characters to submit.",
   "emailVerification": "Email Verification",
   "verifyYourAccount": "Verify your account",
   "whyRequired": "Why this is required?",

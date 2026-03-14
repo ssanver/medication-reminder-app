@@ -25,6 +25,7 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
     selectedCategoryLabel,
     send,
   } = useFeedbackScreenState(locale);
+  const remainingCharacters = Math.max(0, 10 - message.trim().length);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -50,6 +51,7 @@ export function FeedbackScreen({ locale, onBack }: FeedbackScreenProps) {
         />
 
         {statusText.length > 0 ? <Text style={styles.status}>{statusText}</Text> : null}
+        {!canSubmit ? <Text style={styles.hint}>{t.feedbackMinLengthHint.replace('{{count}}', `${remainingCharacters}`)}</Text> : null}
         <Button label={t.feedbackSubmit} onPress={() => void send()} disabled={!canSubmit} />
       </View>
 
@@ -133,6 +135,10 @@ const styles = StyleSheet.create({
   status: {
     ...theme.typography.captionScale.lRegular,
     color: theme.colors.primaryBlue[600],
+  },
+  hint: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textMuted,
   },
   overlay: {
     flex: 1,

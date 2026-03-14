@@ -127,7 +127,15 @@ export function TodayScreen({
   }, [selectedDate]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, styles.contentGrow]}
+      showsVerticalScrollIndicator={false}
+      alwaysBounceVertical
+      bounces
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.brandHeader}>
         <View style={styles.brandRow}>
           <View style={styles.brandLogo}>
@@ -458,6 +466,9 @@ const styles = StyleSheet.create({
   content: {
     gap: theme.spacing[16],
     paddingBottom: theme.spacing[16],
+  },
+  contentGrow: {
+    flexGrow: 1,
   },
   brandHeader: {
     position: 'relative',

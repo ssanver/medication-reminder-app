@@ -263,6 +263,7 @@
   "feedbackCategoryOther": "Diğer",
   "feedbackReceived": "Geri bildiriminiz alınmıştır.",
   "feedbackSendFailed": "Gönderim başarısız. Lütfen tekrar deneyin.",
+  "feedbackMinLengthHint": "Göndermek için en az {{count}} karakter daha yazın.",
   "emailVerification": "E-posta Doğrulama",
   "verifyYourAccount": "Hesabınızı doğrulayın",
   "whyRequired": "Neden gerekli?",
