@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
@@ -86,13 +86,21 @@ export function TodayScreen({
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
   const DAY_ITEM_SIZE = isCompactScreen ? 38 : 44;
+  const dayStripRef = useRef<ScrollView | null>(null);
+  const dayAnchorRef = useRef(new Date());
+  const DAY_RANGE = 365;
+  const DAY_ITEM_WIDTH = isCompactScreen ? 44 : 52;
+  const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
+  const DAY_ITEM_SNAP = DAY_ITEM_WIDTH + DAY_ITEM_GAP;
   const DAY_ARROW_BUTTON_WIDTH = isCompactScreen ? 36 : 44;
+  const dayStripSidePadding = Math.max(theme.spacing[16], (windowWidth - DAY_ARROW_BUTTON_WIDTH * 2 - DAY_ITEM_WIDTH) / 2);
   const dayStripItems = useMemo(() => {
-    const centerDate = normalizeDate(selectedDate);
-    return Array.from({ length: 7 }, (_, idx) => {
-      const diff = idx - 3;
-      const date = new Date(centerDate);
-      date.setDate(centerDate.getDate() + diff);
+    const anchor = dayAnchorRef.current;
+    const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+    return Array.from({ length: DAY_RANGE * 2 + 1 }, (_, idx) => {
+      const diff = idx - DAY_RANGE;
+      const date = new Date(anchorDate);
+      date.setDate(anchorDate.getDate() + diff);
       return {
         key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
         date,
@@ -101,8 +109,15 @@ export function TodayScreen({
         isToday: new Date().toDateString() === date.toDateString(),
       };
     });
-  }, [locale, selectedDate]);
+  }, [DAY_RANGE, locale]);
   const selectedDateKey = useMemo(() => toDateKey(normalizeDate(selectedDate)), [selectedDate]);
+  const selectedIndex = useMemo(() => {
+    const anchor = dayAnchorRef.current;
+    const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+    const current = normalizeDate(selectedDate);
+    const diffDays = Math.round((current.getTime() - anchorDate.getTime()) / (24 * 60 * 60 * 1000));
+    return Math.max(0, Math.min(dayStripItems.length - 1, DAY_RANGE + diffDays));
+  }, [DAY_RANGE, dayStripItems.length, selectedDate]);
   const monthYearMedicationsTitle = useMemo(() => {
     const fullDate = new Intl.DateTimeFormat(locale, {
       month: 'long',
@@ -126,16 +141,24 @@ export function TodayScreen({
     setDraftDate(normalizeDate(selectedDate));
   }, [selectedDate]);
 
+  useEffect(() => {
+    dayStripRef.current?.scrollTo({
+      x: selectedIndex * DAY_ITEM_SNAP,
+      animated: true,
+    });
+  }, [DAY_ITEM_SNAP, selectedIndex]);
+
+  function selectDayFromOffset(offsetX: number) {
+    const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
+    const target = dayStripItems[index];
+    if (!target) {
+      return;
+    }
+    setSelectedDate(target.date);
+  }
+
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, styles.contentGrow]}
-      showsVerticalScrollIndicator={false}
-      alwaysBounceVertical
-      bounces
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-    >
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.brandHeader}>
         <View style={styles.brandRow}>
           <View style={styles.brandLogo}>
@@ -245,15 +268,25 @@ export function TodayScreen({
         >
           <AppIcon name="back" size={24} color={theme.colors.semantic.textSecondary} />
         </Pressable>
-        <View style={styles.calendarDaysRow}>
+        <ScrollView
+          ref={dayStripRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.calendarDaysScroller}
+          contentContainerStyle={[styles.calendarDaysRow, { paddingHorizontal: dayStripSidePadding }, isCompactScreen && styles.calendarDaysRowCompact]}
+          snapToInterval={DAY_ITEM_SNAP}
+          decelerationRate="fast"
+          disableIntervalMomentum
+          onMomentumScrollEnd={(event) => {
+            selectDayFromOffset(event.nativeEvent.contentOffset.x);
+          }}
+        >
           {dayStripItems.map((day) => {
             const isSelected = toDateKey(day.date) === selectedDateKey;
             return (
               <Pressable
                 key={day.key}
-                style={[
-                  styles.dayCellSlot,
-                ]}
+                style={[styles.dayCellSlot, { width: DAY_ITEM_WIDTH }]}
                 onPress={() => setSelectedDate(day.date)}
               >
                 <View
@@ -289,7 +322,7 @@ export function TodayScreen({
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
         <Pressable
           style={[styles.calendarArrowButton, isCompactScreen && styles.calendarArrowButtonCompact]}
           hitSlop={18}
@@ -408,8 +441,8 @@ export function TodayScreen({
       <Text style={styles.hidden}>{`${t.today}-${selectedDate.getTime()}`}</Text>
 
       <Modal transparent visible={dateFilterVisible} animationType="slide" onRequestClose={() => setDateFilterVisible(false)}>
-        <Pressable style={styles.popupOverlay} onPress={() => undefined}>
-          <Pressable style={styles.dateFilterSheet} onPress={() => undefined}>
+        <Pressable style={styles.popupOverlay} onPress={() => setDateFilterVisible(false)}>
+          <View style={styles.dateFilterSheet}>
             <Text style={styles.dateFilterTitle}>{t.selectDate}</Text>
             <View style={styles.datePickerWrap}>
               <DateTimePicker
@@ -438,20 +471,20 @@ export function TodayScreen({
                 }}
               />
             </View>
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
 
       <Modal transparent visible={showFutureActionPopup} animationType="fade" onRequestClose={() => setShowFutureActionPopup(false)}>
         <Pressable style={styles.popupOverlay} onPress={() => setShowFutureActionPopup(false)}>
-          <Pressable style={styles.popupCard} onPress={() => undefined}>
+          <View style={styles.popupCard}>
             <View style={styles.popupBadge}>
               <Text style={styles.popupBadgeIcon}>!</Text>
             </View>
             <Text style={styles.popupTitle}>{t.futureDateActionTitle}</Text>
             <Text style={styles.popupDescription}>{t.futureDateActionDescription}</Text>
             <Button label={t.okay} onPress={() => setShowFutureActionPopup(false)} />
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
     </ScrollView>
@@ -466,9 +499,6 @@ const styles = StyleSheet.create({
   content: {
     gap: theme.spacing[16],
     paddingBottom: theme.spacing[16],
-  },
-  contentGrow: {
-    flexGrow: 1,
   },
   brandHeader: {
     position: 'relative',
@@ -686,15 +716,17 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   calendarDaysRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 0,
+    gap: theme.spacing[8],
+  },
+  calendarDaysRowCompact: {
+    gap: theme.spacing[4],
+  },
+  calendarDaysScroller: {
+    flex: 1,
   },
   dayCellSlot: {
-    width: '14.2857%',
-    maxWidth: '14.2857%',
     alignItems: 'center',
     justifyContent: 'center',
   },
