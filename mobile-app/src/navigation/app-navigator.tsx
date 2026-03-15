@@ -55,7 +55,6 @@ import { NotificationSettingsScreen } from '../screens/notification-settings-scr
 import { PlaceholderDetailScreen } from '../screens/placeholder-detail-screen';
 import { ProfileScreen } from '../screens/profile-screen';
 import { PremiumScreen } from '../screens/premium-screen';
-import { DonateScreen } from '../screens/donate-screen';
 import { ReminderPreferencesScreen } from '../screens/reminder-preferences-screen';
 import { SettingsScreen } from '../screens/settings-screen';
 import { TodayScreen } from '../screens/today-screen';
@@ -73,8 +72,7 @@ type OverlayScreen =
   | 'feedback'
   | 'email-verification'
   | 'about-us'
-  | 'premium'
-  | 'donate';
+  | 'premium';
 type AppPhase = 'splash' | 'signup' | 'signin' | 'app';
 
 const tabGlyph: Record<TabKey, AppIconName> = {
@@ -705,16 +703,6 @@ export function AppNavigator() {
     );
   }
 
-  if (overlayScreen === 'donate') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <DonateScreen locale={locale} onBack={() => setOverlayScreen('none')} />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -768,7 +756,6 @@ export function AppNavigator() {
           () => {
             void shareApplication();
           },
-          () => setOverlayScreen('donate'),
           () => setOverlayScreen('premium'),
           async (password) => {
             try {
@@ -866,7 +853,6 @@ function renderTab(
   onOpenFeedback: () => void,
   onLogout: () => void,
   onShareApp: () => void,
-  onOpenDonate: () => void,
   onOpenPremium: () => void,
   onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>,
   onOpenEmailVerification: () => void,
@@ -924,7 +910,6 @@ function renderTab(
           onOpenFeedback={onOpenFeedback}
           onLogout={onLogout}
           onShareApp={onShareApp}
-          onOpenDonate={onOpenDonate}
           onOpenPremium={onOpenPremium}
           onCancelAccount={onCancelAccount}
           isGuestMode={isGuestMode}

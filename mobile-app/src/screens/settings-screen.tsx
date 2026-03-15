@@ -22,7 +22,6 @@ type SettingsScreenProps = {
   onOpenFeedback: () => void;
   onLogout: () => void;
   onShareApp: () => void;
-  onOpenDonate: () => void;
   onOpenPremium: () => void;
   isGuestMode: boolean;
   onCancelAccount: (password: string) => Promise<{ ok: boolean; message: string }>;
@@ -47,7 +46,6 @@ export function SettingsScreen({
   onOpenFeedback,
   onLogout,
   onShareApp,
-  onOpenDonate,
   onOpenPremium,
   isGuestMode,
   onCancelAccount,
@@ -201,7 +199,6 @@ export function SettingsScreen({
         </Section>
 
         <Section title={t.aboutUs}>
-          <MenuRow testID="settings-donate-row" label={t.donate} onPress={onOpenDonate} />
           <MenuRow testID="settings-share-app-row" label={t.shareApp} onPress={onShareApp} />
           <View style={styles.versionRow}>
             <Text style={styles.rowTitle}>{t.version}</Text>

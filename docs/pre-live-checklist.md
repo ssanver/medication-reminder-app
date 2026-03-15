@@ -45,8 +45,6 @@
 - `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
 - `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
 - `EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID`
-- `EXPO_PUBLIC_DONATION_URL`
-  Kabul kriteri: Gercek ve ulasilabilir bagis sayfasina gitmeli.
 - `EXPO_PUBLIC_SUPPORT_EMAIL`
   Kabul kriteri: Destek ekibinin aktif kullandigi e-posta olmali.
 - `EXPO_PUBLIC_APP_STORE_URL`
@@ -89,7 +87,6 @@
 - RevenueCat offering `default` tanimli.
 - `premium-monthly` ve `premium-yearly` urunleri RevenueCat paketlerine eslendi.
 - Restore purchases iOS ve Android test hesaplariyla calisti.
-- Bagis linki dis tarayicida acildi.
 - Destek e-postasi cihazdan acildi.
 
 ## Auth ve Guvenlik Kontrolleri
@@ -103,7 +100,7 @@
 - Feedback kayitlarini kim takip edecek netlestirildi.
 - Production log izleme yontemi netlestirildi.
 - Crash ve hata izleme araci tanimli.
-- Destek e-postasi ve bagis linki manuel tiklama testi yapildi.
+- Destek e-postasi manuel tiklama testi yapildi.
 - Privacy policy ve terms linkleri store metadata ile uyumlu.
 - Fiziksel iPhone cihazda `My Meds` switch etkileşimi manuel dogrulandi.
 - Fiziksel iPhone cihazda `Add meds` saat secimi `10:00`, `23:00`, `00:00` senaryolariyla manuel dogrulandi.
@@ -116,7 +113,7 @@
 4. Premium preview degil, gercek store urunlerini listeliyor.
 5. Feedback gonderimi production API'ye yaziyor ve operasyon ekibi bu kaydi gorebiliyor.
 6. Paylasim linkleri gercek store sayfalarina gidiyor.
-7. Bagis ve destek aksiyonlari canli adresleri aciyor.
+7. Destek aksiyonlari canli adresleri aciyor.
 8. `My Meds` switch'i iPhone cihazda kaydirma ve dokunma ile stabil calisiyor.
 9. `Add meds` saat secimi iPhone cihazda kayma yapmadan kaydediyor.
 10. `Today` ekraninda `Take` aksiyonu sonrasinda `Geri Al` calisiyor.
