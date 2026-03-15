@@ -10,6 +10,7 @@ import { localizeFormLabel } from '../features/localization/medication-localizat
 import {
   alignDateToWeekday,
   buildCalendarCells,
+  buildTimeValue,
   formatDate,
   getAdvancedFrequencySummary,
   getOrderedWeekdayOptions,
@@ -43,6 +44,19 @@ type DateField = 'start' | 'end';
 
 function resolveFormDefaultIcon(formKey: string, formOptions: FormOption[]): string {
   return formOptions.find((item) => item.key === formKey)?.emoji ?? (formOptions[0]?.emoji ?? '');
+}
+
+function buildDraftTimeDate(hour: string, minute: string): Date {
+  const now = new Date();
+  return new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    Number(hour),
+    Number(minute),
+    0,
+    0,
+  );
 }
 
 export function AddMedsScreen({
@@ -82,8 +96,9 @@ export function AddMedsScreen({
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
   const [dateField, setDateField] = useState<DateField>('start');
-  const [draftTime, setDraftTime] = useState(new Date(2000, 0, 1, 9, 0, 0));
-  const draftTimeRef = useRef(draftTime);
+  const [draftTime, setDraftTime] = useState(() => buildDraftTimeDate('09', '00'));
+  const [draftTimeParts, setDraftTimeParts] = useState(() => splitTime('09:00'));
+  const draftTimeValueRef = useRef(buildTimeValue('09', '00'));
   const [editingTimeIndex, setEditingTimeIndex] = useState(0);
   const editingMedication = useMemo(
     () => (mode === 'edit' && medicationId ? getMedicationById(medicationId) : undefined),
@@ -455,10 +470,10 @@ export function AddMedsScreen({
   function openTimeSheet(index: number) {
     setEditingTimeIndex(index);
     const initialTime = doseTimes[index] ?? defaultDoseTimes[index] ?? '';
-    const { hour, minute } = splitTime(initialTime);
-    const nextDraftTime = new Date(2000, 0, 1, Number(hour), Number(minute), 0);
-    draftTimeRef.current = nextDraftTime;
-    setDraftTime(nextDraftTime);
+    const nextTimeParts = splitTime(initialTime);
+    draftTimeValueRef.current = buildTimeValue(nextTimeParts.hour, nextTimeParts.minute);
+    setDraftTimeParts(nextTimeParts);
+    setDraftTime(buildDraftTimeDate(nextTimeParts.hour, nextTimeParts.minute));
     setSheet('time');
   }
 
@@ -1117,12 +1132,17 @@ export function AddMedsScreen({
                     mode="time"
                     display={Platform.OS === 'ios' ? 'spinner' : 'spinner'}
                     locale={getLocaleTag(locale)}
+                    is24Hour
                     onChange={(_, date) => {
                       if (!date) {
                         return;
                       }
-                      draftTimeRef.current = date;
+                      const nextHour = `${date.getHours()}`.padStart(2, '0');
+                      const nextMinute = `${date.getMinutes()}`.padStart(2, '0');
+                      const normalized = buildTimeValue(nextHour, nextMinute);
+                      draftTimeValueRef.current = normalized;
                       setDraftTime(date);
+                      setDraftTimeParts({ hour: nextHour, minute: nextMinute });
                     }}
                   />
                 </View>
@@ -1130,10 +1150,7 @@ export function AddMedsScreen({
                 <Button
                   label={t.done}
                   onPress={() => {
-                    const selectedTime = draftTimeRef.current;
-                    const hour = `${selectedTime.getHours()}`.padStart(2, '0');
-                    const minute = `${selectedTime.getMinutes()}`.padStart(2, '0');
-                    const normalized = `${hour}:${minute}`;
+                    const normalized = draftTimeValueRef.current;
                     setDoseTimes((prev) => {
                       const next = [...prev];
                       next[editingTimeIndex] = normalized;

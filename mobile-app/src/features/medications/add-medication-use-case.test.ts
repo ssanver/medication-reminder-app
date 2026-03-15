@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getFrequencySummary, getWeekdayLabel, resolveFrequencyPreset } from './add-medication-use-case';
+import { buildTimeValue, getFrequencySummary, getWeekdayLabel, resolveFrequencyPreset, splitTime } from './add-medication-use-case';
 
 describe('add-medication-use-case/getFrequencySummary', () => {
   it('turkce metni interval ve doz sayisina gore uretir', () => {
@@ -29,5 +29,11 @@ describe('add-medication-use-case/getFrequencySummary', () => {
     expect(resolveFrequencyPreset('as-needed', 1, 1)).toBe('custom');
     expect(resolveFrequencyPreset('day', 2, 1)).toBe('custom');
     expect(resolveFrequencyPreset('week', 1, 1)).toBe('custom');
+  });
+
+  it('saat degerlerini 24 saat formatinda guvenle normalize eder', () => {
+    expect(splitTime('23:00')).toEqual({ hour: '23', minute: '00' });
+    expect(buildTimeValue('23', '00')).toBe('23:00');
+    expect(buildTimeValue('24', '75')).toBe('23:59');
   });
 });

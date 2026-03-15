@@ -175,3 +175,9 @@ export function splitTime(value: string): { hour: string; minute: string } {
   const minute = `${Math.min(59, Math.max(0, Number(rawMinute)))}`.padStart(2, '0');
   return { hour, minute };
 }
+
+export function buildTimeValue(hour: string, minute: string): string {
+  const normalizedHour = `${Math.min(23, Math.max(0, Number(hour)))}`.padStart(2, '0');
+  const normalizedMinute = `${Math.min(59, Math.max(0, Number(minute)))}`.padStart(2, '0');
+  return `${normalizedHour}:${normalizedMinute}`;
+}

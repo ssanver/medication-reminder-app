@@ -72,14 +72,18 @@ export function MedicationCard({
 
         {showToggle ? (
           <Pressable
-            style={[styles.toggleTrack, active && styles.toggleTrackActive]}
+            style={styles.radioToggle}
             onPress={(event) => {
               event.stopPropagation();
               onToggle?.(!active);
             }}
             hitSlop={8}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: active }}
           >
-            <View style={[styles.toggleThumb, active && styles.toggleThumbActive]} />
+            <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
+              {active ? <View style={styles.radioInner} /> : null}
+            </View>
           </Pressable>
         ) : null}
       </View>
@@ -185,25 +189,30 @@ const styles = StyleSheet.create({
   metaCompact: {
     ...theme.typography.bodyScale.xmMedium,
   },
-  toggleTrack: {
-    width: 44,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: theme.colors.neutral[200],
-    padding: 2,
+  radioToggle: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleTrackActive: {
-    backgroundColor: theme.colors.primaryBlue[500],
-  },
-  toggleThumb: {
+  radioOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.colors.semantic.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  toggleThumbActive: {
-    alignSelf: 'flex-end',
+  radioOuterActive: {
+    borderColor: theme.colors.primaryBlue[500],
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.primaryBlue[500],
   },
   metaMuted: {
     ...theme.typography.captionScale.lRegular,
