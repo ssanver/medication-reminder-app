@@ -74,9 +74,13 @@ export function MedicationCard({
           <Pressable
             style={styles.radioToggle}
             onPress={(event) => {
+              if (!onToggle) {
+                return;
+              }
               event.stopPropagation();
               onToggle?.(!active);
             }}
+            disabled={!onToggle}
             hitSlop={8}
             accessibilityRole="radio"
             accessibilityState={{ checked: active }}

@@ -119,7 +119,6 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
                 showToggle
                 compact
                 medEmoji={item.emoji}
-                onToggle={(value) => applyMedicationActiveState(item.id, value)}
                 onPress={() => onOpenMedicationDetails(item.id)}
               />
             </SwipeToDeleteRow>
