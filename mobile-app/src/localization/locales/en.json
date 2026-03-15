@@ -328,6 +328,7 @@
   "endDate": "End date",
   "unlimited": "Unlimited",
   "clear": "Clear",
+  "undo": "Undo",
   "endDateBeforeStart": "End date cannot be earlier than start date.",
   "doseTimeLabel": "Dose {{index}} time",
   "doseTime": "Dose time",

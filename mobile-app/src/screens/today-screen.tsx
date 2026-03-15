@@ -451,7 +451,7 @@ export function TodayScreen({
                       ? t.take
                       : t.markAsTaken
                   : item.status === 'taken'
-                    ? t.taken
+                    ? t.undo
                     : t.take
               }
               actionVariant={
@@ -460,7 +460,7 @@ export function TodayScreen({
                     ? 'danger'
                     : 'success'
                   : item.status === 'taken'
-                    ? 'success'
+                    ? 'danger'
                     : item.status === 'missed'
                       ? 'danger'
                       : 'filled'
@@ -482,6 +482,12 @@ export function TodayScreen({
                   } else {
                     void setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
                   }
+                  setActionWarning(null);
+                  return;
+                }
+
+                if (item.status === 'taken') {
+                  void clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
                   setActionWarning(null);
                   return;
                 }

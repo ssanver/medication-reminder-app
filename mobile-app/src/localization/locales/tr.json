@@ -328,6 +328,7 @@
   "endDate": "Bitiş tarihi",
   "unlimited": "Süresiz",
   "clear": "Sıfırla",
+  "undo": "Geri Al",
   "endDateBeforeStart": "Bitiş tarihi başlangıç tarihinden önce olamaz.",
   "doseTimeLabel": "{{index}}. doz saati",
   "doseTime": "Doz saati",
