@@ -5,6 +5,7 @@ node_modules/
 .expo/
 dist/
 mobile-app/build/
+mobile-app/build-ipa/
 mobile-app/artifacts/
 # Keep simulator build output tracked in git
 !mobile-app/ios/build-sim/
