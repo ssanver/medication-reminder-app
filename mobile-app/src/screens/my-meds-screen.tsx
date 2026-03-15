@@ -1,5 +1,5 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { InlineAdCard } from '../components/ui/inline-ad-card';
 import { MedicationCard } from '../components/ui/medication-card';
@@ -119,6 +119,7 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
                 showToggle
                 compact
                 medEmoji={item.emoji}
+                onToggle={(value) => applyMedicationActiveState(item.id, value)}
                 onPress={() => onOpenMedicationDetails(item.id)}
               />
             </SwipeToDeleteRow>
@@ -140,51 +141,50 @@ type SwipeToDeleteRowProps = {
 
 function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: SwipeToDeleteRowProps) {
   const actionWidth = 132;
-  const [isOpen, setIsOpen] = useState(false);
-  const translateX = useState(() => new Animated.Value(0))[0];
+  const [rowWidth, setRowWidth] = useState(0);
+  const scrollRef = useRef<ScrollView | null>(null);
   const actionButtonColor = actionVariant === 'deactivate' ? theme.colors.error[500] : theme.colors.success[500];
   const actionIconName = actionVariant === 'deactivate' ? 'close' : 'check';
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > 2 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.8,
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 2 &&
-          Math.abs(gesture.dy) < 32 &&
-          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.8,
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderMove: (_, gesture) => {
-          const base = isOpen ? -actionWidth : 0;
-          const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
-          translateX.setValue(next);
-        },
-        onPanResponderRelease: (_, gesture) => {
-          const base = isOpen ? -actionWidth : 0;
-          const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
-          const shouldOpen = next < -actionWidth * 0.3 || gesture.vx < -0.22;
-          Animated.spring(translateX, {
-            toValue: shouldOpen ? -actionWidth : 0,
-            bounciness: 0,
-            speed: 20,
-            useNativeDriver: true,
-          }).start(() => setIsOpen(shouldOpen));
-        },
-      }),
-    [actionWidth, isOpen, translateX],
-  );
+  function snapToNearest(offsetX: number) {
+    const nextX = offsetX > actionWidth * 0.45 ? actionWidth : 0;
+    scrollRef.current?.scrollTo({ x: nextX, animated: true });
+  }
 
   return (
-    <View style={styles.swipeContainer}>
-      <View style={[styles.swipeDeleteAction, { width: actionWidth }]}>
+    <View
+      style={styles.swipeContainer}
+      onLayout={(event) => {
+        const nextWidth = event.nativeEvent.layout.width;
+        if (nextWidth > 0 && nextWidth !== rowWidth) {
+          setRowWidth(nextWidth);
+        }
+      }}
+    >
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        bounces={false}
+        directionalLockEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        snapToOffsets={[0, actionWidth]}
+        disableIntervalMomentum
+        contentContainerStyle={styles.swipeScrollContent}
+        onScrollEndDrag={(event) => {
+          snapToNearest(event.nativeEvent.contentOffset.x);
+        }}
+        onMomentumScrollEnd={(event) => {
+          snapToNearest(event.nativeEvent.contentOffset.x);
+        }}
+      >
+        <View style={[styles.swipeCard, rowWidth > 0 && { width: rowWidth }]}>{children}</View>
         <Pressable style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }]} onPress={onAction} hitSlop={12}>
           <AppIcon name={actionIconName} size={18} color="#FFFFFF" />
           <Text style={styles.swipeDeleteButtonText}>{actionLabel}</Text>
         </Pressable>
-      </View>
-      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
-        {children}
-      </Animated.View>
+      </ScrollView>
     </View>
   );
 }
@@ -213,15 +213,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius[16],
     overflow: 'hidden',
   },
-  swipeDeleteAction: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingRight: 0,
+  swipeScrollContent: {
+    alignItems: 'stretch',
   },
   swipeDeleteButton: {
     width: 132,
-    minHeight: 68,
+    minHeight: 100,
     borderTopRightRadius: theme.radius[16],
     borderBottomRightRadius: theme.radius[16],
     alignItems: 'center',
@@ -234,6 +231,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     paddingHorizontal: theme.spacing[4],
+  },
+  swipeCard: {
+    flex: 1,
   },
   emptyCard: {
     borderRadius: theme.radius[16],

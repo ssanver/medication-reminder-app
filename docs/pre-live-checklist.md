@@ -22,6 +22,14 @@
 5. Premium store entegrasyonu henuz canli anahtarlarla tamamlanmadi.
    Kabul kriteri: RevenueCat entitlement, App Store Connect urunleri ve Google Play subscription urunleri eslenmis olmali.
    Risk: Premium kartlari preview davranisinda kalir.
+6. `Add meds` ekranindaki iOS saat seciminde saat kaymasi regresyonu tekrar test edilmeli.
+   Dosya: `mobile-app/src/screens/add-meds-screen.tsx`
+   Kabul kriteri: `10:00`, `23:00` ve `00:00` secimleri kaydetme sonrasi ayni kalmali.
+   Risk: Tarih/saat secicide sabit tarih veya timezone kaynakli kayma tekrar ederse hatali doz saati olusur.
+7. `My Meds` ekranindaki aktif/pasif switch davranisi fiziksel cihazda manuel test edilmeli.
+   Dosyalar: `mobile-app/src/components/ui/medication-card.tsx`, `mobile-app/src/screens/my-meds-screen.tsx`
+   Kabul kriteri: Switch'e basinca veya kaydirinca sadece durum degismeli; detay sayfasina gitmemeli.
+   Risk: Kart dokunusu ile switch dokunusu carpisirsa kullanici ilac durumunu guvenilir sekilde degistiremez.
 
 ## Mobil Ortam Ayarlari
 - `EXPO_PUBLIC_API_BASE_URL`
@@ -93,6 +101,8 @@
 - Crash ve hata izleme araci tanimli.
 - Destek e-postasi ve bagis linki manuel tiklama testi yapildi.
 - Privacy policy ve terms linkleri store metadata ile uyumlu.
+- Fiziksel iPhone cihazda `My Meds` switch etkileşimi manuel dogrulandi.
+- Fiziksel iPhone cihazda `Add meds` saat secimi `10:00`, `23:00`, `00:00` senaryolariyla manuel dogrulandi.
 
 ## Cikis Gunu Son Kontrol
 1. Production env dosyalari / CI secrets guncel.
@@ -102,6 +112,8 @@
 5. Feedback gonderimi production API'ye yaziyor ve operasyon ekibi bu kaydi gorebiliyor.
 6. Paylasim linkleri gercek store sayfalarina gidiyor.
 7. Bagis ve destek aksiyonlari canli adresleri aciyor.
+8. `My Meds` switch'i iPhone cihazda kaydirma ve dokunma ile stabil calisiyor.
+9. `Add meds` saat secimi iPhone cihazda kayma yapmadan kaydediyor.
 
 ## Notlar
 - Bu liste release'e yakin her seferinde tekrar gozden gecirilmeli.

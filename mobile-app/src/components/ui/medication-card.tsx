@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../../features/localization/localization';
 import { theme } from '../../theme';
@@ -49,7 +49,7 @@ export function MedicationCard({
   const resolvedActionLabel = actionLabel ?? t.take;
   const fontScale = useAppFontScale();
   return (
-    <Pressable style={[styles.card, compact && styles.cardCompact, !active && styles.cardDisabled]} onPress={onPress}>
+    <View style={[styles.card, compact && styles.cardCompact, !active && styles.cardDisabled]}>
       {statusBadge ? (
         <View style={[styles.badge, statusBadge === 'missed' ? styles.badgeMissed : styles.badgeOnTime]}>
           <Text style={[styles.badgeText, { fontSize: theme.typography.captionScale.mRegular.fontSize * fontScale }]}>
@@ -59,36 +59,32 @@ export function MedicationCard({
       ) : null}
 
       <View style={styles.topRow}>
-        <View style={[styles.avatar, compact && styles.avatarCompact]}>
-          <Text style={[styles.avatarIcon, compact && styles.avatarIconCompact]}>{medEmoji}</Text>
-        </View>
+        <Pressable style={styles.contentPressable} onPress={onPress} disabled={!onPress}>
+          <View style={[styles.avatar, compact && styles.avatarCompact]}>
+            <Text style={[styles.avatarIcon, compact && styles.avatarIconCompact]}>{medEmoji}</Text>
+          </View>
 
-        <View style={styles.content}>
-          <Text style={[styles.title, { fontSize: theme.typography.bodyScale.mBold.fontSize * fontScale }, compact && styles.titleCompact]}>{name}</Text>
-          <Text style={[styles.meta, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }, compact && styles.metaCompact]}>{details}</Text>
-          <Text style={[styles.meta, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }, compact && styles.metaCompact]}>{schedule}</Text>
-          {remaining ? <Text style={[styles.metaMuted, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }]}>{remaining}</Text> : null}
-        </View>
+          <View style={styles.content}>
+            <Text style={[styles.title, { fontSize: theme.typography.bodyScale.mBold.fontSize * fontScale }, compact && styles.titleCompact]}>{name}</Text>
+            <Text style={[styles.meta, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }, compact && styles.metaCompact]}>{details}</Text>
+            <Text style={[styles.meta, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }, compact && styles.metaCompact]}>{schedule}</Text>
+            {remaining ? <Text style={[styles.metaMuted, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }]}>{remaining}</Text> : null}
+          </View>
+        </Pressable>
 
         {showToggle ? (
-          <Pressable
-            style={styles.radioToggle}
-            onPress={(event) => {
-              if (!onToggle) {
-                return;
-              }
-              event.stopPropagation();
-              onToggle?.(!active);
-            }}
+          <Switch
+            value={active}
+            onValueChange={(value) => onToggle?.(value)}
             disabled={!onToggle}
-            hitSlop={8}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: active }}
-          >
-            <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
-              {active ? <View style={styles.radioInner} /> : null}
-            </View>
-          </Pressable>
+            trackColor={{
+              false: theme.colors.neutral[300],
+              true: theme.colors.primaryBlue[500],
+            }}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor={theme.colors.neutral[300]}
+            style={styles.switchWrap}
+          />
         ) : null}
       </View>
 
@@ -109,7 +105,7 @@ export function MedicationCard({
           />
         </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -133,6 +129,12 @@ const styles = StyleSheet.create({
     opacity: 0.58,
   },
   topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[8],
+  },
+  contentPressable: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing[8],
@@ -193,30 +195,8 @@ const styles = StyleSheet.create({
   metaCompact: {
     ...theme.typography.bodyScale.xmMedium,
   },
-  radioToggle: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: theme.colors.semantic.borderSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  radioOuterActive: {
-    borderColor: theme.colors.primaryBlue[500],
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.primaryBlue[500],
+  switchWrap: {
+    marginLeft: theme.spacing[4],
   },
   metaMuted: {
     ...theme.typography.captionScale.lRegular,
