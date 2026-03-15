@@ -1,7 +1,7 @@
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { resolveUserReference } from '../auth/user-reference';
 import { apiRequestVoid } from '../network/api-client';
+import { getAppVersionForPayload } from '../app/app-version';
 
 type ReportSystemErrorInput = {
   errorType: string;
@@ -10,7 +10,7 @@ type ReportSystemErrorInput = {
 };
 
 function getAppVersion(): string {
-  return Constants.expoConfig?.version ?? '0.1.0';
+  return getAppVersionForPayload();
 }
 
 function getLocale(): string {

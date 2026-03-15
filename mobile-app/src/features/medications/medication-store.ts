@@ -3,6 +3,7 @@ import { loadAccessToken } from '../auth/auth-session-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { type Locale } from '../localization/localization';
+import { buildFrequencyLabel } from './frequency-labels';
 
 export type DoseStatus = 'taken' | 'missed';
 
@@ -75,28 +76,11 @@ function toFrequencyLabel(
   intervalCount: number,
   cycleOffDays = 0,
 ): string {
-  if (intervalUnit === 'as-needed') {
-    return 'Every 1 Day';
-  }
-
-  if (intervalUnit === 'hour') {
-    return `Every ${Math.max(1, intervalCount)} Hour${Math.max(1, intervalCount) > 1 ? 's' : ''}`;
-  }
-
-  if (intervalUnit === 'cycle') {
-    return `Cycle ${Math.max(1, intervalCount)}/${Math.max(0, cycleOffDays)}`;
-  }
-
-  if (intervalUnit === 'week') {
-    return intervalCount === 1 ? 'Every Week' : `Every ${intervalCount} Weeks`;
-  }
-  if (intervalCount === 3) {
-    return 'Every 3 Days';
-  }
-  if (intervalCount === 2) {
-    return 'Every 2 Days';
-  }
-  return 'Every 1 Day';
+  return buildFrequencyLabel({
+    intervalUnit,
+    intervalCount,
+    cycleOffDays,
+  });
 }
 
 function parseRuleFromFrequencyLabel(label: string): { intervalUnit: Medication['intervalUnit']; intervalCount: number; cycleOffDays?: number } {

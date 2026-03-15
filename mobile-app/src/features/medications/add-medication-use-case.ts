@@ -1,5 +1,6 @@
 import { localizeFrequencyLabel } from '../localization/medication-localization';
 import { getLocaleTag, getTranslations, type Locale } from '../localization/localization';
+import { buildDayFrequencyLabel } from './frequency-labels';
 
 export type WizardStep = 'name' | 'form-dose' | 'frequency' | 'note';
 export type IntervalUnit = 'day' | 'week' | 'hour' | 'cycle' | 'as-needed';
@@ -61,23 +62,7 @@ export function buildCalendarCells(month: Date, weekStartsOn: WeekStartsOn = 'mo
 }
 
 export function toFrequencyLabel(dayInterval: number): string {
-  if (dayInterval === 2) {
-    return 'Every 2 Days';
-  }
-
-  if (dayInterval === 3) {
-    return 'Every 3 Days';
-  }
-
-  if (dayInterval === 7) {
-    return 'Every 7 Days';
-  }
-
-  if (dayInterval === 14) {
-    return 'Every 14 Days';
-  }
-
-  return 'Every 1 Day';
+  return buildDayFrequencyLabel(dayInterval);
 }
 
 export function getDayIntervalLabel(dayInterval: number, locale: Locale): string {

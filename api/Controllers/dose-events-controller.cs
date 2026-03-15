@@ -546,12 +546,7 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
             return intervalCount == 1 ? "Every Week" : $"Every {intervalCount} Weeks";
         }
 
-        return intervalCount switch
-        {
-            3 => "Every 3 Days",
-            2 => "Every 2 Days",
-            _ => "Every 1 Day",
-        };
+        return intervalCount == 1 ? "Every 1 Day" : $"Every {intervalCount} Days";
     }
 
     private static int ParseCycleOffDays(string? raw)

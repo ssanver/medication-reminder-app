@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { getMedicationById, updateMedication } from '../medication-store';
+import { buildDayFrequencyLabel } from '../frequency-labels';
 
 export function useMedicationDetailsScreenState(medicationId: string, savedText: string) {
   const medication = useMemo(() => getMedicationById(medicationId), [medicationId]);
   const [name, setName] = useState(medication?.name ?? '');
   const [dosage, setDosage] = useState(medication?.dosage ?? '1');
-  const [frequencyLabel, setFrequencyLabel] = useState(medication?.frequencyLabel ?? 'Every 1 Day');
+  const [frequencyLabel, setFrequencyLabel] = useState(medication?.frequencyLabel ?? buildDayFrequencyLabel(1));
   const [time, setTime] = useState(medication?.time ?? '09:00');
   const [note, setNote] = useState(medication?.note ?? '');
   const [message, setMessage] = useState('');

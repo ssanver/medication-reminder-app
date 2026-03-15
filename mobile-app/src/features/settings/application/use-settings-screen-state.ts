@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import Constants from 'expo-constants';
 import { getTranslations, type Locale } from '../../localization/localization';
 import { toShortDisplayName } from '../../profile/display-name';
 import { resolveProfileAvatarEmoji } from '../../profile/profile-avatar';
 import { loadProfile } from '../../profile/profile-store';
+import { getDisplayAppVersion } from '../../app/app-version';
 
 type UseSettingsScreenStateInput = {
   locale: Locale;
@@ -54,13 +54,7 @@ export function useSettingsScreenState({ locale, fontScale, weekStartsOn }: UseS
   const profileAvatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
   const isAppearanceDirty = draftLocale !== locale || draftFontScale !== fontScale || draftWeekStartsOn !== weekStartsOn;
 
-  const version = useMemo(() => {
-    const expoVersion = Constants.expoConfig?.version ?? '1.0.0';
-    const iosBuild = Constants.expoConfig?.ios?.buildNumber;
-    const androidBuild = Constants.expoConfig?.android?.versionCode;
-    const buildMeta = iosBuild ?? (typeof androidBuild === 'number' ? `${androidBuild}` : 'dev');
-    return `Version ${expoVersion} (${buildMeta})`;
-  }, []);
+  const version = useMemo(() => getDisplayAppVersion(), []);
 
   return {
     languagePickerOpen,
