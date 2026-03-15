@@ -880,6 +880,7 @@ function renderTab(
           locale={locale}
           fontScale={fontScale}
           weekStartsOn={weekStartsOn}
+          isActive
           onOpenAddMedication={onOpenAddMeds}
           onOpenSignUp={onOpenSignUp}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}
@@ -941,6 +942,7 @@ function renderTab(
           locale={locale}
           fontScale={fontScale}
           weekStartsOn={weekStartsOn}
+          isActive
           onOpenAddMedication={onOpenAddMeds}
           onOpenSignUp={onOpenSignUp}
           remindersEnabled={medicationRemindersEnabled && notificationsEnabled}

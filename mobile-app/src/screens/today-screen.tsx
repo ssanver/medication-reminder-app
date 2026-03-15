@@ -19,6 +19,7 @@ type TodayScreenProps = {
   remindersEnabled: boolean;
   snoozeMinutes: number;
   isGuestMode: boolean;
+  isActive: boolean;
   showEmailVerificationAlert: boolean;
   onOpenAddMedication: () => void;
   onOpenSignUp: () => void;
@@ -49,6 +50,7 @@ export function TodayScreen({
   remindersEnabled,
   snoozeMinutes,
   isGuestMode,
+  isActive,
   showEmailVerificationAlert,
   onOpenAddMedication,
   onOpenSignUp,
@@ -85,9 +87,11 @@ export function TodayScreen({
   const [dateFilterVisible, setDateFilterVisible] = useState(false);
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
+  const [isDayStripDragging, setIsDayStripDragging] = useState(false);
   const DAY_ITEM_SIZE = isCompactScreen ? 38 : 44;
   const dayStripRef = useRef<ScrollView | null>(null);
   const dayAnchorRef = useRef(new Date());
+  const isProgrammaticDayScrollRef = useRef(false);
   const DAY_RANGE = 365;
   const DAY_ITEM_WIDTH = isCompactScreen ? 44 : 52;
   const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
@@ -142,11 +146,37 @@ export function TodayScreen({
   }, [selectedDate]);
 
   useEffect(() => {
+    isProgrammaticDayScrollRef.current = true;
     dayStripRef.current?.scrollTo({
       x: selectedIndex * DAY_ITEM_SNAP,
       animated: true,
     });
+
+    const timeoutId = setTimeout(() => {
+      isProgrammaticDayScrollRef.current = false;
+    }, 250);
+
+    return () => clearTimeout(timeoutId);
   }, [DAY_ITEM_SNAP, selectedIndex]);
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      isProgrammaticDayScrollRef.current = true;
+      dayStripRef.current?.scrollTo({
+        x: selectedIndex * DAY_ITEM_SNAP,
+        animated: false,
+      });
+      setTimeout(() => {
+        isProgrammaticDayScrollRef.current = false;
+      }, 50);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [DAY_ITEM_SNAP, isActive, selectedIndex]);
 
   function selectDayFromOffset(offsetX: number) {
     const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
@@ -158,7 +188,12 @@ export function TodayScreen({
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      scrollEnabled={!isDayStripDragging}
+    >
       <View style={styles.brandHeader}>
         <View style={styles.brandRow}>
           <View style={styles.brandLogo}>
@@ -277,7 +312,16 @@ export function TodayScreen({
           snapToInterval={DAY_ITEM_SNAP}
           decelerationRate="fast"
           disableIntervalMomentum
+          directionalLockEnabled
+          nestedScrollEnabled
+          scrollEventThrottle={16}
+          onScrollBeginDrag={() => setIsDayStripDragging(true)}
+          onScrollEndDrag={() => setIsDayStripDragging(false)}
           onMomentumScrollEnd={(event) => {
+            setIsDayStripDragging(false);
+            if (isProgrammaticDayScrollRef.current) {
+              return;
+            }
             selectDayFromOffset(event.nativeEvent.contentOffset.x);
           }}
         >
