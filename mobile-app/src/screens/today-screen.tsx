@@ -92,6 +92,8 @@ export function TodayScreen({
   const dayStripRef = useRef<ScrollView | null>(null);
   const dayAnchorRef = useRef(new Date());
   const isProgrammaticDayScrollRef = useRef(false);
+  const isUserDayScrollRef = useRef(false);
+  const programmaticDayScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const DAY_RANGE = 365;
   const DAY_ITEM_WIDTH = isCompactScreen ? 44 : 52;
   const DAY_ITEM_GAP = isCompactScreen ? theme.spacing[4] : theme.spacing[8];
@@ -136,6 +138,25 @@ export function TodayScreen({
   }, []);
   const isTodaySelected = selectedDateKey === toDateKey(todayDate);
 
+  function resetProgrammaticDayScroll(delay = 250) {
+    if (programmaticDayScrollTimeoutRef.current) {
+      clearTimeout(programmaticDayScrollTimeoutRef.current);
+    }
+    programmaticDayScrollTimeoutRef.current = setTimeout(() => {
+      isProgrammaticDayScrollRef.current = false;
+      programmaticDayScrollTimeoutRef.current = null;
+    }, delay);
+  }
+
+  function scrollDayStripToIndex(index: number, animated: boolean) {
+    isProgrammaticDayScrollRef.current = true;
+    dayStripRef.current?.scrollTo({
+      x: index * DAY_ITEM_SNAP,
+      animated,
+    });
+    resetProgrammaticDayScroll(animated ? 250 : 80);
+  }
+
   useEffect(() => {
     const now = new Date();
     setSelectedDate(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -146,17 +167,7 @@ export function TodayScreen({
   }, [selectedDate]);
 
   useEffect(() => {
-    isProgrammaticDayScrollRef.current = true;
-    dayStripRef.current?.scrollTo({
-      x: selectedIndex * DAY_ITEM_SNAP,
-      animated: true,
-    });
-
-    const timeoutId = setTimeout(() => {
-      isProgrammaticDayScrollRef.current = false;
-    }, 250);
-
-    return () => clearTimeout(timeoutId);
+    scrollDayStripToIndex(selectedIndex, true);
   }, [DAY_ITEM_SNAP, selectedIndex]);
 
   useEffect(() => {
@@ -165,18 +176,19 @@ export function TodayScreen({
     }
 
     const timeoutId = setTimeout(() => {
-      isProgrammaticDayScrollRef.current = true;
-      dayStripRef.current?.scrollTo({
-        x: selectedIndex * DAY_ITEM_SNAP,
-        animated: false,
-      });
-      setTimeout(() => {
-        isProgrammaticDayScrollRef.current = false;
-      }, 50);
+      scrollDayStripToIndex(selectedIndex, false);
     }, 0);
 
     return () => clearTimeout(timeoutId);
   }, [DAY_ITEM_SNAP, isActive, selectedIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (programmaticDayScrollTimeoutRef.current) {
+        clearTimeout(programmaticDayScrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   function selectDayFromOffset(offsetX: number) {
     const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
@@ -315,14 +327,38 @@ export function TodayScreen({
           directionalLockEnabled
           nestedScrollEnabled
           scrollEventThrottle={16}
-          onScrollBeginDrag={() => setIsDayStripDragging(true)}
-          onScrollEndDrag={() => setIsDayStripDragging(false)}
+          onLayout={() => {
+            scrollDayStripToIndex(selectedIndex, false);
+          }}
+          onContentSizeChange={() => {
+            if (!isActive) {
+              return;
+            }
+            scrollDayStripToIndex(selectedIndex, false);
+          }}
+          onScrollBeginDrag={() => {
+            isUserDayScrollRef.current = true;
+            setIsDayStripDragging(true);
+          }}
+          onScrollEndDrag={(event) => {
+            setIsDayStripDragging(false);
+            if (isProgrammaticDayScrollRef.current || !isUserDayScrollRef.current) {
+              return;
+            }
+
+            const velocity = event.nativeEvent.velocity?.x ?? 0;
+            if (Math.abs(velocity) < 0.05) {
+              selectDayFromOffset(event.nativeEvent.contentOffset.x);
+              isUserDayScrollRef.current = false;
+            }
+          }}
           onMomentumScrollEnd={(event) => {
             setIsDayStripDragging(false);
-            if (isProgrammaticDayScrollRef.current) {
+            if (isProgrammaticDayScrollRef.current || !isUserDayScrollRef.current) {
               return;
             }
             selectDayFromOffset(event.nativeEvent.contentOffset.x);
+            isUserDayScrollRef.current = false;
           }}
         >
           {dayStripItems.map((day) => {
