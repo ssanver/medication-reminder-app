@@ -9,43 +9,39 @@ function parseDate(dateKey: string): Date | null {
 }
 
 export async function handleReminderTakeNow(reminder: ReminderPrompt): Promise<void> {
-  const date = parseDate(reminder.dateKey);
-  if (date) {
-    await setDoseStatus(reminder.medicationId, date, 'taken', reminder.scheduledTime);
-  }
-
-  await recordNotificationHistory({
-    medicationId: reminder.medicationId,
-    dateKey: reminder.dateKey,
-    scheduledTime: reminder.scheduledTime,
-    medicationName: reminder.medicationName,
-    medicationDetails: reminder.medicationDetails,
-    action: 'take-now',
-  });
-
   dismissReminderPrompt();
+  const date = parseDate(reminder.dateKey);
+  await Promise.allSettled([
+    date ? setDoseStatus(reminder.medicationId, date, 'taken', reminder.scheduledTime) : Promise.resolve(),
+    recordNotificationHistory({
+      medicationId: reminder.medicationId,
+      dateKey: reminder.dateKey,
+      scheduledTime: reminder.scheduledTime,
+      medicationName: reminder.medicationName,
+      medicationDetails: reminder.medicationDetails,
+      action: 'take-now',
+    }),
+  ]);
 }
 
 export async function handleReminderSkip(reminder: ReminderPrompt): Promise<void> {
-  const date = parseDate(reminder.dateKey);
-  if (date) {
-    await setDoseStatus(reminder.medicationId, date, 'missed', reminder.scheduledTime);
-  }
-
-  await recordNotificationHistory({
-    medicationId: reminder.medicationId,
-    dateKey: reminder.dateKey,
-    scheduledTime: reminder.scheduledTime,
-    medicationName: reminder.medicationName,
-    medicationDetails: reminder.medicationDetails,
-    action: 'skip',
-  });
-
-  await scheduleDoseFollowUpReminder(reminder, 5);
   dismissReminderPrompt();
+  const date = parseDate(reminder.dateKey);
+  await Promise.allSettled([
+    date ? setDoseStatus(reminder.medicationId, date, 'missed', reminder.scheduledTime) : Promise.resolve(),
+    recordNotificationHistory({
+      medicationId: reminder.medicationId,
+      dateKey: reminder.dateKey,
+      scheduledTime: reminder.scheduledTime,
+      medicationName: reminder.medicationName,
+      medicationDetails: reminder.medicationDetails,
+      action: 'skip',
+    }),
+    scheduleDoseFollowUpReminder(reminder, 5),
+  ]);
 }
 
 export async function handleReminderSnooze(reminder: ReminderPrompt, snoozeMinutes: number, locale: Locale): Promise<void> {
-  await scheduleDoseFollowUpReminder(reminder, snoozeMinutes, locale);
   dismissReminderPrompt();
+  await scheduleDoseFollowUpReminder(reminder, snoozeMinutes, locale);
 }

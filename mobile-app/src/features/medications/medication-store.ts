@@ -154,6 +154,38 @@ async function persist(): Promise<void> {
   ]);
 }
 
+function applyDoseEventState(medicationId: string, dateKey: string, scheduledTime: string, status: DoseStatus): void {
+  const existing = state.events.find(
+    (item) => item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === scheduledTime,
+  );
+
+  if (existing) {
+    state = {
+      ...state,
+      events: state.events.map((item) =>
+        item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === scheduledTime
+          ? { ...item, status }
+          : item,
+      ),
+    };
+    return;
+  }
+
+  state = {
+    ...state,
+    events: [...state.events, { medicationId, dateKey, scheduledTime, status }],
+  };
+}
+
+function clearDoseEventState(medicationId: string, dateKey: string, scheduledTime: string): void {
+  state = {
+    ...state,
+    events: state.events.filter(
+      (item) => !(item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === scheduledTime),
+    ),
+  };
+}
+
 export async function clearMedicationStore(): Promise<void> {
   try {
     await Promise.all([
@@ -729,7 +761,16 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
   const accessToken = await loadAccessToken();
-  if (accessToken) {
+  const previousState = state;
+  applyDoseEventState(medicationId, dateKey, normalizedScheduledTime, status);
+  emit();
+  await persist();
+
+  if (!accessToken) {
+    return;
+  }
+
+  try {
     await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
       method: 'POST',
       body: {
@@ -740,36 +781,28 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
       },
       correlationPrefix: 'dose-events-action',
     });
+  } catch (error) {
+    state = previousState;
+    emit();
+    await persist();
+    throw error;
   }
-  const existing = state.events.find(
-    (item) => item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime,
-  );
-
-  if (existing) {
-    state = {
-      ...state,
-      events: state.events.map((item) =>
-        item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime
-          ? { ...item, status }
-          : item,
-      ),
-    };
-  } else {
-    state = {
-      ...state,
-      events: [...state.events, { medicationId, dateKey, scheduledTime: normalizedScheduledTime, status }],
-    };
-  }
-
-  emit();
-  await persist();
 }
 
 export async function clearDoseStatus(medicationId: string, date: Date, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
   const accessToken = await loadAccessToken();
-  if (accessToken) {
+  const previousState = state;
+  clearDoseEventState(medicationId, dateKey, normalizedScheduledTime);
+  emit();
+  await persist();
+
+  if (!accessToken) {
+    return;
+  }
+
+  try {
     await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
       method: 'POST',
       body: {
@@ -780,15 +813,12 @@ export async function clearDoseStatus(medicationId: string, date: Date, schedule
       },
       correlationPrefix: 'dose-events-action-clear',
     });
+  } catch (error) {
+    state = previousState;
+    emit();
+    await persist();
+    throw error;
   }
-  state = {
-    ...state,
-    events: state.events.filter(
-      (item) => !(item.medicationId === medicationId && item.dateKey === dateKey && item.scheduledTime === normalizedScheduledTime),
-    ),
-  };
-  emit();
-  await persist();
 }
 
 export type ScheduledDoseItem = {
