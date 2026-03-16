@@ -49,8 +49,6 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
 
       <View style={styles.plansWrap}>
         {offers.map((offer) => {
-          const localized =
-            'localized' in offer ? offer.localized[locale] ?? offer.localized.en ?? Object.values(offer.localized)[0] : offer;
           const isSelected = status.activePlanId === offer.id;
           const isLoading = loadingPlanId === offer.id;
           const isUnavailable = purchaseMode === 'disabled';
@@ -62,6 +60,10 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
               onPress={() => {
                 void (async () => {
                   const result = await selectOffer(offer.id);
+                  if (result === 'cancelled') {
+                    return;
+                  }
+
                   if (result === 'guest' || result === 'unavailable' || result === 'error') {
                     const message =
                       result === 'guest'
@@ -75,15 +77,15 @@ export function PremiumScreen({ locale, isGuestMode, onBack, onOpenSignUp }: Pre
               }}
             >
               <View style={styles.planHeader}>
-                <Text style={styles.planTitle}>{localized?.title ?? offer.id}</Text>
+                <Text style={styles.planTitle}>{offer.title}</Text>
                 {isSelected ? <Text style={styles.planTag}>{t.active}</Text> : null}
               </View>
-              <Text style={styles.planPrice}>{localized?.priceLabel ?? ''}</Text>
-              {localized?.badge ? <Text style={styles.planBadge}>{localized.badge}</Text> : null}
-              <Text style={styles.planHint}>{localized?.description ?? t.removeAdsDescription}</Text>
+              <Text style={styles.planPrice}>{offer.priceLabel}</Text>
+              {offer.badge ? <Text style={styles.planBadge}>{offer.badge}</Text> : null}
+              <Text style={styles.planHint}>{offer.description || t.removeAdsDescription}</Text>
               <View style={styles.planCtaRow}>
                 <Text style={[styles.planCta, isUnavailable && styles.planCtaDisabled]}>
-                  {isUnavailable ? t.comingSoon : localized?.ctaLabel ?? t.removeAds}
+                  {isUnavailable ? t.comingSoon : offer.ctaLabel ?? t.removeAds}
                 </Text>
               </View>
               {isLoading ? <Text style={styles.planLoading}>{t.loading}</Text> : null}

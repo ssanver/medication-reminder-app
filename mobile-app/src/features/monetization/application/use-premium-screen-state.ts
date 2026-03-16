@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
 import { getTranslations, type Locale } from '../../localization/localization';
-import { loadAppDefinitions } from '../../definitions/definitions-service';
 import {
-  activateSubscriptionPlan,
   getMonetizationStatus,
-  refreshMonetizationStatus,
   subscribeMonetizationStatus,
 } from '../subscription-service';
 import {
-  isRevenueCatConfigured,
-  loadRevenueCatOffers,
-  purchaseRevenueCatPackage,
-  restoreRevenueCatPurchases,
-} from '../revenuecat-service';
-import type { MonetizationStatus, StoreSubscriptionOffer, SubscriptionOffer } from '../domain/monetization-types';
+  initializeStorePurchases,
+  isStorePurchaseConfigured,
+  loadStoreOffers,
+  purchaseStoreOffer,
+  refreshStorePurchaseStatus,
+  restoreStorePurchases,
+} from '../store-purchase-service';
+import type { MonetizationStatus, StoreSubscriptionOffer } from '../domain/monetization-types';
 
 type UsePremiumScreenStateArgs = {
   locale: Locale;
@@ -22,7 +21,7 @@ type UsePremiumScreenStateArgs = {
 
 export function usePremiumScreenState({ locale, isGuestMode }: UsePremiumScreenStateArgs) {
   const t = getTranslations(locale);
-  const [offers, setOffers] = useState<Array<SubscriptionOffer | StoreSubscriptionOffer>>([]);
+  const [offers, setOffers] = useState<StoreSubscriptionOffer[]>([]);
   const [status, setStatus] = useState<MonetizationStatus>({
     role: 'visitor',
     adsEnabled: true,
@@ -31,27 +30,24 @@ export function usePremiumScreenState({ locale, isGuestMode }: UsePremiumScreenS
   });
   const [errorText, setErrorText] = useState('');
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
-  const [purchaseMode, setPurchaseMode] = useState<'store' | 'direct' | 'disabled'>('disabled');
+  const [purchaseMode, setPurchaseMode] = useState<'store' | 'disabled'>('disabled');
   const [restoreLoading, setRestoreLoading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeMonetizationStatus((next) => setStatus(next));
     void (async () => {
       try {
-        if (isRevenueCatConfigured()) {
-          const storeOffers = await loadRevenueCatOffers(locale);
+        if (isStorePurchaseConfigured()) {
+          await initializeStorePurchases(locale);
+          await refreshStorePurchaseStatus().catch(() => false);
+          const storeOffers = await loadStoreOffers(locale);
           if (storeOffers.length === 0) {
             throw new Error(t.purchasesUnavailable);
           }
           setOffers(storeOffers);
           setPurchaseMode('store');
         } else {
-          const definitions = await loadAppDefinitions();
-          if (!definitions.subscriptionOffers || definitions.subscriptionOffers.length === 0) {
-            throw new Error(t.purchasesUnavailable);
-          }
-          setOffers(definitions.subscriptionOffers);
-          setPurchaseMode(process.env.EXPO_PUBLIC_ALLOW_DIRECT_SUBSCRIPTION_ACTIVATION === 'true' ? 'direct' : 'disabled');
+          throw new Error(t.purchasesUnavailable);
         }
         setErrorText('');
       } catch (error) {
@@ -62,13 +58,12 @@ export function usePremiumScreenState({ locale, isGuestMode }: UsePremiumScreenS
 
       const persisted = await getMonetizationStatus();
       setStatus(persisted);
-      await refreshMonetizationStatus();
     })();
 
     return unsubscribe;
   }, [locale, t.error, t.purchasesUnavailable]);
 
-  async function selectOffer(offerId: string): Promise<'guest' | 'unavailable' | 'activated' | 'error'> {
+  async function selectOffer(offerId: string): Promise<'guest' | 'unavailable' | 'cancelled' | 'activated' | 'error'> {
     if (isGuestMode) {
       setErrorText(t.guestPremiumSignupRequired);
       return 'guest';
@@ -82,10 +77,9 @@ export function usePremiumScreenState({ locale, isGuestMode }: UsePremiumScreenS
     try {
       setErrorText('');
       setLoadingPlanId(offerId);
-      if (purchaseMode === 'store') {
-        await purchaseRevenueCatPackage(offerId);
-      } else {
-        await activateSubscriptionPlan(offerId);
+      const result = await purchaseStoreOffer(offerId);
+      if (result === 'cancelled') {
+        return 'cancelled';
       }
       return 'activated';
     } catch (error) {
@@ -100,7 +94,8 @@ export function usePremiumScreenState({ locale, isGuestMode }: UsePremiumScreenS
     try {
       setRestoreLoading(true);
       setErrorText('');
-      await restoreRevenueCatPurchases();
+      await restoreStorePurchases();
+      await refreshStorePurchaseStatus().catch(() => false);
       return true;
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : t.error);

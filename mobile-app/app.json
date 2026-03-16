@@ -43,6 +43,15 @@
     "plugins": [
       "expo-apple-authentication",
       "expo-notifications",
+      "react-native-iap",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.2.0"
+          }
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -50,7 +59,8 @@
           "cameraPermission": "Profil fotoğrafı çekmek için kamera erişimi gerekir."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-build-properties"
     ]
   }
 }

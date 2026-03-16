@@ -142,12 +142,103 @@ public sealed class SubscriptionsControllerTests
         Assert.Equal("Store purchase validation is not implemented yet.", notImplemented.Value);
     }
 
-    private static SubscriptionsController CreateController(AppDbContext dbContext, string email, bool allowUnsafeDirectActivation = false)
+    [Fact]
+    public async Task SyncStore_ShouldPromoteMemberToVip_WhenActivePlanMatchesConfiguredStoreProduct()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        dbContext.UserAccounts.Add(new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            PasswordHash = "PBKDF2$100000$abc$def",
+            FullName = "Suleyman Sanver",
+            BirthDate = string.Empty,
+            Gender = string.Empty,
+            PhotoUri = string.Empty,
+            IsEmailVerified = true,
+            Role = UserRole.Member,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = CreateController(
+            dbContext,
+            "suleyman@example.com",
+            storeMonthlyProductId: "premium-monthly",
+            storeYearlyProductId: "premium-yearly");
+
+        var result = await controller.SyncStore(new SyncStoreSubscriptionRequest
+        {
+            Platform = "ios",
+            IsActive = true,
+            PlanId = "premium-monthly",
+            StoreToken = "store-token-1",
+            TransactionId = "txn-1",
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<SubscriptionStatusResponse>(ok.Value);
+        Assert.Equal(UserRole.Vip, payload.Role);
+        Assert.Equal("premium-monthly", payload.ActivePlanId);
+    }
+
+    [Fact]
+    public async Task SyncStore_ShouldDowngradeVip_WhenStoreReportsInactive()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        dbContext.UserAccounts.Add(new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Suleyman",
+            LastName = "Sanver",
+            Email = "suleyman@example.com",
+            PasswordHash = "PBKDF2$100000$abc$def",
+            FullName = "Suleyman Sanver",
+            BirthDate = string.Empty,
+            Gender = string.Empty,
+            PhotoUri = string.Empty,
+            IsEmailVerified = true,
+            Role = UserRole.Vip,
+            SubscriptionPlanId = "premium-monthly",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = CreateController(
+            dbContext,
+            "suleyman@example.com",
+            storeMonthlyProductId: "premium-monthly",
+            storeYearlyProductId: "premium-yearly");
+
+        var result = await controller.SyncStore(new SyncStoreSubscriptionRequest
+        {
+            Platform = "ios",
+            IsActive = false,
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<SubscriptionStatusResponse>(ok.Value);
+        Assert.Equal(UserRole.Member, payload.Role);
+        Assert.Null(payload.ActivePlanId);
+    }
+
+    private static SubscriptionsController CreateController(
+        AppDbContext dbContext,
+        string email,
+        bool allowUnsafeDirectActivation = false,
+        string? storeMonthlyProductId = null,
+        string? storeYearlyProductId = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["AllowUnsafeDirectSubscriptionActivation"] = allowUnsafeDirectActivation.ToString(),
+                ["StoreSubscriptions:MonthlyProductId"] = storeMonthlyProductId,
+                ["StoreSubscriptions:YearlyProductId"] = storeYearlyProductId,
             })
             .Build();
 

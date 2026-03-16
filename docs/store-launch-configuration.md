@@ -12,13 +12,10 @@
 - Frontend altyapı servisleri `mobile-app/src/features/monetization/` altındaki servis dosyalarından sağlanır.
 
 ## Gerekli Frontend Ayarları
-- `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
-- `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
-- `EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID`
+- `EXPO_PUBLIC_PREMIUM_MONTHLY_PRODUCT_ID`
+- `EXPO_PUBLIC_PREMIUM_YEARLY_PRODUCT_ID`
 - `EXPO_PUBLIC_DONATION_URL`
 - `EXPO_PUBLIC_SUPPORT_EMAIL`
-- İsteğe bağlı, sadece local geliştirme için:
-  - `EXPO_PUBLIC_ALLOW_DIRECT_SUBSCRIPTION_ACTIVATION=false`
 
 ## Gerekli Backend Ayarları
 - `AllowUnsafeDirectSubscriptionActivation=false`
@@ -45,17 +42,6 @@
 - Test lisans hesabı ekle
 - Store listing içinde premium açıklamalarını güncelle
 
-## RevenueCat Ayarları
-- App tanımla:
-  - iOS bundle id: `com.suleymansanver.medicationreminder`
-- Entitlement:
-  - `premium`
-- Offering:
-  - `default`
-- Package eşleştirmeleri:
-  - monthly -> `premium-monthly`
-  - annual -> `premium-yearly`
-
 ## Çıkış Öncesi Kontrol Listesi
 1. Guest kullanıcı premium ekranında sessiz hata yaşamıyor olmalı.
 2. Giriş yapmış kullanıcı için store ürünleri fiyatla listeleniyor olmalı.
@@ -67,5 +53,5 @@
 
 ## Kabul Kriterleri
 - Tüm gerekli environment ayarları bir dokümanda kayıtlı olmalı.
-- Apple, Google ve RevenueCat için eksik panel ayarı kalmamalı.
+- Apple ve Google panellerinde eksik ürün veya test hesabı ayarı kalmamalı.
 - Frontend ve backend monetization akışı katmanlı yapı ile izlenebilir olmalı.

@@ -12,6 +12,14 @@ type SubscriptionStatusApiResponse = {
   updatedAt?: string;
 };
 
+type SyncStoreSubscriptionApiRequest = {
+  platform: 'ios' | 'android';
+  isActive: boolean;
+  planId?: string | null;
+  storeToken?: string | null;
+  transactionId?: string | null;
+};
+
 const listeners = new Set<(status: MonetizationStatus) => void>();
 
 const defaultStatus: MonetizationStatus = {
@@ -69,14 +77,35 @@ function fromApi(response: SubscriptionStatusApiResponse): MonetizationStatus {
   });
 }
 
+async function persistApiStatus(response: SubscriptionStatusApiResponse): Promise<MonetizationStatus> {
+  const persisted = await readPersistedStatus();
+  const status = mergeMonetizationStatus(persisted, fromApi(response));
+  await persistStatus(status);
+  emit(status);
+  return status;
+}
+
+export function mergeMonetizationStatus(
+  persistedStatus: MonetizationStatus,
+  apiStatus: MonetizationStatus,
+): MonetizationStatus {
+  const hasActiveStoreEntitlement =
+    persistedStatus.role === 'vip'
+    && typeof persistedStatus.activePlanId === 'string'
+    && persistedStatus.activePlanId.trim().length > 0;
+
+  if (hasActiveStoreEntitlement && apiStatus.role !== 'vip') {
+    return persistedStatus;
+  }
+
+  return apiStatus;
+}
+
 async function fetchStatusFromApi(): Promise<MonetizationStatus> {
   const response = await apiRequestJson<SubscriptionStatusApiResponse>('/api/subscriptions/status', {
     correlationPrefix: 'subscription-status',
   });
-  const status = fromApi(response);
-  await persistStatus(status);
-  emit(status);
-  return status;
+  return persistApiStatus(response);
 }
 
 export function subscribeMonetizationStatus(listener: (status: MonetizationStatus) => void): () => void {
@@ -96,28 +125,21 @@ export async function refreshMonetizationStatus(): Promise<MonetizationStatus> {
   }
 }
 
-export async function activateSubscriptionPlan(planId: string): Promise<MonetizationStatus> {
-  const normalizedPlanId = planId.trim().toLowerCase();
-  const response = await apiRequestJson<SubscriptionStatusApiResponse>('/api/subscriptions/activate', {
-    method: 'POST',
-    correlationPrefix: 'subscription-activate',
-    body: {
-      planId: normalizedPlanId,
-      platform: 'mobile',
-      storeToken: null,
-    },
-  });
-  const status = fromApi(response);
-  await persistStatus(status);
-  emit(status);
-  return status;
-}
-
 export async function setMonetizationStatus(status: MonetizationStatus): Promise<MonetizationStatus> {
   const normalized = toStatus(status);
   await persistStatus(normalized);
   emit(normalized);
   return normalized;
+}
+
+export async function syncStoreSubscriptionStatus(request: SyncStoreSubscriptionApiRequest): Promise<MonetizationStatus> {
+  const response = await apiRequestJson<SubscriptionStatusApiResponse>('/api/subscriptions/sync-store', {
+    method: 'POST',
+    correlationPrefix: 'subscription-sync-store',
+    body: request,
+  });
+
+  return persistApiStatus(response);
 }
 
 export async function applyRoleToMonetizationStatus(role: UserRole): Promise<MonetizationStatus> {
@@ -149,10 +171,6 @@ export async function getAdFreeStatus(): Promise<AdFreeStatus> {
     planId: status.activePlanId,
     activatedAt: status.updatedAt,
   };
-}
-
-export async function activateAdFreeMode(planId: string): Promise<void> {
-  await activateSubscriptionPlan(planId);
 }
 
 export async function clearAdFreeMode(): Promise<void> {

@@ -6,7 +6,7 @@
 - Mağaza doğrulaması tamamlanana kadar güvensiz sunucu aktivasyonunu kapatmak.
 
 ## Kapsam
-- Mobil uygulamada RevenueCat tabanlı premium teklif listeleme
+- Mobil uygulamada doğrudan App Store / Google Play tabanlı premium teklif listeleme
 - Satın alma ve `restore purchases` akışı
 - Premium durumunun cihaz içinde güncellenmesi
 - Güvensiz `activate subscription` endpoint davranışının varsayılan olarak kapatılması
@@ -18,23 +18,22 @@
 - Bölgesel vergi hesaplama otomasyonu
 
 ## Gerekli Ortam Değişkenleri
-- `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
-- `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
-- `EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID`
+- `EXPO_PUBLIC_PREMIUM_MONTHLY_PRODUCT_ID`
+- `EXPO_PUBLIC_PREMIUM_YEARLY_PRODUCT_ID`
 - İsteğe bağlı geliştirme bayrağı: `AllowUnsafeDirectSubscriptionActivation=false`
 
 ## Uygulama Akışı
-1. Uygulama açıldığında oturumdaki kullanıcı kimliği ile RevenueCat başlatılır.
-2. Premium ekranı mağaza tekliflerini RevenueCat üzerinden çeker.
+1. Uygulama açıldığında store bağlantısı başlatılır.
+2. Premium ekranı mağaza tekliflerini doğrudan App Store / Google Play üzerinden çeker.
 3. Kullanıcı bir paketi seçtiğinde mağaza satın alma diyaloğu açılır.
-4. Satın alma başarılıysa aktif entitlement okunur ve uygulama reklamları kapatır.
-5. Kullanıcı cihaz değiştirdiğinde `Satın Alımları Geri Yükle` ile entitlement tekrar eşitlenir.
+4. Satın alma başarılıysa aktif subscription durumu okunur ve uygulama reklamları kapatır.
+5. Kullanıcı cihaz değiştirdiğinde `Satın Alımları Geri Yükle` ile subscription durumu tekrar eşitlenir.
 
 ## Yayın Öncesi Yapılacaklar
 1. App Store Connect içinde aylık ve yıllık abonelik ürünlerini aç.
 2. Play Console içinde abonelik ürünlerini aç.
-3. RevenueCat dashboard üzerinde ürün eşleştirmelerini ve `premium` entitlement'ını tanımla.
-4. Premium ekranı için ürün başlıklarını ve açıklamalarını RevenueCat/store tarafında doğrula.
+3. `EXPO_PUBLIC_PREMIUM_MONTHLY_PRODUCT_ID` ve `EXPO_PUBLIC_PREMIUM_YEARLY_PRODUCT_ID` değerlerini canlı ürün kimlikleriyle eşleştir.
+4. Premium ekranı için ürün başlıklarını ve açıklamalarını store tarafında doğrula.
 5. iOS üzerinde sandbox satın alma testi yap.
 6. Android üzerinde lisans test hesabıyla satın alma testi yap.
 7. `AllowUnsafeDirectSubscriptionActivation` ayarının production ortamında `false` kaldığını doğrula.
@@ -43,6 +42,6 @@
 - Premium ekranı en az bir mağaza paketini fiyatıyla birlikte gösterir.
 - Satın alma iptal edildiğinde uygulama hata durumuna düşmez.
 - Başarılı satın alma sonrası reklam durumu aynı oturumda reklamsız olur.
-- `Satın Alımları Geri Yükle` mevcut entitlement'ı geri getirir.
+- `Satın Alımları Geri Yükle` mevcut aktif subscription'ı geri getirir.
 - Store doğrulaması yapılmadan backend kullanıcıyı `vip` rolüne yükseltmez.
 - Bağış ekranı çalışmaya devam eder ve premium ekranından bağımsızdır.

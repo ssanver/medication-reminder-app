@@ -41,7 +41,7 @@ import { loadAppPreferences, resolveDefaultLocale, saveAppPreferences, updateLoc
 import { loadWeekStartPreference, saveWeekStartPreference } from '../features/settings/week-start-preference-service';
 import { clearProfile } from '../features/profile/profile-store';
 import { shareApplication } from '../features/share/app-share';
-import { initializeRevenueCatPurchases, isRevenueCatConfigured } from '../features/monetization/revenuecat-service';
+import { initializeStorePurchases, isStorePurchaseConfigured, refreshStorePurchaseStatus } from '../features/monetization/store-purchase-service';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
@@ -263,18 +263,17 @@ export function AppNavigator() {
   }, [locale, fontScale, notificationsEnabled, medicationRemindersEnabled, snoozeMinutes, preferencesLoaded]);
 
   useEffect(() => {
-    if (!isRevenueCatConfigured()) {
+    if (!isStorePurchaseConfigured()) {
       return;
     }
 
     let active = true;
     void (async () => {
       try {
-        const appUserId = accountEmail.trim().toLowerCase() || (await loadOrCreateDeviceId());
         if (!active) {
           return;
         }
-        await initializeRevenueCatPurchases(appUserId, locale);
+        await initializeStorePurchases(locale);
       } catch {
         // Premium screen provides explicit fallback messaging if store setup is incomplete.
       }
@@ -303,6 +302,9 @@ export function AppNavigator() {
         void syncMedicationReminderNotifications(locale, notificationsEnabled && medicationRemindersEnabled);
         if (notificationsEnabled && medicationRemindersEnabled) {
           void emitDueReminderPrompt(locale);
+        }
+        if (isStorePurchaseConfigured()) {
+          void refreshStorePurchaseStatus().catch(() => false);
         }
       }
     });

@@ -11,6 +11,15 @@ public sealed record ActivateMonetizationPlanCommand(
     string PlanId,
     bool AllowUnsafeDirectActivation);
 
+public sealed record SyncStoreSubscriptionCommand(
+    string Email,
+    string Platform,
+    string? PlanId,
+    string? StoreToken,
+    string? TransactionId,
+    bool IsActive,
+    IReadOnlyCollection<string> AllowedPlanIds);
+
 public sealed record AppDefinitionRecord(
     string DefinitionKey,
     string JsonValue,

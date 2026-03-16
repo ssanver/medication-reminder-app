@@ -14,3 +14,12 @@ public sealed class ActivateSubscriptionRequest
     public string? Platform { get; set; }
     public string? StoreToken { get; set; }
 }
+
+public sealed class SyncStoreSubscriptionRequest
+{
+    public required string Platform { get; set; }
+    public bool IsActive { get; set; }
+    public string? PlanId { get; set; }
+    public string? StoreToken { get; set; }
+    public string? TransactionId { get; set; }
+}

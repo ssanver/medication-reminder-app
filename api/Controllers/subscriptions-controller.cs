@@ -80,6 +80,51 @@ public sealed class SubscriptionsController(MonetizationApplicationService monet
         }
     }
 
+    [HttpPost("sync-store")]
+    public async Task<ActionResult<SubscriptionStatusResponse>> SyncStore([FromBody] SyncStoreSubscriptionRequest request)
+    {
+        var resolvedEmail = ResolveUserEmail(out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        try
+        {
+            var status = await monetizationApplicationService.SyncStoreSubscriptionAsync(
+                new SyncStoreSubscriptionCommand(
+                    resolvedEmail,
+                    request.Platform,
+                    request.PlanId,
+                    request.StoreToken,
+                    request.TransactionId,
+                    request.IsActive,
+                    ResolveAllowedPlanIds()));
+
+            return Ok(ToResponse(status));
+        }
+        catch (ArgumentException error)
+        {
+            return BadRequest(error.Message);
+        }
+        catch (NotSupportedException error)
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented, error.Message);
+        }
+        catch (KeyNotFoundException error)
+        {
+            return NotFound(error.Message);
+        }
+        catch (InvalidOperationException error)
+        {
+            return BadRequest(error.Message);
+        }
+        catch (UnauthorizedAccessException error)
+        {
+            return Unauthorized(error.Message);
+        }
+    }
+
     private string ResolveUserEmail(out ActionResult? errorResult)
     {
         var principal = HttpContext?.User;
@@ -106,5 +151,13 @@ public sealed class SubscriptionsController(MonetizationApplicationService monet
             ActivePlanId = status.ActivePlanId,
             UpdatedAt = status.UpdatedAt,
         };
+    }
+
+    private string[] ResolveAllowedPlanIds()
+    {
+        var monthly = configuration["StoreSubscriptions:MonthlyProductId"]?.Trim();
+        var yearly = configuration["StoreSubscriptions:YearlyProductId"]?.Trim();
+
+        return new[] { monthly, yearly }.Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).ToArray();
     }
 }

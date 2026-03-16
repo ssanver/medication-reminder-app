@@ -20,7 +20,7 @@
    Kabul kriteri: Production domain ve gerekli web origin'leri CORS listesine eklenmis olmali.
    Risk: Web istemcileri veya panel entegrasyonlari production'da API'ye erisemeyebilir.
 5. Premium store entegrasyonu henuz canli anahtarlarla tamamlanmadi.
-   Kabul kriteri: RevenueCat entitlement, App Store Connect urunleri ve Google Play subscription urunleri eslenmis olmali.
+   Kabul kriteri: App Store Connect ve Google Play subscription urunleri acilmis, uygulamadaki urun kimlikleri canli store urunleriyle eslesmis olmali.
    Risk: Premium kartlari preview davranisinda kalir.
 6. `Add meds` ekranindaki iOS saat seciminde saat kaymasi regresyonu tekrar test edilmeli.
    Dosya: `mobile-app/src/screens/add-meds-screen.tsx`
@@ -42,9 +42,10 @@
   Kabul kriteri: iOS Google login gercek client id ile dogrulanmali.
 - `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
   Kabul kriteri: Android build alinacaksa zorunlu olarak tanimlanmali.
-- `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
-- `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
-- `EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID`
+- `EXPO_PUBLIC_PREMIUM_MONTHLY_PRODUCT_ID`
+  Kabul kriteri: iOS ve Android store urun kimligiyle ayni olmali.
+- `EXPO_PUBLIC_PREMIUM_YEARLY_PRODUCT_ID`
+  Kabul kriteri: iOS ve Android store urun kimligiyle ayni olmali.
 - `EXPO_PUBLIC_SUPPORT_EMAIL`
   Kabul kriteri: Destek ekibinin aktif kullandigi e-posta olmali.
 - `EXPO_PUBLIC_APP_STORE_URL`
@@ -83,9 +84,8 @@
 ## Store ve Monetization Kontrolleri
 - App Store Connect subscription urunleri olusturuldu.
 - Google Play subscription urunleri olusturuldu.
-- RevenueCat entitlement `premium` tanimli.
-- RevenueCat offering `default` tanimli.
-- `premium-monthly` ve `premium-yearly` urunleri RevenueCat paketlerine eslendi.
+- `EXPO_PUBLIC_PREMIUM_MONTHLY_PRODUCT_ID` degeri store urunu ile eslesiyor.
+- `EXPO_PUBLIC_PREMIUM_YEARLY_PRODUCT_ID` degeri store urunu ile eslesiyor.
 - Restore purchases iOS ve Android test hesaplariyla calisti.
 - Destek e-postasi cihazdan acildi.
 

@@ -34,6 +34,36 @@ public sealed class EfMonetizationUserRepository(AppDbContext dbContext) : IMone
         return ToRecord(user);
     }
 
+    public async Task<MonetizationStatusRecord?> SyncStoreStatusAsync(SyncStoreSubscriptionCommand command, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.UserAccounts.FirstOrDefaultAsync(x => x.Email == command.Email, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        if (string.Equals(user.Role, UserRole.Visitor, StringComparison.Ordinal))
+        {
+            return ToRecord(user);
+        }
+
+        if (command.IsActive && !string.IsNullOrWhiteSpace(command.PlanId))
+        {
+            user.SubscriptionPlanId = command.PlanId;
+            user.Role = UserRole.Vip;
+        }
+        else
+        {
+            user.SubscriptionPlanId = null;
+            user.Role = UserRole.Member;
+        }
+
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return ToRecord(user);
+    }
+
     private static MonetizationStatusRecord ToRecord(UserAccount user)
     {
         var role = UserRole.IsValid(user.Role) ? user.Role : UserRole.Member;

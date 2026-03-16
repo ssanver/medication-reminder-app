@@ -4,6 +4,7 @@ public interface IMonetizationUserRepository
 {
     Task<MonetizationStatusRecord?> GetStatusByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<MonetizationStatusRecord?> ActivatePlanAsync(ActivateMonetizationPlanCommand command, CancellationToken cancellationToken = default);
+    Task<MonetizationStatusRecord?> SyncStoreStatusAsync(SyncStoreSubscriptionCommand command, CancellationToken cancellationToken = default);
 }
 
 public interface IAppDefinitionsRepository

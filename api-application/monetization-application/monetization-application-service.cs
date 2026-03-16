@@ -59,6 +59,74 @@ public sealed class MonetizationApplicationService(IMonetizationUserRepository u
         return status;
     }
 
+    public async Task<MonetizationStatusRecord> SyncStoreSubscriptionAsync(SyncStoreSubscriptionCommand command, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmail(command.Email);
+        var normalizedPlatform = command.Platform?.Trim().ToLowerInvariant();
+        var normalizedPlanId = command.PlanId?.Trim().ToLowerInvariant();
+        var normalizedAllowedPlanIds = command.AllowedPlanIds
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (string.IsNullOrWhiteSpace(normalizedPlatform) || (normalizedPlatform != "ios" && normalizedPlatform != "android"))
+        {
+            throw new ArgumentException("Platform must be ios or android.");
+        }
+
+        var currentStatus = await userRepository.GetStatusByEmailAsync(normalizedEmail, cancellationToken);
+        if (currentStatus is null)
+        {
+            throw new KeyNotFoundException("User account not found.");
+        }
+
+        if (string.Equals(currentStatus.Role, VisitorRole, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Guest accounts cannot activate subscriptions. Please sign up first.");
+        }
+
+        if (command.IsActive)
+        {
+            if (normalizedAllowedPlanIds.Length == 0)
+            {
+                throw new NotSupportedException("Store product configuration is not complete.");
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedPlanId))
+            {
+                throw new ArgumentException("PlanId is required for active store subscriptions.");
+            }
+
+            if (!normalizedAllowedPlanIds.Contains(normalizedPlanId, StringComparer.Ordinal))
+            {
+                throw new ArgumentException("PlanId is not a configured store subscription product.");
+            }
+
+            if (string.IsNullOrWhiteSpace(command.StoreToken) && string.IsNullOrWhiteSpace(command.TransactionId))
+            {
+                throw new ArgumentException("StoreToken or TransactionId is required for active store subscriptions.");
+            }
+        }
+
+        var status = await userRepository.SyncStoreStatusAsync(
+            command with
+            {
+                Email = normalizedEmail,
+                Platform = normalizedPlatform,
+                PlanId = normalizedPlanId,
+                AllowedPlanIds = normalizedAllowedPlanIds,
+            },
+            cancellationToken);
+
+        if (status is null)
+        {
+            throw new KeyNotFoundException("User account not found.");
+        }
+
+        return status;
+    }
+
     public async Task<AppDefinitionsSnapshot> GetDefinitionsAsync(CancellationToken cancellationToken = default)
     {
         var rows = await definitionsRepository.ListAsync(cancellationToken);
