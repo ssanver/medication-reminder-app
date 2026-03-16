@@ -16,6 +16,7 @@ public sealed class SaveMedicationRequest
     public bool IsBeforeMeal { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
+    public bool IsActive { get; set; } = true;
     public required IReadOnlyCollection<MedicationScheduleInput> Schedules { get; set; }
 }
 

@@ -214,6 +214,7 @@ type ApiSaveMedicationRequest = {
   isBeforeMeal: boolean;
   startDate: string;
   endDate?: string | null;
+  isActive: boolean;
   schedules: Array<{
     repeatType: string;
     intervalCount: number;
@@ -335,6 +336,7 @@ function toApiSaveMedicationRequest(medication: Medication): ApiSaveMedicationRe
     isBeforeMeal: medication.isBeforeMeal,
     startDate: medication.startDate,
     endDate: medication.endDate ?? null,
+    isActive: medication.active,
     schedules: toApiSchedules(medication),
   };
 }

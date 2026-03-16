@@ -27,6 +27,7 @@ public sealed record SaveMedicationCommand(
     bool IsBeforeMeal,
     DateOnly StartDate,
     DateOnly? EndDate,
+    bool IsActive,
     IReadOnlyCollection<MedicationScheduleInput> Schedules);
 
 public sealed record MedicationScheduleInput(

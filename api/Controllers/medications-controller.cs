@@ -147,6 +147,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
             request.IsBeforeMeal,
             request.StartDate,
             request.EndDate,
+            request.IsActive,
             request.Schedules.Select(ToScheduleInput).ToArray());
     }
 

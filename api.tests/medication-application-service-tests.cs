@@ -18,6 +18,7 @@ public sealed class MedicationApplicationServiceTests
             false,
             new DateOnly(2026, 2, 20),
             null,
+            true,
             []));
 
         var error = await Assert.ThrowsAsync<ArgumentException>(act);
@@ -37,6 +38,7 @@ public sealed class MedicationApplicationServiceTests
             false,
             new DateOnly(2026, 2, 20),
             null,
+            true,
             [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var act = async () => await service.AddScheduleAsync(
@@ -63,6 +65,7 @@ public sealed class MedicationApplicationServiceTests
                 false,
                 new DateOnly(2026, 2, 20),
                 null,
+                true,
                 [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var error = await Assert.ThrowsAsync<KeyNotFoundException>(act);
@@ -82,6 +85,7 @@ public sealed class MedicationApplicationServiceTests
             false,
             new DateOnly(2026, 2, 20),
             null,
+            true,
             [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var act = async () => await service.AddScheduleAsync(
@@ -91,6 +95,38 @@ public sealed class MedicationApplicationServiceTests
 
         var error = await Assert.ThrowsAsync<ArgumentException>(act);
         Assert.Equal("Cycle repeat type requires DaysOfWeek format off:<number>.", error.Message);
+    }
+
+    [Fact]
+    public async Task Update_ShouldPersistInactiveState()
+    {
+        var repository = new InMemoryMedicationRepository();
+        var service = new MedicationApplicationService(repository);
+
+        var created = await service.CreateAsync(UserReference, new SaveMedicationCommand(
+            "Parol",
+            "500mg",
+            null,
+            false,
+            new DateOnly(2026, 2, 20),
+            null,
+            true,
+            [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+
+        var updated = await service.UpdateAsync(
+            created.Id,
+            UserReference,
+            new SaveMedicationCommand(
+                "Parol",
+                "500mg",
+                null,
+                false,
+                new DateOnly(2026, 2, 20),
+                null,
+                false,
+                [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+
+        Assert.False(updated.IsActive);
     }
 
     private sealed class InMemoryMedicationRepository : IMedicationRepository
@@ -118,7 +154,7 @@ public sealed class MedicationApplicationServiceTests
                 command.IsBeforeMeal,
                 command.StartDate,
                 command.EndDate,
-                true,
+                command.IsActive,
                 DateTimeOffset.UtcNow,
                 command.Schedules.Select(ToSchedule).ToArray());
             _store[record.Id] = record;
@@ -140,7 +176,7 @@ public sealed class MedicationApplicationServiceTests
                 command.IsBeforeMeal,
                 command.StartDate,
                 command.EndDate,
-                true,
+                command.IsActive,
                 DateTimeOffset.UtcNow,
                 command.Schedules.Select(ToSchedule).ToArray());
             _store[id] = updated;

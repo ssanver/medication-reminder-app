@@ -46,6 +46,7 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
             IsBeforeMeal = command.IsBeforeMeal,
             StartDate = command.StartDate,
             EndDate = command.EndDate,
+            IsActive = command.IsActive,
             UpdatedAt = DateTimeOffset.UtcNow,
             Schedules = command.Schedules
                 .Select(schedule => new MedicationSchedule
@@ -82,6 +83,7 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         entity.IsBeforeMeal = command.IsBeforeMeal;
         entity.StartDate = command.StartDate;
         entity.EndDate = command.EndDate;
+        entity.IsActive = command.IsActive;
         entity.UpdatedAt = DateTimeOffset.UtcNow;
 
         dbContext.MedicationSchedules.RemoveRange(entity.Schedules);
