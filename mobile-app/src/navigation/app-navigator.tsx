@@ -734,7 +734,7 @@ export function AppNavigator() {
             setMedicationRemindersEnabled(granted);
           },
           handleOpenAddMeds,
-          () => setActiveTab('my-meds'),
+          () => setActiveTab('today'),
           (medicationId) => {
             setSelectedMedicationId(medicationId);
             setOverlayScreen('medication-details');
