@@ -419,6 +419,60 @@ async function listDoseEvents(): Promise<ApiDoseEvent[]> {
   });
 }
 
+async function loadRemoteMedicationStoreState(): Promise<MedicationStoreState> {
+  const remote = await apiRequestJson<ApiMedication[]>('/api/medications', {
+    correlationPrefix: 'medication-list',
+  });
+  const remoteMedications = remote.map(fromApiMedication);
+  let inventoryByMedicationId: Record<string, number> = {};
+  try {
+    const inventoryRecords = await listInventoryRecords();
+    inventoryByMedicationId = inventoryRecords.reduce<Record<string, number>>((acc, item) => {
+      acc[item.medicationId] = item.currentStock;
+      return acc;
+    }, {});
+  } catch {
+    inventoryByMedicationId = {};
+  }
+  let remoteEvents: DoseEvent[] = [];
+  try {
+    const eventRecords = await listDoseEvents();
+    remoteEvents = eventRecords
+      .filter((item) => item.actionType === 'taken' || item.actionType === 'missed')
+      .map((item) => ({
+        medicationId: item.medicationId,
+        dateKey: item.dateKey,
+        scheduledTime: normalizeTime(item.scheduledTime || '00:00'),
+        status: item.actionType === 'taken' ? 'taken' : 'missed',
+      }));
+  } catch {
+    remoteEvents = [];
+  }
+
+  return {
+    medications: remoteMedications.map((item) => ({
+      ...item,
+      totalQuantity: inventoryByMedicationId[item.id],
+    })),
+    events: remoteEvents,
+    isHydrated: true,
+  };
+}
+
+export async function refreshMedicationStoreFromBackend(): Promise<void> {
+  const accessToken = await loadAccessToken();
+  if (!accessToken) {
+    return;
+  }
+
+  try {
+    state = await loadRemoteMedicationStoreState();
+    emit();
+  } catch {
+    // Keep existing state when refresh fails.
+  }
+}
+
 export async function hydrateMedicationStore(): Promise<void> {
   if (state.isHydrated) {
     return;
@@ -463,43 +517,7 @@ export async function hydrateMedicationStore(): Promise<void> {
   }
 
   try {
-    const remote = await apiRequestJson<ApiMedication[]>('/api/medications', {
-      correlationPrefix: 'medication-list',
-    });
-    const remoteMedications = remote.map(fromApiMedication);
-    let inventoryByMedicationId: Record<string, number> = {};
-    try {
-      const inventoryRecords = await listInventoryRecords();
-      inventoryByMedicationId = inventoryRecords.reduce<Record<string, number>>((acc, item) => {
-        acc[item.medicationId] = item.currentStock;
-        return acc;
-      }, {});
-    } catch {
-      inventoryByMedicationId = {};
-    }
-    let remoteEvents: DoseEvent[] = [];
-    try {
-      const eventRecords = await listDoseEvents();
-      remoteEvents = eventRecords
-        .filter((item) => item.actionType === 'taken' || item.actionType === 'missed')
-        .map((item) => ({
-          medicationId: item.medicationId,
-          dateKey: item.dateKey,
-          scheduledTime: normalizeTime(item.scheduledTime || '00:00'),
-          status: item.actionType === 'taken' ? 'taken' : 'missed',
-        }));
-    } catch {
-      remoteEvents = [];
-    }
-
-    state = {
-      medications: remoteMedications.map((item) => ({
-        ...item,
-        totalQuantity: inventoryByMedicationId[item.id],
-      })),
-      events: remoteEvents,
-      isHydrated: true,
-    };
+    state = await loadRemoteMedicationStoreState();
     emit();
     return;
   }
@@ -583,6 +601,8 @@ export async function addMedication(payload: {
       await updateInventoryStock(medication.id, Math.floor(payload.totalQuantity));
       medication.totalQuantity = Math.floor(payload.totalQuantity);
     }
+    await refreshMedicationStoreFromBackend();
+    return;
   }
 
   state = {
@@ -649,13 +669,7 @@ export async function updateMedication(
       await updateInventoryStock(medicationId, Math.floor(nextWithRule.totalQuantity));
       updatedMedication.totalQuantity = Math.floor(nextWithRule.totalQuantity);
     }
-
-    state = {
-      ...state,
-      medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
-    };
-    emit();
-    await persist();
+    await refreshMedicationStoreFromBackend();
   } catch (error) {
     throw error;
   }
@@ -688,14 +702,9 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     body: toApiSaveMedicationRequest(localUpdated),
     correlationPrefix: 'medication-update-active',
   });
-  const updatedMedication = fromApiMedication(updated);
-
-  state = {
-    ...state,
-    medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
-  };
-  emit();
-  await persist();
+  if (updated) {
+    await refreshMedicationStoreFromBackend();
+  }
 }
 
 export async function deleteMedication(medicationId: string): Promise<void> {
