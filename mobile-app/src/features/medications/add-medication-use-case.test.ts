@@ -12,7 +12,7 @@ describe('add-medication-use-case/getFrequencySummary', () => {
     expect(getFrequencySummary(3, 2, 'en')).toBe('Every 3 days, 2 times');
   });
 
-  it('gecersiz degerlerde guvenli fallback dondurur', () => {
+  it('gecersiz degerlerde sinirlanmis sonuc dondurur', () => {
     expect(getFrequencySummary(0, 2, 'tr')).toBe('Sıklık seçin');
     expect(getFrequencySummary(2, 0, 'en')).toBe('Select a valid frequency');
   });

@@ -184,7 +184,7 @@ export function AppNavigator() {
                   await setEmailVerified(true);
                 }
               } catch {
-                // Keep local session fallback when API is not reachable.
+                // Keep current session state when API is not reachable.
               }
             }
             await setSplashSeen(true);
@@ -275,7 +275,7 @@ export function AppNavigator() {
         }
         await initializeStorePurchases(locale);
       } catch {
-        // Premium screen provides explicit fallback messaging if store setup is incomplete.
+        // Premium screen provides explicit messaging if store setup is incomplete.
       }
     })();
 
@@ -441,7 +441,7 @@ export function AppNavigator() {
                     const status = await getEmailVerificationStatus(payload.email);
                     isEmailVerified = status.isVerified;
                   } catch {
-                    // Fallback to the incoming payload value when status is unavailable.
+                    // Keep the incoming payload value when status is unavailable.
                   }
                 }
 

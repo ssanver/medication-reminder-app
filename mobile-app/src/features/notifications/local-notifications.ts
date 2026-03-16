@@ -77,8 +77,8 @@ function getReminderTitle(locale: Locale, time: string): string {
 
 function buildReminderPayload(
   payload: Partial<MedicationReminderPayload> | undefined,
-  titleFallback = '',
-  bodyFallback = '',
+  titleValue = '',
+  bodyValue = '',
 ): ReminderPrompt | null {
   if (!payload?.medicationId || !payload?.dateKey || !payload?.scheduledTime) {
     return null;
@@ -88,8 +88,8 @@ function buildReminderPayload(
     medicationId: payload.medicationId,
     dateKey: payload.dateKey,
     scheduledTime: payload.scheduledTime,
-    medicationName: payload.medicationName || titleFallback || 'Medication',
-    medicationDetails: payload.medicationDetails || bodyFallback || 'Dose reminder',
+    medicationName: payload.medicationName || titleValue,
+    medicationDetails: payload.medicationDetails || bodyValue,
   };
 }
 

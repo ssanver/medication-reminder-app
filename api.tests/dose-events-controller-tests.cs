@@ -305,6 +305,34 @@ public sealed class DoseEventsControllerTests
     }
 
     [Fact]
+    public async Task GetScheduledDoses_ShouldSkipMedication_WhenMedicationHasNoSchedules()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var medication = new Medication
+        {
+            Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
+            Name = "Lipantly",
+            Dosage = "10mg",
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.Date),
+            IsBeforeMeal = false,
+            IsActive = true,
+            Schedules = [],
+        };
+        dbContext.Medications.Add(medication);
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var result = await controller.GetScheduledDoses(DateOnly.FromDateTime(DateTime.UtcNow.Date));
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<ScheduledDoseResponse[]>(okResult.Value);
+        Assert.Empty(payload);
+        var persistedSchedules = await dbContext.MedicationSchedules.Where(x => x.MedicationId == medication.Id).ToListAsync();
+        Assert.Empty(persistedSchedules);
+    }
+
+    [Fact]
     public async Task GetScheduledDoses_ShouldExcludeInactiveMedications()
     {
         await using var dbContext = CreateInMemoryContext();

@@ -56,21 +56,32 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
             EndDate = command.EndDate,
             IsActive = command.IsActive,
             UpdatedAt = DateTimeOffset.UtcNow,
-            Schedules = command.Schedules
+            Schedules = [],
+        };
+
+        dbContext.Medications.Add(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (command.Schedules.Count > 0)
+        {
+            var schedules = command.Schedules
                 .Select(schedule => new MedicationSchedule
                 {
                     Id = Guid.NewGuid(),
+                    MedicationId = entity.Id,
                     RepeatType = schedule.RepeatType,
                     IntervalCount = schedule.IntervalCount,
                     ReminderTime = schedule.ReminderTime,
                     DaysOfWeek = schedule.DaysOfWeek,
                     UpdatedAt = DateTimeOffset.UtcNow,
                 })
-                .ToList(),
-        };
+                .ToList();
 
-        dbContext.Medications.Add(entity);
-        await dbContext.SaveChangesAsync(cancellationToken);
+            dbContext.MedicationSchedules.AddRange(schedules);
+            entity.Schedules = schedules;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         return ToRecord(entity);
     }
 

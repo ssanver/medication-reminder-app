@@ -197,7 +197,6 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
 
         var medicationsQuery = dbContext
             .Medications
-            .AsNoTracking()
             .Include(x => x.Schedules)
             .Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(userReference))
@@ -252,7 +251,6 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
 
         var medicationsQuery = dbContext
             .Medications
-            .AsNoTracking()
             .Include(x => x.Schedules)
             .Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(userReference))

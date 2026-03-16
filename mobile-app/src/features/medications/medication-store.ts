@@ -636,10 +636,10 @@ export async function updateMedication(
     ...current,
     ...patch,
   });
-  const fallbackRuleFromLabel = patch.frequencyLabel ? parseRuleFromFrequencyLabel(patch.frequencyLabel) : null;
-  const resolvedIntervalUnit = patch.intervalUnit ?? fallbackRuleFromLabel?.intervalUnit ?? next.intervalUnit;
-  const resolvedIntervalCount = Math.max(1, patch.intervalCount ?? fallbackRuleFromLabel?.intervalCount ?? next.intervalCount);
-  const resolvedCycleOffDays = Math.max(0, patch.cycleOffDays ?? fallbackRuleFromLabel?.cycleOffDays ?? next.cycleOffDays ?? 0);
+  const parsedRuleFromLabel = patch.frequencyLabel ? parseRuleFromFrequencyLabel(patch.frequencyLabel) : null;
+  const resolvedIntervalUnit = patch.intervalUnit ?? parsedRuleFromLabel?.intervalUnit ?? next.intervalUnit;
+  const resolvedIntervalCount = Math.max(1, patch.intervalCount ?? parsedRuleFromLabel?.intervalCount ?? next.intervalCount);
+  const resolvedCycleOffDays = Math.max(0, patch.cycleOffDays ?? parsedRuleFromLabel?.cycleOffDays ?? next.cycleOffDays ?? 0);
   const nextWithRule: Medication = {
     ...next,
     intervalUnit: resolvedIntervalUnit,

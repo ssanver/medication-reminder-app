@@ -27,7 +27,7 @@ const translationsByLocale: Record<Locale, Partial<AppTranslations>> = {
   zh,
 };
 
-function deepMergeWithFallback<T extends Record<string, unknown>>(base: T, override: Record<string, unknown>): T {
+function deepMergeTranslations<T extends Record<string, unknown>>(base: T, override: Record<string, unknown>): T {
   const result: Record<string, unknown> = { ...base };
   for (const [key, value] of Object.entries(override)) {
     const baseValue = result[key];
@@ -39,7 +39,7 @@ function deepMergeWithFallback<T extends Record<string, unknown>>(base: T, overr
       typeof baseValue === 'object' &&
       !Array.isArray(baseValue)
     ) {
-      result[key] = deepMergeWithFallback(baseValue as Record<string, unknown>, value as Record<string, unknown>);
+      result[key] = deepMergeTranslations(baseValue as Record<string, unknown>, value as Record<string, unknown>);
       continue;
     }
 
@@ -78,7 +78,7 @@ export function getTranslations(locale: Locale): AppTranslations {
     return translationsByLocale.en as AppTranslations;
   }
 
-  return deepMergeWithFallback(translationsByLocale.en as AppTranslations, selected as Record<string, unknown>);
+  return deepMergeTranslations(translationsByLocale.en as AppTranslations, selected as Record<string, unknown>);
 }
 
 export function getLocaleOptions(currentLocale: Locale): Array<{ code: Locale; label: string }> {

@@ -332,11 +332,10 @@ export async function hydrateNotificationHistory(): Promise<void> {
     await persist();
     return;
   } catch {
-    // Fallback to local cache when backend is unavailable.
+    state = [];
+    emit();
+    return;
   }
-
-  state = localState;
-  emit();
 }
 
 export function subscribeNotificationHistory(listener: () => void): () => void {
