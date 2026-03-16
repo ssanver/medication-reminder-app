@@ -40,6 +40,7 @@ public interface IMedicationRepository
 {
     Task<IReadOnlyCollection<MedicationRecord>> ListAsync(string userReference, CancellationToken cancellationToken = default);
     Task<MedicationRecord?> GetByIdAsync(Guid id, string userReference, CancellationToken cancellationToken = default);
+    Task<int> CountAsync(string userReference, CancellationToken cancellationToken = default);
     Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default);
     Task<MedicationRecord?> UpdateAsync(Guid id, string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default);
     Task<MedicationRecord?> AddScheduleAsync(Guid id, string userReference, MedicationScheduleInput schedule, CancellationToken cancellationToken = default);

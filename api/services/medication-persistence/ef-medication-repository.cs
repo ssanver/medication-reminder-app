@@ -33,6 +33,14 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         return entity is null ? null : ToRecord(entity);
     }
 
+    public Task<int> CountAsync(string userReference, CancellationToken cancellationToken = default)
+    {
+        var normalizedUserReference = NormalizeUserReference(userReference);
+        return dbContext.Medications.CountAsync(
+            medication => medication.UserReference == normalizedUserReference,
+            cancellationToken);
+    }
+
     public async Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
     {
         var normalizedUserReference = NormalizeUserReference(userReference);

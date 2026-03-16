@@ -61,9 +61,11 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
             x.MedicationId == request.MedicationId
             && x.DateKey == normalizedDateKey
             && x.ScheduledTime == normalizedScheduledTime);
+        var previousActionType = existing?.ActionType?.Trim().ToLowerInvariant();
 
         if (normalizedActionType == "clear")
         {
+            await ApplyInventoryDeltaAsync(request.MedicationId, previousActionType, null);
             if (existing is not null)
             {
                 dbContext.DoseEvents.Remove(existing);
@@ -103,19 +105,7 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
             dbContext.DoseEvents.Add(doseEvent);
         }
 
-        if (doseEvent.ActionType == "taken")
-        {
-            var inventory = await dbContext.InventoryRecords.FirstOrDefaultAsync(x => x.MedicationId == request.MedicationId);
-            if (inventory is not null)
-            {
-                inventory.CurrentStock = Math.Max(0, inventory.CurrentStock - 1);
-                inventory.UpdatedAt = DateTimeOffset.UtcNow;
-                if (inventory.CurrentStock <= inventory.Threshold)
-                {
-                    inventory.LastAlertAt = DateTimeOffset.UtcNow;
-                }
-            }
-        }
+        await ApplyInventoryDeltaAsync(request.MedicationId, previousActionType, normalizedActionType);
 
         await dbContext.SaveChangesAsync();
 
@@ -324,6 +314,37 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         }
 
         return Ok(doses.OrderBy(x => x.ScheduledTime).ThenBy(x => x.Name).ToArray());
+    }
+
+    private async Task ApplyInventoryDeltaAsync(Guid medicationId, string? previousActionType, string? nextActionType)
+    {
+        var inventory = await dbContext.InventoryRecords.FirstOrDefaultAsync(x => x.MedicationId == medicationId);
+        if (inventory is null)
+        {
+            return;
+        }
+
+        var previousTaken = string.Equals(previousActionType, "taken", StringComparison.Ordinal);
+        var nextTaken = string.Equals(nextActionType, "taken", StringComparison.Ordinal);
+        if (previousTaken == nextTaken)
+        {
+            return;
+        }
+
+        if (!previousTaken && nextTaken)
+        {
+            inventory.CurrentStock = Math.Max(0, inventory.CurrentStock - 1);
+        }
+        else if (previousTaken && !nextTaken)
+        {
+            inventory.CurrentStock += 1;
+        }
+
+        inventory.UpdatedAt = DateTimeOffset.UtcNow;
+        if (inventory.CurrentStock <= inventory.Threshold)
+        {
+            inventory.LastAlertAt = DateTimeOffset.UtcNow;
+        }
     }
 
     [HttpGet("report")]

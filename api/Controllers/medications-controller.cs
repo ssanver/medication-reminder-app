@@ -36,8 +36,12 @@ public sealed class MedicationsController(MedicationApplicationService applicati
 
         try
         {
-            var created = await applicationService.CreateAsync(resolvedUserReference, ToSaveCommand(request));
+            var created = await applicationService.CreateAsync(resolvedUserReference, ResolveUserRole(), ToSaveCommand(request));
             return CreatedAtAction(nameof(GetAll), new { id = created.Id }, ToResponse(created));
+        }
+        catch (MedicationLimitExceededException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
         catch (ArgumentException ex)
         {
@@ -235,5 +239,15 @@ public sealed class MedicationsController(MedicationApplicationService applicati
     private static string NormalizeUserReference(string value)
     {
         return value.Trim().ToLowerInvariant();
+    }
+
+    private string ResolveUserRole()
+    {
+        var principal = HttpContext?.User;
+        var role =
+            principal?.FindFirstValue(ClaimTypes.Role)
+            ?? principal?.FindFirstValue("role");
+
+        return string.IsNullOrWhiteSpace(role) ? "member" : role.Trim().ToLowerInvariant();
     }
 }

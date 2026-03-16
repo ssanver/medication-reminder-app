@@ -27,7 +27,7 @@ import {
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { clearMedicationStore, hydrateMedicationStore } from '../features/medications/medication-store';
-import { applyRoleToMonetizationStatus, getMonetizationStatus, refreshMonetizationStatus, subscribeMonetizationStatus } from '../features/monetization/subscription-service';
+import { applyRoleToMonetizationStatus, refreshMonetizationStatus } from '../features/monetization/subscription-service';
 import { useMedicationStore } from '../features/medications/use-medication-store';
 import { handleReminderSkip, handleReminderSnooze, handleReminderTakeNow } from '../features/notifications/notification-center-service';
 import {
@@ -42,7 +42,6 @@ import { loadWeekStartPreference, saveWeekStartPreference } from '../features/se
 import { clearProfile } from '../features/profile/profile-store';
 import { shareApplication } from '../features/share/app-share';
 import { initializeRevenueCatPurchases, isRevenueCatConfigured } from '../features/monetization/revenuecat-service';
-import { canCreateMedication } from '../features/monetization/premium-access';
 import { AddMedsScreen } from '../screens/add-meds-screen';
 import { SignInScreen } from '../screens/auth/sign-in-screen';
 import { SignUpScreen } from '../screens/auth/sign-up-screen';
@@ -101,17 +100,9 @@ export function AppNavigator() {
   const [emailResendCooldown, setEmailResendCooldown] = useState(0);
   const [isGuestMode, setIsGuestMode] = useState(false);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
-  const [monetizationRole, setMonetizationRole] = useState<'visitor' | 'member' | 'vip'>('visitor');
-
   const t = getTranslations(locale);
-  const medicationLimitReached = !canCreateMedication(monetizationRole, medicationStore.medications.length);
 
   function handleOpenAddMeds() {
-    if (medicationLimitReached) {
-      setOverlayScreen('premium');
-      return;
-    }
-
     setOverlayScreen('none');
     setActiveTab('add-meds');
   }
@@ -256,19 +247,6 @@ export function AppNavigator() {
       }
     })();
   }, [accountEmail, phase]);
-
-  useEffect(() => {
-    const unsubscribe = subscribeMonetizationStatus((status) => {
-      setMonetizationRole(status.role);
-    });
-
-    void (async () => {
-      const status = await getMonetizationStatus();
-      setMonetizationRole(status.role);
-    })();
-
-    return unsubscribe;
-  }, []);
 
   useEffect(() => {
     if (!preferencesLoaded) {
@@ -552,6 +530,7 @@ export function AppNavigator() {
             medicationId={selectedMedicationId}
             onBack={() => setOverlayScreen('none')}
             onMedicationSaved={() => setOverlayScreen('none')}
+            onPremiumRequired={() => setOverlayScreen('premium')}
           />
         </View>
       </View>
@@ -921,7 +900,15 @@ function renderTab(
         />
       );
     case 'add-meds':
-      return <AddMedsScreen locale={locale} fontScale={fontScale} weekStartsOn={weekStartsOn} onMedicationSaved={onMedicationSaved} />;
+      return (
+        <AddMedsScreen
+          locale={locale}
+          fontScale={fontScale}
+          weekStartsOn={weekStartsOn}
+          onMedicationSaved={onMedicationSaved}
+          onPremiumRequired={onOpenPremium}
+        />
+      );
     case 'settings':
       return (
         <SettingsScreen

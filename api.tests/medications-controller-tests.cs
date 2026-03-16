@@ -88,6 +88,39 @@ public sealed class MedicationsControllerTests
     }
 
     [Fact]
+    public async Task Create_ShouldReturnForbidden_WhenFreeUserExceedsMedicationLimit()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var controller = CreateController(dbContext, "member");
+
+        dbContext.Medications.AddRange(
+            CreateMedication("Parol 1"),
+            CreateMedication("Parol 2"),
+            CreateMedication("Parol 3"));
+        await dbContext.SaveChangesAsync();
+
+        var result = await controller.Create(new SaveMedicationRequest
+        {
+            Name = "Parol 4",
+            Dosage = "500mg",
+            IsBeforeMeal = true,
+            StartDate = new DateOnly(2026, 2, 20),
+            Schedules =
+            [
+                new MedicationScheduleInput
+                {
+                    RepeatType = "daily",
+                    ReminderTime = new TimeOnly(8, 30),
+                },
+            ],
+        });
+
+        var forbidden = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbidden.StatusCode);
+        Assert.Equal("Premium plan required to add more than 3 medications.", forbidden.Value);
+    }
+
+    [Fact]
     public async Task Create_ShouldReturnBadRequest_WhenWeeklyRuleDoesNotContainDay()
     {
         await using var dbContext = CreateInMemoryContext();
@@ -373,7 +406,7 @@ public sealed class MedicationsControllerTests
         return new AppDbContext(options);
     }
 
-    private static MedicationsController CreateController(AppDbContext dbContext)
+    private static MedicationsController CreateController(AppDbContext dbContext, string role = "member")
     {
         var controller = new MedicationsController(
             new api_application.medication_application.MedicationApplicationService(
@@ -384,11 +417,33 @@ public sealed class MedicationsControllerTests
             {
                 User = new ClaimsPrincipal(
                     new ClaimsIdentity(
-                        [new Claim(ClaimTypes.Email, "user@example.com")],
+                        [new Claim(ClaimTypes.Email, "user@example.com"), new Claim(ClaimTypes.Role, role)],
                         "TestAuth")),
             },
         };
 
         return controller;
+    }
+
+    private static api.models.Medication CreateMedication(string name)
+    {
+        return new api.models.Medication
+        {
+            Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
+            Name = name,
+            Dosage = "500mg",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+            Schedules =
+            [
+                new api.models.MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    RepeatType = "daily",
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        };
     }
 }

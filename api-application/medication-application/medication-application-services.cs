@@ -2,6 +2,8 @@ namespace api_application.medication_application;
 
 public sealed class MedicationApplicationService(IMedicationRepository repository)
 {
+    private const int FreeMedicationLimit = 3;
+    private const string VipRole = "vip";
     private static readonly HashSet<string> AllowedRepeatTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "daily",
@@ -21,9 +23,14 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         return repository.GetByIdAsync(id, userReference, cancellationToken);
     }
 
-    public async Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
+    public async Task<MedicationRecord> CreateAsync(
+        string userReference,
+        string userRole,
+        SaveMedicationCommand command,
+        CancellationToken cancellationToken = default)
     {
         ValidateSaveCommand(command);
+        await ValidateMedicationCreationAccessAsync(userReference, userRole, cancellationToken);
         return await repository.CreateAsync(userReference, NormalizeSaveCommand(command), cancellationToken);
     }
 
@@ -57,6 +64,21 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
         if (!deleted)
         {
             throw new KeyNotFoundException("Medication not found.");
+        }
+    }
+
+    private async Task ValidateMedicationCreationAccessAsync(string userReference, string userRole, CancellationToken cancellationToken)
+    {
+        var normalizedRole = NormalizeRole(userRole);
+        if (string.Equals(normalizedRole, VipRole, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var medicationCount = await repository.CountAsync(userReference, cancellationToken);
+        if (medicationCount >= FreeMedicationLimit)
+        {
+            throw new MedicationLimitExceededException(FreeMedicationLimit);
         }
     }
 
@@ -186,4 +208,21 @@ public sealed class MedicationApplicationService(IMedicationRepository repositor
                 .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Select(value => value.ToLowerInvariant()));
     }
+
+    private static string NormalizeRole(string? value)
+    {
+        var normalized = value?.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "visitor" => "visitor",
+            "vip" => VipRole,
+            _ => "member",
+        };
+    }
+}
+
+public sealed class MedicationLimitExceededException(int limit)
+    : InvalidOperationException($"Premium plan required to add more than {limit} medications.")
+{
+    public int Limit { get; } = limit;
 }

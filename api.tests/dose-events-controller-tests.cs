@@ -180,6 +180,66 @@ public sealed class DoseEventsControllerTests
     }
 
     [Fact]
+    public async Task Action_ShouldRestoreInventory_WhenTakenDoseIsCleared()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var medication = await AddMedication(dbContext);
+        dbContext.InventoryRecords.Add(new InventoryRecord
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medication.Id,
+            CurrentStock = 2,
+            Threshold = 1,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        await controller.Action(new DoseActionRequest
+        {
+            MedicationId = medication.Id,
+            ActionType = "taken",
+        });
+        await controller.Action(new DoseActionRequest
+        {
+            MedicationId = medication.Id,
+            ActionType = "clear",
+        });
+
+        var stock = await dbContext.InventoryRecords.Where(x => x.MedicationId == medication.Id).Select(x => x.CurrentStock).SingleAsync();
+        Assert.Equal(2, stock);
+    }
+
+    [Fact]
+    public async Task Action_ShouldNotDecreaseInventoryTwice_WhenTakenActionRepeats()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var medication = await AddMedication(dbContext);
+        dbContext.InventoryRecords.Add(new InventoryRecord
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medication.Id,
+            CurrentStock = 3,
+            Threshold = 1,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        await controller.Action(new DoseActionRequest
+        {
+            MedicationId = medication.Id,
+            ActionType = "taken",
+        });
+        await controller.Action(new DoseActionRequest
+        {
+            MedicationId = medication.Id,
+            ActionType = "taken",
+        });
+
+        var stock = await dbContext.InventoryRecords.Where(x => x.MedicationId == medication.Id).Select(x => x.CurrentStock).SingleAsync();
+        Assert.Equal(2, stock);
+    }
+
+    [Fact]
     public async Task Action_ShouldWriteAuditLog_WhenMedicationIsMissing()
     {
         await using var dbContext = CreateInMemoryContext();
@@ -242,6 +302,41 @@ public sealed class DoseEventsControllerTests
         Assert.Single(payload);
         Assert.Equal("taken", payload[0].Status);
         Assert.Equal("08:00", payload[0].ScheduledTime);
+    }
+
+    [Fact]
+    public async Task GetScheduledDoses_ShouldExcludeInactiveMedications()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var targetDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        dbContext.Medications.Add(new Medication
+        {
+            Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
+            Name = "Inactive Parol",
+            Dosage = "500mg",
+            StartDate = targetDate,
+            IsBeforeMeal = false,
+            IsActive = false,
+            Schedules =
+            [
+                new MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    RepeatType = "daily",
+                    IntervalCount = 1,
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var result = await controller.GetScheduledDoses(targetDate);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<ScheduledDoseResponse[]>(okResult.Value);
+        Assert.Empty(payload);
     }
 
     [Fact]

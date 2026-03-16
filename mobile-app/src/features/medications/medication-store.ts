@@ -656,14 +656,8 @@ export async function updateMedication(
     };
     emit();
     await persist();
-  } catch {
-    // Keep local edits usable when backend update fails.
-    state = {
-      ...state,
-      medications: state.medications.map((item) => (item.id === medicationId ? nextWithRule : item)),
-    };
-    emit();
-    await persist();
+  } catch (error) {
+    throw error;
   }
 }
 
@@ -678,35 +672,30 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     active,
   };
 
-  state = {
-    ...state,
-    medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
-  };
-  emit();
-  await persist();
-
   const accessToken = await loadAccessToken();
   if (!accessToken) {
-    return;
-  }
-
-  try {
-    const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
-      method: 'PUT',
-      body: toApiSaveMedicationRequest(localUpdated),
-      correlationPrefix: 'medication-update-active',
-    });
-    const updatedMedication = fromApiMedication(updated);
-
     state = {
       ...state,
-      medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
+      medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
     };
     emit();
     await persist();
-  } catch {
-    // Keep optimistic status when backend update fails; sync retries later.
+    return;
   }
+
+  const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
+    method: 'PUT',
+    body: toApiSaveMedicationRequest(localUpdated),
+    correlationPrefix: 'medication-update-active',
+  });
+  const updatedMedication = fromApiMedication(updated);
+
+  state = {
+    ...state,
+    medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
+  };
+  emit();
+  await persist();
 }
 
 export async function deleteMedication(medicationId: string): Promise<void> {

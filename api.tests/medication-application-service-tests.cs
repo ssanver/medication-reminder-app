@@ -11,18 +11,74 @@ public sealed class MedicationApplicationServiceTests
     {
         var service = new MedicationApplicationService(new InMemoryMedicationRepository());
 
-        var act = async () => await service.CreateAsync(UserReference, new SaveMedicationCommand(
-            "Parol",
-            "500mg",
-            null,
-            false,
-            new DateOnly(2026, 2, 20),
-            null,
-            true,
-            []));
+        var act = async () => await service.CreateAsync(
+            UserReference,
+            "member",
+            new SaveMedicationCommand(
+                "Parol",
+                "500mg",
+                null,
+                false,
+                new DateOnly(2026, 2, 20),
+                null,
+                true,
+                []));
 
         var error = await Assert.ThrowsAsync<ArgumentException>(act);
         Assert.Equal("At least one reminder time is required.", error.Message);
+    }
+
+    [Fact]
+    public async Task Create_ShouldThrow_WhenFreeUserExceedsMedicationLimit()
+    {
+        var repository = new InMemoryMedicationRepository();
+        repository.Seed(
+            CreateMedication("Parol 1"),
+            CreateMedication("Parol 2"),
+            CreateMedication("Parol 3"));
+        var service = new MedicationApplicationService(repository);
+
+        var act = async () => await service.CreateAsync(
+            UserReference,
+            "member",
+            new SaveMedicationCommand(
+                "Parol 4",
+                "500mg",
+                null,
+                false,
+                new DateOnly(2026, 2, 20),
+                null,
+                true,
+                [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+
+        var error = await Assert.ThrowsAsync<MedicationLimitExceededException>(act);
+        Assert.Equal("Premium plan required to add more than 3 medications.", error.Message);
+    }
+
+    [Fact]
+    public async Task Create_ShouldAllowVipUserBeyondFreeLimit()
+    {
+        var repository = new InMemoryMedicationRepository();
+        repository.Seed(
+            CreateMedication("Parol 1"),
+            CreateMedication("Parol 2"),
+            CreateMedication("Parol 3"));
+        var service = new MedicationApplicationService(repository);
+
+        var created = await service.CreateAsync(
+            UserReference,
+            "vip",
+            new SaveMedicationCommand(
+                "Parol 4",
+                "500mg",
+                null,
+                false,
+                new DateOnly(2026, 2, 20),
+                null,
+                true,
+                [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+
+        Assert.Equal("Parol 4", created.Name);
     }
 
     [Fact]
@@ -31,15 +87,18 @@ public sealed class MedicationApplicationServiceTests
         var repository = new InMemoryMedicationRepository();
         var service = new MedicationApplicationService(repository);
 
-        var created = await service.CreateAsync(UserReference, new SaveMedicationCommand(
-            "Parol",
-            "500mg",
-            null,
-            false,
-            new DateOnly(2026, 2, 20),
-            null,
-            true,
-            [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+        var created = await service.CreateAsync(
+            UserReference,
+            "member",
+            new SaveMedicationCommand(
+                "Parol",
+                "500mg",
+                null,
+                false,
+                new DateOnly(2026, 2, 20),
+                null,
+                true,
+                [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var act = async () => await service.AddScheduleAsync(
             created.Id,
@@ -78,15 +137,18 @@ public sealed class MedicationApplicationServiceTests
         var repository = new InMemoryMedicationRepository();
         var service = new MedicationApplicationService(repository);
 
-        var created = await service.CreateAsync(UserReference, new SaveMedicationCommand(
-            "Parol",
-            "500mg",
-            null,
-            false,
-            new DateOnly(2026, 2, 20),
-            null,
-            true,
-            [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+        var created = await service.CreateAsync(
+            UserReference,
+            "member",
+            new SaveMedicationCommand(
+                "Parol",
+                "500mg",
+                null,
+                false,
+                new DateOnly(2026, 2, 20),
+                null,
+                true,
+                [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var act = async () => await service.AddScheduleAsync(
             created.Id,
@@ -103,15 +165,18 @@ public sealed class MedicationApplicationServiceTests
         var repository = new InMemoryMedicationRepository();
         var service = new MedicationApplicationService(repository);
 
-        var created = await service.CreateAsync(UserReference, new SaveMedicationCommand(
-            "Parol",
-            "500mg",
-            null,
-            false,
-            new DateOnly(2026, 2, 20),
-            null,
-            true,
-            [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
+        var created = await service.CreateAsync(
+            UserReference,
+            "member",
+            new SaveMedicationCommand(
+                "Parol",
+                "500mg",
+                null,
+                false,
+                new DateOnly(2026, 2, 20),
+                null,
+                true,
+                [new MedicationScheduleInput("daily", 1, new TimeOnly(9, 0), null)]));
 
         var updated = await service.UpdateAsync(
             created.Id,
@@ -142,6 +207,11 @@ public sealed class MedicationApplicationServiceTests
         {
             _store.TryGetValue(id, out var value);
             return Task.FromResult(value);
+        }
+
+        public Task<int> CountAsync(string userReference, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_store.Count);
         }
 
         public Task<MedicationRecord> CreateAsync(string userReference, SaveMedicationCommand command, CancellationToken cancellationToken = default)
@@ -206,9 +276,32 @@ public sealed class MedicationApplicationServiceTests
             return Task.FromResult(_store.Remove(id));
         }
 
+        public void Seed(params MedicationRecord[] records)
+        {
+            foreach (var record in records)
+            {
+                _store[record.Id] = record;
+            }
+        }
+
         private static MedicationScheduleRecord ToSchedule(MedicationScheduleInput input)
         {
             return new MedicationScheduleRecord(Guid.NewGuid(), input.RepeatType, input.IntervalCount, input.ReminderTime, input.DaysOfWeek, DateTimeOffset.UtcNow);
         }
+    }
+
+    private static MedicationRecord CreateMedication(string name)
+    {
+        return new MedicationRecord(
+            Guid.NewGuid(),
+            name,
+            "500mg",
+            null,
+            false,
+            new DateOnly(2026, 2, 20),
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            [new MedicationScheduleRecord(Guid.NewGuid(), "daily", 1, new TimeOnly(9, 0), null, DateTimeOffset.UtcNow)]);
     }
 }

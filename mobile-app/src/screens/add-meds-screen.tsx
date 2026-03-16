@@ -27,6 +27,7 @@ import {
 } from '../features/medications/add-medication-use-case';
 import { searchMedicineCatalog } from '../features/medications/medicine-catalog-service';
 import { addMedication, getMedicationById, updateMedication } from '../features/medications/medication-store';
+import { ApiRequestError } from '../features/network/api-client';
 import { theme } from '../theme';
 
 type AddMedsScreenProps = {
@@ -34,6 +35,7 @@ type AddMedsScreenProps = {
   fontScale: number;
   weekStartsOn: WeekStartsOn;
   onMedicationSaved: () => void;
+  onPremiumRequired?: () => void;
   mode?: 'create' | 'edit';
   medicationId?: string;
   onBack?: () => void;
@@ -64,6 +66,7 @@ export function AddMedsScreen({
   fontScale: _fontScale,
   weekStartsOn,
   onMedicationSaved,
+  onPremiumRequired,
   mode = 'create',
   medicationId,
   onBack: onNavigateBack,
@@ -388,24 +391,33 @@ export function AddMedsScreen({
         totalQuantity: normalizedTotalQuantity,
       });
     } else {
-      await addMedication({
-        name: normalizedName,
-        form,
-        iconEmoji,
-        dosage,
-        isBeforeMeal,
-        intervalUnit,
-        intervalCount,
-        cycleOffDays,
-        note: shouldSkipNote ? '' : note.trim(),
-        startDate: effectiveStartDate,
-        endDate: useEndDate ? endDate : null,
-        time: selectedDoseTimes[0],
-        times: selectedDoseTimes,
-        weeklyDays: intervalUnit === 'week' ? selectedWeekdays : undefined,
-        totalQuantity: normalizedTotalQuantity,
-        active: true,
-      });
+      try {
+        await addMedication({
+          name: normalizedName,
+          form,
+          iconEmoji,
+          dosage,
+          isBeforeMeal,
+          intervalUnit,
+          intervalCount,
+          cycleOffDays,
+          note: shouldSkipNote ? '' : note.trim(),
+          startDate: effectiveStartDate,
+          endDate: useEndDate ? endDate : null,
+          time: selectedDoseTimes[0],
+          times: selectedDoseTimes,
+          weeklyDays: intervalUnit === 'week' ? selectedWeekdays : undefined,
+          totalQuantity: normalizedTotalQuantity,
+          active: true,
+        });
+      } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 403) {
+          onPremiumRequired?.();
+          return;
+        }
+
+        throw error;
+      }
 
       setName('');
       setForm('');
