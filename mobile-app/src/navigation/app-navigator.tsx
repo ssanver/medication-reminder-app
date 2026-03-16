@@ -398,7 +398,6 @@ export function AppNavigator() {
               })();
             }}
             onOpenSignIn={() => setPhase('signin')}
-            onBack={() => setPhase('signin')}
             onContinueAsGuest={() => {
               void (async () => {
                 try {

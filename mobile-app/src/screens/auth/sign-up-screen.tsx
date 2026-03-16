@@ -1,7 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BrandIcon } from '../../components/ui/brand-icon';
 import { Button } from '../../components/ui/button';
-import { IconButton } from '../../components/ui/icon-button';
 import { TextField } from '../../components/ui/text-field';
 import { useSignUpScreenState } from '../../features/auth/application/use-sign-up-screen-state';
 import { getTranslations, type Locale } from '../../features/localization/localization';
@@ -17,11 +16,10 @@ type SignUpScreenProps = {
   locale: Locale;
   onSuccess: (payload: { session?: SocialLoginResult | AuthSessionTokens; email: string; emailVerified: boolean; role: 'visitor' | 'member' | 'vip' }) => void;
   onOpenSignIn: () => void;
-  onBack: () => void;
   onContinueAsGuest: () => void;
 };
 
-export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack, onContinueAsGuest }: SignUpScreenProps) {
+export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onContinueAsGuest }: SignUpScreenProps) {
   const t = getTranslations(locale);
   const {
     name,
@@ -43,7 +41,6 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onBack, onContin
   } = useSignUpScreenState({ onSuccess, t });
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <IconButton testID="signup-back-button" icon="back" variant="outlined" onPress={onBack} />
       <Text style={styles.title}>{t.signUpTitle}</Text>
       <Text style={styles.subtitle}>{t.signUpSubtitle}</Text>
 
