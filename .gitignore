@@ -7,6 +7,8 @@ dist/
 mobile-app/build/
 mobile-app/build-ipa/
 mobile-app/artifacts/
+mobile-app/ios/build-archive/
+mobile-app/ios/build-export/
 # Keep simulator build output tracked in git
 !mobile-app/ios/build-sim/
 
