@@ -3,6 +3,7 @@ import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
 import { Button } from '../components/ui/button';
+import { LoadingStateCard } from '../components/ui/loading-state-card';
 import { MedicationCard } from '../components/ui/medication-card';
 import { SponsoredBanner } from '../components/ui/sponsored-banner';
 import { SegmentedControl } from '../components/ui/segmented-control';
@@ -71,6 +72,7 @@ export function TodayScreen({
     setShowFutureActionPopup,
     shortDisplayName,
     avatarEmoji,
+    isLoadingDoses,
     filtered,
     counts,
     hasAnyDoseForSelectedDate,
@@ -427,7 +429,9 @@ export function TodayScreen({
         onChange={(next) => setFilter(next as TodayDoseFilter)}
       />
 
-      {filtered.length === 0 ? (
+      {isLoadingDoses ? (
+        <LoadingStateCard title={t.loadingMedicationsTitle} description={t.loadingMedicationsDescription} />
+      ) : filtered.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>💊</Text>
           <Text style={styles.emptyTitle}>{showFilteredEmptyWarningOnly ? filteredEmptyTitle : t.noMedicationTitle}</Text>

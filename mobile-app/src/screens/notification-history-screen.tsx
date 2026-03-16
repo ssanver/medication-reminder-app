@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { LoadingStateCard } from '../components/ui/loading-state-card';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { getTranslations, type Locale } from '../features/localization/localization';
@@ -35,9 +36,22 @@ function actionLabel(item: NotificationHistoryItem, t: ReturnType<typeof getTran
 export function NotificationHistoryScreen({ locale, onBack }: NotificationHistoryScreenProps) {
   const t = getTranslations(locale);
   const items = useSyncExternalStore(subscribeNotificationHistory, getNotificationHistorySnapshot, getNotificationHistorySnapshot);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    void hydrateNotificationHistory();
+    let isMounted = true;
+    void (async () => {
+      setIsLoading(true);
+      await hydrateNotificationHistory();
+      if (!isMounted) {
+        return;
+      }
+      setIsLoading(false);
+    })();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const sortedItems = useMemo(
@@ -49,7 +63,9 @@ export function NotificationHistoryScreen({ locale, onBack }: NotificationHistor
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <ScreenHeader title={t.notificationHistory} leftAction={{ icon: 'back', onPress: onBack }} />
 
-      {sortedItems.length === 0 ? (
+      {isLoading ? (
+        <LoadingStateCard title={t.loadingHistoryTitle} description={t.loadingHistoryDescription} />
+      ) : sortedItems.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>{t.notificationHistoryEmpty}</Text>
           <Text style={styles.emptyDescription}>{t.noDetailsAvailable}</Text>

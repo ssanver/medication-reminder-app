@@ -70,9 +70,10 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onContinueAsGues
 
       <Button
         testID="signup-submit-button"
-        label={t.createAccount}
+        label={isLoading ? t.creatingAccount : t.createAccount}
         onPress={() => void signUp()}
         disabled={isLoading || !canSubmit}
+        loading={isLoading}
       />
 
       <Text style={styles.legal}>{t.termsText}</Text>
@@ -82,18 +83,20 @@ export function SignUpScreen({ locale, onSuccess, onOpenSignIn, onContinueAsGues
         <View style={styles.divider} />
       </View>
       <Button
-        label={t.continueWithApple}
+        label={isSocialLoading ? t.loading : t.continueWithApple}
         leadingNode={<BrandIcon name="apple" />}
         variant="outlined"
         onPress={() => void signUpWithSocial('Apple')}
         disabled={isSocialLoading}
+        loading={isSocialLoading}
       />
       <Button
-        label={t.continueWithGoogle}
+        label={isSocialLoading ? t.loading : t.continueWithGoogle}
         leadingNode={<BrandIcon name="google" />}
         variant="outlined"
         onPress={() => void signUpWithSocial('Google')}
         disabled={isSocialLoading}
+        loading={isSocialLoading}
       />
       <Button label={t.continueAsGuest} variant="ghost" onPress={onContinueAsGuest} />
       <Pressable testID="signup-open-signin-link" onPress={onOpenSignIn} style={styles.signInCta}>

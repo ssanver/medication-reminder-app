@@ -31,6 +31,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('');
   const [doses, setDoses] = useState<Awaited<ReturnType<typeof getScheduledDosesForDate>>>([]);
+  const [isLoadingDoses, setIsLoadingDoses] = useState(true);
   const [definitions, setDefinitions] = useState<AppDefinitions | null>(null);
   const [isAdFree, setIsAdFree] = useState(false);
 
@@ -40,6 +41,9 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   useEffect(() => {
     let isMounted = true;
     void (async () => {
+      if (isMounted) {
+        setIsLoadingDoses(true);
+      }
       try {
         const scheduled = await getScheduledDosesForDate(selectedDate, locale);
         if (!isMounted) {
@@ -51,6 +55,10 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
           return;
         }
         setDoses([]);
+      } finally {
+        if (isMounted) {
+          setIsLoadingDoses(false);
+        }
       }
     })();
 
@@ -188,6 +196,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
     setShowFutureActionPopup,
     shortDisplayName,
     avatarEmoji,
+    isLoadingDoses,
     filtered,
     counts,
     hasAnyDoseForSelectedDate,

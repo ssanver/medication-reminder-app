@@ -8,10 +8,14 @@ export function useReportsScreenState(locale: Locale) {
   const [summary, setSummary] = useState({ adherence: 0, totalScheduled: 0, taken: 0, missed: 0 });
   const [weekly, setWeekly] = useState<Array<{ label: string; value: number }>>([]);
   const [medicationRows, setMedicationRows] = useState<Array<{ medication: string; taken: number; missed: number }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
     void (async () => {
+      if (isMounted) {
+        setIsLoading(true);
+      }
       try {
         const report = await getDoseReport(new Date(), locale);
         if (!isMounted) {
@@ -27,6 +31,10 @@ export function useReportsScreenState(locale: Locale) {
         setSummary({ adherence: 0, totalScheduled: 0, taken: 0, missed: 0 });
         setWeekly([]);
         setMedicationRows([]);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     })();
 
@@ -39,6 +47,7 @@ export function useReportsScreenState(locale: Locale) {
     summary,
     weekly,
     medicationRows,
+    isLoading,
     eventCount: store.events.length,
   };
 }

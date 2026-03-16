@@ -1,3 +1,4 @@
+import { LoadingStateCard } from '../components/ui/loading-state-card';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../components/ui/screen-header';
 import { getTranslations, type Locale } from '../features/localization/localization';
@@ -11,7 +12,7 @@ type ReportsScreenProps = {
 
 export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
   const t = getTranslations(locale);
-  const { summary, weekly, medicationRows, eventCount } = useReportsScreenState(locale);
+  const { summary, weekly, medicationRows, isLoading, eventCount } = useReportsScreenState(locale);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -21,50 +22,56 @@ export function ReportsScreen({ locale, onBack }: ReportsScreenProps) {
         leftAction={{ icon: 'back', onPress: onBack }}
       />
 
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{t.adherence}</Text>
-          <Text style={styles.summaryValue}>{`${summary.adherence}%`}</Text>
-          <Text style={styles.summaryHint}>
-            {`${summary.taken} / ${summary.totalScheduled} ${t.taken.toLowerCase()}`}
-          </Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>{t.missedColumn}</Text>
-          <Text style={[styles.summaryValue, styles.errorText]}>{summary.missed}</Text>
-          <Text style={styles.summaryHint}>{t.last7Days}</Text>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t.weeklyTrend}</Text>
-        {weekly.map((item) => (
-          <View key={item.label} style={styles.barRow}>
-            <Text style={styles.barLabel}>{item.label}</Text>
-            <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${item.value}%` }]} />
+      {isLoading ? (
+        <LoadingStateCard title={t.loadingReportsTitle} description={t.loadingReportsDescription} />
+      ) : (
+        <>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>{t.adherence}</Text>
+              <Text style={styles.summaryValue}>{`${summary.adherence}%`}</Text>
+              <Text style={styles.summaryHint}>
+                {`${summary.taken} / ${summary.totalScheduled} ${t.taken.toLowerCase()}`}
+              </Text>
             </View>
-            <Text style={styles.barPercent}>{item.value}%</Text>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>{t.missedColumn}</Text>
+              <Text style={[styles.summaryValue, styles.errorText]}>{summary.missed}</Text>
+              <Text style={styles.summaryHint}>{t.last7Days}</Text>
+            </View>
           </View>
-        ))}
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t.medicationReport}</Text>
-        <View style={styles.tableRow}>
-          <Text style={styles.tableHead}>{t.medicationColumn}</Text>
-          <Text style={styles.tableHead}>{t.takenColumn}</Text>
-          <Text style={styles.tableHead}>{t.missedColumn}</Text>
-        </View>
-        {medicationRows.map((row) => (
-          <View key={row.medication} style={styles.tableRow}>
-            <Text style={styles.tableCell}>{row.medication}</Text>
-            <Text style={styles.tableCell}>{row.taken}</Text>
-            <Text style={[styles.tableCell, styles.errorText]}>{row.missed}</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t.weeklyTrend}</Text>
+            {weekly.map((item) => (
+              <View key={item.label} style={styles.barRow}>
+                <Text style={styles.barLabel}>{item.label}</Text>
+                <View style={styles.barTrack}>
+                  <View style={[styles.barFill, { width: `${item.value}%` }]} />
+                </View>
+                <Text style={styles.barPercent}>{item.value}%</Text>
+              </View>
+            ))}
           </View>
-        ))}
-        {medicationRows.length === 0 ? <Text style={styles.summaryHint}>{t.noReportData}</Text> : null}
-      </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t.medicationReport}</Text>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableHead}>{t.medicationColumn}</Text>
+              <Text style={styles.tableHead}>{t.takenColumn}</Text>
+              <Text style={styles.tableHead}>{t.missedColumn}</Text>
+            </View>
+            {medicationRows.map((row) => (
+              <View key={row.medication} style={styles.tableRow}>
+                <Text style={styles.tableCell}>{row.medication}</Text>
+                <Text style={styles.tableCell}>{row.taken}</Text>
+                <Text style={[styles.tableCell, styles.errorText]}>{row.missed}</Text>
+              </View>
+            ))}
+            {medicationRows.length === 0 ? <Text style={styles.summaryHint}>{t.noReportData}</Text> : null}
+          </View>
+        </>
+      )}
       <Text style={styles.hidden}>{eventCount}</Text>
     </ScrollView>
   );

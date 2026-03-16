@@ -60,25 +60,28 @@ export function SignInScreen({ locale, onSuccess, onOpenSignUp, onContinueAsGues
 
       <Button
         testID="signin-submit-button"
-        label={t.signIn}
+        label={isLoading ? t.signingIn : t.signIn}
         onPress={() => void signIn()}
         disabled={isLoading || !canSubmit}
+        loading={isLoading}
       />
 
       <Text style={styles.legal}>{t.termsText}</Text>
       <Button
-        label={t.continueWithApple}
+        label={isSocialLoading ? t.loading : t.continueWithApple}
         leadingNode={<BrandIcon name="apple" />}
         variant="outlined"
         onPress={() => void signInWithSocial('Apple')}
         disabled={isSocialLoading}
+        loading={isSocialLoading}
       />
       <Button
-        label={t.continueWithGoogle}
+        label={isSocialLoading ? t.loading : t.continueWithGoogle}
         leadingNode={<BrandIcon name="google" />}
         variant="outlined"
         onPress={() => void signInWithSocial('Google')}
         disabled={isSocialLoading}
+        loading={isSocialLoading}
       />
       <Button label={t.continueAsGuest} variant="ghost" onPress={onContinueAsGuest} />
 

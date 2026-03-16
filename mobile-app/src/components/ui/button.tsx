@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { theme } from '../../theme';
 
@@ -11,6 +11,7 @@ type ButtonProps = {
   testID?: string;
   leadingIcon?: string;
   leadingNode?: ReactNode;
+  loading?: boolean;
   disabled?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -23,6 +24,7 @@ export function Button({
   testID,
   leadingIcon,
   leadingNode,
+  loading = false,
   disabled = false,
   variant = 'filled',
   size = 'm',
@@ -41,17 +43,25 @@ export function Button({
     <Pressable
       testID={testID}
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || loading}
       style={[
         styles.base,
         fullWidth && styles.fullWidth,
         sizeStyles[size],
         variantStyles[variant],
         disabled && styles.disabled,
+        loading && styles.loading,
       ]}
     >
       <View style={styles.contentRow}>
-        {leadingNode ? <View style={styles.leadingNode}>{leadingNode}</View> : null}
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color={variant === 'outlined' || variant === 'ghost' ? theme.colors.primaryBlue[600] : '#FFFFFF'}
+          />
+        ) : leadingNode ? (
+          <View style={styles.leadingNode}>{leadingNode}</View>
+        ) : null}
         <Text
           style={[
             textSizeStyles[size],
@@ -59,10 +69,10 @@ export function Button({
               fontSize: textBaseBySize[size].fontSize * fontScale,
             },
             textVariantStyles[variant],
-            disabled && styles.disabledText,
+            (disabled || loading) && styles.disabledText,
           ]}
         >
-          {leadingIcon ? `${leadingIcon}  ` : ''}
+          {!loading && leadingIcon ? `${leadingIcon}  ` : ''}
           {label}
         </Text>
       </View>
@@ -82,6 +92,9 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.42,
+  },
+  loading: {
+    opacity: 0.88,
   },
   disabledText: {
     color: theme.colors.neutral[500],
