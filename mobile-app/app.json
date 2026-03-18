@@ -17,7 +17,7 @@
       "supportsTablet": true,
       "buildNumber": "2",
       "icon": "./assets/icon.png",
-      "bundleIdentifier": "com.suleymansanver.medicationreminder",
+      "bundleIdentifier": "com.tugbasanver.pillmind",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false,

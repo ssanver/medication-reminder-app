@@ -30,7 +30,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>medication-reminder</string>
-				<string>com.suleymansanver.medicationreminder</string>
+				<string>com.tugbasanver.pillmind</string>
 			</array>
 		</dict>
 	</array>

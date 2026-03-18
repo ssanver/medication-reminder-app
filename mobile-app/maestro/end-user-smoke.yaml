@@ -1,4 +1,4 @@
-appId: com.suleymansanver.medicationreminder
+appId: com.tugbasanver.pillmind
 ---
 - launchApp:
     clearState: false
