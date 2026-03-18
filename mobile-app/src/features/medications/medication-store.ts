@@ -717,25 +717,34 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     ...current,
     active,
   };
+  const previousState = state;
 
   const accessToken = await loadAccessToken();
+  state = {
+    ...state,
+    medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
+  };
+  emit();
+  await persist();
+
   if (!accessToken) {
-    state = {
-      ...state,
-      medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
-    };
-    emit();
-    await persist();
     return;
   }
 
-  const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
-    method: 'PUT',
-    body: toApiSaveMedicationRequest(localUpdated),
-    correlationPrefix: 'medication-update-active',
-  });
-  if (updated) {
-    await refreshMedicationStoreFromBackend();
+  try {
+    const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
+      method: 'PUT',
+      body: toApiSaveMedicationRequest(localUpdated),
+      correlationPrefix: 'medication-update-active',
+    });
+    if (updated) {
+      await refreshMedicationStoreFromBackend();
+    }
+  } catch (error) {
+    state = previousState;
+    emit();
+    await persist();
+    throw error;
   }
 }
 

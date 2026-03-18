@@ -1,0 +1,73 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  addMedication,
+  clearMedicationStore,
+  getMedicationStoreSnapshot,
+  setMedicationActive,
+} from './medication-store';
+
+const { loadAccessTokenMock, apiRequestJsonMock } = vi.hoisted(() => ({
+  loadAccessTokenMock: vi.fn<() => Promise<string | null>>(),
+  apiRequestJsonMock: vi.fn(),
+}));
+
+vi.mock('../auth/auth-session-store', () => ({
+  loadAccessToken: loadAccessTokenMock,
+}));
+
+vi.mock('../network/api-client', () => ({
+  apiRequestJson: apiRequestJsonMock,
+  apiRequestVoid: vi.fn(),
+}));
+
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: vi.fn(async () => null),
+    setItem: vi.fn(async () => undefined),
+    removeItem: vi.fn(async () => undefined),
+  },
+}));
+
+describe('medication-store/setMedicationActive', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    loadAccessTokenMock.mockResolvedValue(null);
+    await clearMedicationStore();
+    await addMedication({
+      name: 'Lipanthyl',
+      form: 'pill',
+      intervalUnit: 'day',
+      intervalCount: 1,
+      dosage: '1',
+      isBeforeMeal: true,
+      note: '',
+      active: true,
+    });
+  });
+
+  it('oturum acikken ilaci backend cevabini beklemeden pasiflestirir', async () => {
+    loadAccessTokenMock.mockResolvedValue('token');
+    apiRequestJsonMock.mockImplementation(() => new Promise<null>(() => undefined));
+
+    const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
+    expect(medicationId).toBeTruthy();
+
+    void setMedicationActive(medicationId!, false);
+
+    await vi.waitFor(() => {
+      expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
+      expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(false);
+    });
+  });
+
+  it('backend hatasinda aktiflik durumunu geri alir', async () => {
+    loadAccessTokenMock.mockResolvedValue('token');
+    apiRequestJsonMock.mockRejectedValue(new Error('network error'));
+
+    const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
+    expect(medicationId).toBeTruthy();
+
+    await expect(setMedicationActive(medicationId!, false)).rejects.toThrow('network error');
+    expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(true);
+  });
+});
