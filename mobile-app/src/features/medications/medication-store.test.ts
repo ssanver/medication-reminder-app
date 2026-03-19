@@ -105,24 +105,47 @@ describe('medication-store/setMedicationActive', () => {
 
   it('backend stale active degeri dondurse bile hedef pasif durumu korur', async () => {
     loadAccessTokenMock.mockResolvedValue('token');
-    apiRequestJsonMock.mockResolvedValue({
-      id: getMedicationStoreSnapshot().medications[0]?.id,
-      name: 'Lipanthyl',
-      dosage: '1',
-      usageType: 'pill',
-      isBeforeMeal: true,
-      startDate: '2026-03-19',
-      endDate: null,
-      isActive: true,
-      schedules: [
+    apiRequestJsonMock
+      .mockResolvedValueOnce({
+        id: getMedicationStoreSnapshot().medications[0]?.id,
+        name: 'Lipanthyl',
+        dosage: '1',
+        usageType: 'pill',
+        isBeforeMeal: true,
+        startDate: '2026-03-19',
+        endDate: null,
+        isActive: true,
+        schedules: [
+          {
+            repeatType: 'daily',
+            intervalCount: 1,
+            reminderTime: '09:00:00',
+            daysOfWeek: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce([
         {
-          repeatType: 'daily',
-          intervalCount: 1,
-          reminderTime: '09:00:00',
-          daysOfWeek: null,
+          id: getMedicationStoreSnapshot().medications[0]?.id,
+          name: 'Lipanthyl',
+          dosage: '1',
+          usageType: 'pill',
+          isBeforeMeal: true,
+          startDate: '2026-03-19',
+          endDate: null,
+          isActive: false,
+          schedules: [
+            {
+              repeatType: 'daily',
+              intervalCount: 1,
+              reminderTime: '09:00:00',
+              daysOfWeek: null,
+            },
+          ],
         },
-      ],
-    });
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
 
     const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
     expect(medicationId).toBeTruthy();

@@ -10,6 +10,63 @@ type ApiRequestOptions = {
   correlationPrefix?: string;
 };
 
+function shouldDebugApi(): boolean {
+  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+}
+
+function maskHeaders(headers: Record<string, string>): Record<string, string> {
+  if (!headers.Authorization) {
+    return headers;
+  }
+
+  return {
+    ...headers,
+    Authorization: 'Bearer ***',
+  };
+}
+
+function debugApi(label: string, payload: unknown): void {
+  if (!shouldDebugApi()) {
+    return;
+  }
+
+  console.log(`[API] ${label}`, payload);
+}
+
+async function readResponsePayload(response: Response): Promise<{ text: string; parsed: unknown }> {
+  if (typeof response.text === 'function') {
+    const text = await response.text();
+    if (!text) {
+      return { text: '', parsed: null };
+    }
+
+    try {
+      return {
+        text,
+        parsed: JSON.parse(text),
+      };
+    } catch {
+      return {
+        text,
+        parsed: text,
+      };
+    }
+  }
+
+  if (typeof response.json === 'function') {
+    const parsed = await response.json();
+    return {
+      text: JSON.stringify(parsed),
+      parsed,
+    };
+  }
+
+  return {
+    text: '',
+    parsed: null,
+  };
+}
+
 export class ApiRequestError extends Error {
   status: number;
 
@@ -68,14 +125,26 @@ export async function apiRequestJson<TResponse>(path: string, options: ApiReques
 
   const execute = async (): Promise<Response> => {
     const accessToken = await loadAccessToken();
-    return fetch(`${baseUrl}${path}`, {
-      method: options.method ?? 'GET',
-      headers: {
-        ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
-        ...(options.correlationPrefix ? { 'X-Correlation-ID': createCorrelationId(options.correlationPrefix) } : undefined),
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined),
-        ...options.headers,
-      },
+    const correlationId = options.correlationPrefix ? createCorrelationId(options.correlationPrefix) : undefined;
+    const method = options.method ?? 'GET';
+    const headers = {
+      ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
+      ...(correlationId ? { 'X-Correlation-ID': correlationId } : undefined),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined),
+      ...options.headers,
+    };
+    const url = `${baseUrl}${path}`;
+
+    debugApi(`REQUEST ${method} ${path}`, {
+      url,
+      correlationId: correlationId ?? null,
+      headers: maskHeaders(headers),
+      body: options.body ?? null,
+    });
+
+    return fetch(url, {
+      method,
+      headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
   };
@@ -89,11 +158,14 @@ export async function apiRequestJson<TResponse>(path: string, options: ApiReques
   }
 
   if (!response.ok) {
-    const text = await response.text();
+    const { text, parsed } = await readResponsePayload(response);
+    debugApi(`RESPONSE ${response.status} ${path}`, parsed);
     throw new ApiRequestError(response.status, text || 'Request failed.');
   }
 
-  return (await response.json()) as TResponse;
+  const { parsed } = await readResponsePayload(response);
+  debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+  return parsed as TResponse;
 }
 
 export async function apiRequestVoid(path: string, options: ApiRequestOptions = {}): Promise<void> {
@@ -101,14 +173,26 @@ export async function apiRequestVoid(path: string, options: ApiRequestOptions = 
 
   const execute = async (): Promise<Response> => {
     const accessToken = await loadAccessToken();
-    return fetch(`${baseUrl}${path}`, {
-      method: options.method ?? 'GET',
-      headers: {
-        ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
-        ...(options.correlationPrefix ? { 'X-Correlation-ID': createCorrelationId(options.correlationPrefix) } : undefined),
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined),
-        ...options.headers,
-      },
+    const correlationId = options.correlationPrefix ? createCorrelationId(options.correlationPrefix) : undefined;
+    const method = options.method ?? 'GET';
+    const headers = {
+      ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
+      ...(correlationId ? { 'X-Correlation-ID': correlationId } : undefined),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined),
+      ...options.headers,
+    };
+    const url = `${baseUrl}${path}`;
+
+    debugApi(`REQUEST ${method} ${path}`, {
+      url,
+      correlationId: correlationId ?? null,
+      headers: maskHeaders(headers),
+      body: options.body ?? null,
+    });
+
+    return fetch(url, {
+      method,
+      headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
   };
@@ -122,7 +206,12 @@ export async function apiRequestVoid(path: string, options: ApiRequestOptions = 
   }
 
   if (!response.ok) {
-    const text = await response.text();
+    const { text, parsed } = await readResponsePayload(response);
+    debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+    debugApi(`RESPONSE ${response.status} ${path}`, text || null);
     throw new ApiRequestError(response.status, text || 'Request failed.');
   }
+
+  const { parsed } = await readResponsePayload(response);
+  debugApi(`RESPONSE ${response.status} ${path}`, parsed);
 }
