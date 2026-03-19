@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { InlineAdCard } from '../components/ui/inline-ad-card';
 import { MedicationCard } from '../components/ui/medication-card';
@@ -22,7 +22,8 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
   const t = getTranslations(locale);
-  const { filter, setFilter, filtered, counts, isMedicationPending, toggleMedicationActive } = useMyMedsScreenState({ locale });
+  const { filter, setFilter, filtered, counts, hasPendingMedicationAction, isMedicationPending, toggleMedicationActive } =
+    useMyMedsScreenState({ locale });
   const [ad, setAd] = useState<{ title: string; body: string; ctaLabel: string; ctaUrl: string } | null>(null);
   const [adsEnabled, setAdsEnabled] = useState(true);
   async function applyMedicationActiveState(medicationId: string, nextActive: boolean) {
@@ -74,72 +75,83 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
   }, [locale]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>{t.myMedicationTitle}</Text>
+    <View style={styles.screen}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.title, { fontSize: theme.typography.heading.h4Medium.fontSize * fontScale }]}>{t.myMedicationTitle}</Text>
 
-      <SegmentedControl
-        options={[
-          { label: t.all, value: 'All', count: counts.all },
-          { label: t.active, value: 'Active', count: counts.active },
-          { label: t.inactive, value: 'Inactive', count: counts.inactive },
-        ]}
-        value={filter}
-        onChange={(next) => setFilter(next as MedStatus)}
-      />
-
-      {adsEnabled && ad ? (
-        <InlineAdCard
-          title={ad.title}
-          body={ad.body}
-          ctaLabel={ad.ctaLabel}
-          onPress={() => {
-            void Linking.openURL(ad.ctaUrl);
-          }}
+        <SegmentedControl
+          options={[
+            { label: t.all, value: 'All', count: counts.all },
+            { label: t.active, value: 'Active', count: counts.active },
+            { label: t.inactive, value: 'Inactive', count: counts.inactive },
+          ]}
+          value={filter}
+          onChange={(next) => setFilter(next as MedStatus)}
         />
-      ) : null}
 
-      {filtered.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>💊</Text>
-          <Text style={styles.emptyTitle}>{t.noMedicationsFound}</Text>
-          <Pressable style={styles.emptyButton} onPress={onOpenAddMedication}>
-            <Text style={styles.emptyButtonText}>{t.addMedication}</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.list}>
-          {filtered.map((item) => (
-            <SwipeToDeleteRow
-              key={item.id}
-              actionLabel={item.active ? t.makeInactive : t.makeActive}
-              actionVariant={item.active ? 'deactivate' : 'activate'}
-              loading={isMedicationPending(item.id)}
-              onAction={() => {
-                void applyMedicationActiveState(item.id, !item.active);
-              }}
-            >
-              <MedicationCard
-                locale={locale}
-                name={item.name}
-                details={item.details}
-                schedule={item.schedule}
-                active={item.active}
+        {adsEnabled && ad ? (
+          <InlineAdCard
+            title={ad.title}
+            body={ad.body}
+            ctaLabel={ad.ctaLabel}
+            onPress={() => {
+              void Linking.openURL(ad.ctaUrl);
+            }}
+          />
+        ) : null}
+
+        {filtered.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>💊</Text>
+            <Text style={styles.emptyTitle}>{t.noMedicationsFound}</Text>
+            <Pressable style={styles.emptyButton} onPress={onOpenAddMedication}>
+              <Text style={styles.emptyButtonText}>{t.addMedication}</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {filtered.map((item) => (
+              <SwipeToDeleteRow
+                key={item.id}
+                actionLabel={item.active ? t.makeInactive : t.makeActive}
+                actionVariant={item.active ? 'deactivate' : 'activate'}
                 loading={isMedicationPending(item.id)}
-                showToggle
-                compact
-                medEmoji={item.emoji}
-                onToggle={(value) => {
-                  void applyMedicationActiveState(item.id, value);
+                onAction={() => {
+                  void applyMedicationActiveState(item.id, !item.active);
                 }}
-                onPress={() => onOpenMedicationDetails(item.id)}
-              />
-            </SwipeToDeleteRow>
-          ))}
-        </View>
-      )}
+              >
+                <MedicationCard
+                  locale={locale}
+                  name={item.name}
+                  details={item.details}
+                  schedule={item.schedule}
+                  active={item.active}
+                  loading={isMedicationPending(item.id)}
+                  showToggle
+                  compact
+                  medEmoji={item.emoji}
+                  onToggle={(value) => {
+                    void applyMedicationActiveState(item.id, value);
+                  }}
+                  onPress={() => onOpenMedicationDetails(item.id)}
+                />
+              </SwipeToDeleteRow>
+            ))}
+          </View>
+        )}
 
-      <View style={styles.bottomSpacer} />
-    </ScrollView>
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+
+      {hasPendingMedicationAction ? (
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={theme.colors.primaryBlue[500]} />
+            <Text style={styles.loadingTitle}>{t.loading}</Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -211,6 +223,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.semantic.screenBackground,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
     gap: theme.spacing[16],
     paddingTop: theme.spacing[8],
@@ -254,6 +269,33 @@ const styles = StyleSheet.create({
   },
   swipeCard: {
     flex: 1,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.semantic.overlay,
+    paddingHorizontal: theme.spacing[24],
+  },
+  loadingCard: {
+    minWidth: 168,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing[12],
+    borderRadius: theme.radius[20],
+    backgroundColor: theme.colors.semantic.surface,
+    paddingHorizontal: theme.spacing[24],
+    paddingVertical: theme.spacing[20],
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  loadingTitle: {
+    ...theme.typography.body.medium,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
   },
   emptyCard: {
     borderRadius: theme.radius[16],
