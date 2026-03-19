@@ -717,43 +717,33 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     ...current,
     active,
   };
-  const previousState = state;
-
   const accessToken = await loadAccessToken();
-  state = {
-    ...state,
-    medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
-  };
-  emit();
-  await persist();
-
   if (!accessToken) {
+    state = {
+      ...state,
+      medications: state.medications.map((item) => (item.id === medicationId ? localUpdated : item)),
+    };
+    emit();
+    await persist();
     return;
   }
 
-  try {
-    const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
-      method: 'PUT',
-      body: toApiSaveMedicationRequest(localUpdated),
-      correlationPrefix: 'medication-update-active',
-    });
-    if (updated) {
-      const updatedMedication: Medication = {
-        ...fromApiMedication(updated),
-        totalQuantity: current.totalQuantity,
-      };
-      state = {
-        ...state,
-        medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
-      };
-      emit();
-      await persist();
-    }
-  } catch (error) {
-    state = previousState;
+  const updated = await apiRequestJson<ApiMedication>(`/api/medications/${medicationId}`, {
+    method: 'PUT',
+    body: toApiSaveMedicationRequest(localUpdated),
+    correlationPrefix: 'medication-update-active',
+  });
+  if (updated) {
+    const updatedMedication: Medication = {
+      ...fromApiMedication(updated),
+      totalQuantity: current.totalQuantity,
+    };
+    state = {
+      ...state,
+      medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
+    };
     emit();
     await persist();
-    throw error;
   }
 }
 
@@ -779,64 +769,54 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
   const accessToken = await loadAccessToken();
-  const previousState = state;
-  applyDoseEventState(medicationId, dateKey, normalizedScheduledTime, status);
-  emit();
-  await persist();
 
   if (!accessToken) {
+    applyDoseEventState(medicationId, dateKey, normalizedScheduledTime, status);
+    emit();
+    await persist();
     return;
   }
 
-  try {
-    await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
-      method: 'POST',
-      body: {
-        medicationId,
-        actionType: status,
-        dateKey,
-        scheduledTime: normalizedScheduledTime,
-      },
-      correlationPrefix: 'dose-events-action',
-    });
-  } catch (error) {
-    state = previousState;
-    emit();
-    await persist();
-    throw error;
-  }
+  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+    method: 'POST',
+    body: {
+      medicationId,
+      actionType: status,
+      dateKey,
+      scheduledTime: normalizedScheduledTime,
+    },
+    correlationPrefix: 'dose-events-action',
+  });
+  applyDoseEventState(medicationId, dateKey, normalizedScheduledTime, status);
+  emit();
+  await persist();
 }
 
 export async function clearDoseStatus(medicationId: string, date: Date, scheduledTime = ''): Promise<void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
   const accessToken = await loadAccessToken();
-  const previousState = state;
-  clearDoseEventState(medicationId, dateKey, normalizedScheduledTime);
-  emit();
-  await persist();
 
   if (!accessToken) {
+    clearDoseEventState(medicationId, dateKey, normalizedScheduledTime);
+    emit();
+    await persist();
     return;
   }
 
-  try {
-    await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
-      method: 'POST',
-      body: {
-        medicationId,
-        actionType: 'clear',
-        dateKey,
-        scheduledTime: normalizedScheduledTime,
-      },
-      correlationPrefix: 'dose-events-action-clear',
-    });
-  } catch (error) {
-    state = previousState;
-    emit();
-    await persist();
-    throw error;
-  }
+  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+    method: 'POST',
+    body: {
+      medicationId,
+      actionType: 'clear',
+      dateKey,
+      scheduledTime: normalizedScheduledTime,
+    },
+    correlationPrefix: 'dose-events-action-clear',
+  });
+  clearDoseEventState(medicationId, dateKey, normalizedScheduledTime);
+  emit();
+  await persist();
 }
 
 export type ScheduledDoseItem = {

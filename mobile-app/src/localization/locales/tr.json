@@ -362,5 +362,6 @@
   "cycleSummary": "{{on}} gün kullanım, {{off}} gün ara",
   "startedOn": "{{date}} başlangıç",
   "startedOnWithRemaining": "{{date}} başlangıç | {{count}} adet kaldı",
-  "medicationDeleteError": "İlaç silinemedi. Lütfen tekrar deneyin."
+  "medicationDeleteError": "İlaç silinemedi. Lütfen tekrar deneyin.",
+  "medicationActionError": "İlaç işlemi tamamlanamadı. Lütfen tekrar deneyin."
 }

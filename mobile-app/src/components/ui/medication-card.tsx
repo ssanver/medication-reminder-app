@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useAppFontScale } from '../../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../../features/localization/localization';
 import { theme } from '../../theme';
@@ -17,6 +17,7 @@ type MedicationCardProps = {
   actionVariant?: 'filled' | 'success' | 'danger';
   secondaryActionLabel?: string;
   onSecondaryActionPress?: () => void;
+  loading?: boolean;
   statusBadge?: 'ontime' | 'missed';
   medEmoji?: string;
   compact?: boolean;
@@ -38,6 +39,7 @@ export function MedicationCard({
   actionVariant = 'filled',
   secondaryActionLabel,
   onSecondaryActionPress,
+  loading = false,
   statusBadge,
   medEmoji = '💊',
   compact = false,
@@ -59,7 +61,7 @@ export function MedicationCard({
       ) : null}
 
       <View style={styles.topRow}>
-        <Pressable style={styles.contentPressable} onPress={onPress} disabled={!onPress}>
+        <Pressable style={styles.contentPressable} onPress={onPress} disabled={!onPress || loading}>
           <View style={[styles.avatar, compact && styles.avatarCompact]}>
             <Text style={[styles.avatarIcon, compact && styles.avatarIconCompact]}>{medEmoji}</Text>
           </View>
@@ -73,25 +75,31 @@ export function MedicationCard({
         </Pressable>
 
         {showToggle ? (
-          <Switch
-            value={active}
-            onValueChange={(value) => onToggle?.(value)}
-            disabled={!onToggle}
-            trackColor={{
-              false: theme.colors.neutral[300],
-              true: theme.colors.primaryBlue[500],
-            }}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor={theme.colors.neutral[300]}
-            style={styles.switchWrap}
-          />
+          loading ? (
+            <View style={styles.toggleLoadingWrap}>
+              <ActivityIndicator size="small" color={theme.colors.primaryBlue[500]} />
+            </View>
+          ) : (
+            <Switch
+              value={active}
+              onValueChange={(value) => onToggle?.(value)}
+              disabled={!onToggle}
+              trackColor={{
+                false: theme.colors.neutral[300],
+                true: theme.colors.primaryBlue[500],
+              }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor={theme.colors.neutral[300]}
+              style={styles.switchWrap}
+            />
+          )
         ) : null}
       </View>
 
       {showAction ? (
         <View style={styles.actionWrap}>
           {secondaryActionLabel ? (
-            <Pressable onPress={onSecondaryActionPress} style={styles.secondaryAction}>
+            <Pressable onPress={onSecondaryActionPress} style={styles.secondaryAction} disabled={loading}>
               <Text style={[styles.secondaryActionText, { fontSize: theme.typography.captionScale.lRegular.fontSize * fontScale }]}>
                 {secondaryActionLabel}
               </Text>
@@ -101,6 +109,8 @@ export function MedicationCard({
             label={resolvedActionLabel}
             size="xs"
             variant={actionVariant === 'success' ? 'success' : actionVariant === 'danger' ? 'danger' : 'filled'}
+            loading={loading}
+            disabled={loading}
             onPress={onActionPress ?? (() => undefined)}
           />
         </View>
@@ -196,6 +206,12 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.xmMedium,
   },
   switchWrap: {
+    marginLeft: theme.spacing[4],
+  },
+  toggleLoadingWrap: {
+    width: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: theme.spacing[4],
   },
   metaMuted: {

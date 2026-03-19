@@ -22,12 +22,16 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
   const t = getTranslations(locale);
-  const { filter, setFilter, filtered, counts, toggleMedicationActive } = useMyMedsScreenState({ locale });
+  const { filter, setFilter, filtered, counts, isMedicationPending, toggleMedicationActive } = useMyMedsScreenState({ locale });
   const [ad, setAd] = useState<{ title: string; body: string; ctaLabel: string; ctaUrl: string } | null>(null);
   const [adsEnabled, setAdsEnabled] = useState(true);
-  function applyMedicationActiveState(medicationId: string, nextActive: boolean) {
-    setFilter(nextActive ? 'Active' : 'Inactive');
-    void toggleMedicationActive(medicationId, nextActive);
+  async function applyMedicationActiveState(medicationId: string, nextActive: boolean) {
+    try {
+      await toggleMedicationActive(medicationId, nextActive);
+      setFilter(nextActive ? 'Active' : 'Inactive');
+    } catch {
+      // The action remains on the current tab if the server rejects the change.
+    }
   }
 
   useEffect(() => {
@@ -108,7 +112,10 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
               key={item.id}
               actionLabel={item.active ? t.makeInactive : t.makeActive}
               actionVariant={item.active ? 'deactivate' : 'activate'}
-              onAction={() => applyMedicationActiveState(item.id, !item.active)}
+              loading={isMedicationPending(item.id)}
+              onAction={() => {
+                void applyMedicationActiveState(item.id, !item.active);
+              }}
             >
               <MedicationCard
                 locale={locale}
@@ -116,10 +123,13 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
                 details={item.details}
                 schedule={item.schedule}
                 active={item.active}
+                loading={isMedicationPending(item.id)}
                 showToggle
                 compact
                 medEmoji={item.emoji}
-                onToggle={(value) => applyMedicationActiveState(item.id, value)}
+                onToggle={(value) => {
+                  void applyMedicationActiveState(item.id, value);
+                }}
                 onPress={() => onOpenMedicationDetails(item.id)}
               />
             </SwipeToDeleteRow>
@@ -135,11 +145,12 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
 type SwipeToDeleteRowProps = {
   actionLabel: string;
   actionVariant: 'activate' | 'deactivate';
+  loading?: boolean;
   onAction: () => void;
   children: ReactNode;
 };
 
-function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: SwipeToDeleteRowProps) {
+function SwipeToDeleteRow({ actionLabel, actionVariant, loading = false, onAction, children }: SwipeToDeleteRowProps) {
   const actionWidth = 132;
   const [rowWidth, setRowWidth] = useState(0);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -180,7 +191,12 @@ function SwipeToDeleteRow({ actionLabel, actionVariant, onAction, children }: Sw
         }}
       >
         <View style={[styles.swipeCard, rowWidth > 0 && { width: rowWidth }]}>{children}</View>
-        <Pressable style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }]} onPress={onAction} hitSlop={12}>
+        <Pressable
+          style={[styles.swipeDeleteButton, { backgroundColor: actionButtonColor }, loading && styles.swipeDeleteButtonDisabled]}
+          onPress={onAction}
+          hitSlop={12}
+          disabled={loading}
+        >
           <AppIcon name={actionIconName} size={18} color="#FFFFFF" />
           <Text style={styles.swipeDeleteButtonText}>{actionLabel}</Text>
         </Pressable>
@@ -231,6 +247,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     paddingHorizontal: theme.spacing[4],
+  },
+  swipeDeleteButtonDisabled: {
+    opacity: 0.68,
   },
   swipeCard: {
     flex: 1,

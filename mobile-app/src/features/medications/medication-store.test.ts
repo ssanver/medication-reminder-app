@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addMedication,
+  clearDoseStatus,
   clearMedicationStore,
   getMedicationStoreSnapshot,
+  setDoseStatus,
   setMedicationActive,
 } from './medication-store';
 
@@ -45,7 +47,7 @@ describe('medication-store/setMedicationActive', () => {
     });
   });
 
-  it('oturum acikken ilaci backend cevabini beklemeden pasiflestirir', async () => {
+  it('oturum acikken ilaci backend cevabi gelmeden pasiflestirmez', async () => {
     loadAccessTokenMock.mockResolvedValue('token');
     apiRequestJsonMock.mockImplementation(() => new Promise<null>(() => undefined));
 
@@ -56,7 +58,7 @@ describe('medication-store/setMedicationActive', () => {
 
     await vi.waitFor(() => {
       expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
-      expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(false);
+      expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(true);
     });
   });
 
@@ -99,5 +101,38 @@ describe('medication-store/setMedicationActive', () => {
 
     expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
     expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(false);
+  });
+
+  it('oturum acikken ilac alma durumunu backend cevabi gelmeden degistirmez', async () => {
+    loadAccessTokenMock.mockResolvedValue('token');
+    apiRequestJsonMock.mockImplementation(() => new Promise<null>(() => undefined));
+
+    const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
+    expect(medicationId).toBeTruthy();
+
+    void setDoseStatus(medicationId!, new Date('2026-03-19T09:00:00'), 'taken', '09:00');
+
+    await vi.waitFor(() => {
+      expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
+      expect(getMedicationStoreSnapshot().events).toHaveLength(0);
+    });
+  });
+
+  it('oturum acikken ilac geri alma durumunu backend cevabi gelmeden temizlemez', async () => {
+    const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
+    expect(medicationId).toBeTruthy();
+
+    await setDoseStatus(medicationId!, new Date('2026-03-19T09:00:00'), 'taken', '09:00');
+    expect(getMedicationStoreSnapshot().events).toHaveLength(1);
+
+    loadAccessTokenMock.mockResolvedValue('token');
+    apiRequestJsonMock.mockImplementation(() => new Promise<null>(() => undefined));
+
+    void clearDoseStatus(medicationId!, new Date('2026-03-19T09:00:00'), '09:00');
+
+    await vi.waitFor(() => {
+      expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
+      expect(getMedicationStoreSnapshot().events).toHaveLength(1);
+    });
   });
 });

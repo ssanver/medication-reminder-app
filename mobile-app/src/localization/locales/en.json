@@ -362,5 +362,6 @@
   "cycleSummary": "{{on}} days on, {{off}} days off",
   "startedOn": "Started {{date}}",
   "startedOnWithRemaining": "Started {{date}} | {{count}} left",
-  "medicationDeleteError": "Medication could not be deleted. Please try again."
+  "medicationDeleteError": "Medication could not be deleted. Please try again.",
+  "medicationActionError": "Medication action could not be completed. Please try again."
 }

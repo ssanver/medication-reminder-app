@@ -90,6 +90,7 @@ export function TodayScreen({
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
   const [isDayStripDragging, setIsDayStripDragging] = useState(false);
+  const [pendingDoseActionKeys, setPendingDoseActionKeys] = useState<Record<string, boolean>>({});
   const DAY_ITEM_SIZE = isCompactScreen ? 38 : 44;
   const dayStripRef = useRef<ScrollView | null>(null);
   const dayAnchorRef = useRef(new Date());
@@ -199,6 +200,34 @@ export function TodayScreen({
       return;
     }
     setSelectedDate(target.date);
+  }
+
+  function toDoseActionKey(medicationId: string, scheduledTime: string) {
+    return `${medicationId}:${selectedDateKey}:${scheduledTime}`;
+  }
+
+  async function handleDoseAction(
+    medicationId: string,
+    scheduledTime: string,
+    run: () => Promise<void>,
+  ) {
+    const actionKey = toDoseActionKey(medicationId, scheduledTime);
+    setPendingDoseActionKeys((current) => ({
+      ...current,
+      [actionKey]: true,
+    }));
+    try {
+      await run();
+      setActionWarning(null);
+    } catch {
+      setActionWarning(t.medicationActionError);
+    } finally {
+      setPendingDoseActionKeys((current) => {
+        const next = { ...current };
+        delete next[actionKey];
+        return next;
+      });
+    }
   }
 
   return (
@@ -470,6 +499,7 @@ export function TodayScreen({
                       : 'filled'
               }
               statusBadge={item.status === 'missed' ? 'missed' : item.status === 'pending' ? 'ontime' : undefined}
+              loading={pendingDoseActionKeys[toDoseActionKey(item.medicationId, item.scheduledTime)] === true}
               showAction
               medEmoji={item.emoji}
               onActionPress={() => {
@@ -480,24 +510,31 @@ export function TodayScreen({
 
                 if (isPastDate) {
                   if (item.status === 'taken') {
-                    void setDoseStatus(item.medicationId, selectedDate, 'missed', item.scheduledTime);
+                    void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
+                      await setDoseStatus(item.medicationId, selectedDate, 'missed', item.scheduledTime);
+                    });
                   } else if (item.status === 'missed') {
-                    void clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
+                    void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
+                      await clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
+                    });
                   } else {
-                    void setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
+                    void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
+                      await setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
+                    });
                   }
-                  setActionWarning(null);
                   return;
                 }
 
                 if (item.status === 'taken') {
-                  void clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
-                  setActionWarning(null);
+                  void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
+                    await clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
+                  });
                   return;
                 }
 
-                void setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
-                setActionWarning(null);
+                void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
+                  await setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
+                });
               }}
               secondaryActionLabel={
                 remindersEnabled && item.status === 'pending' ? t.snoozeInMinutes.replace('15', `${snoozeMinutes}`) : undefined

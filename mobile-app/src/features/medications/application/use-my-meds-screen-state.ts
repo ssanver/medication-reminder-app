@@ -1,16 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { localizeFormLabel, localizeFrequencyLabel } from '../../localization/medication-localization';
 import { getLocaleTag, getTranslations, type Locale } from '../../localization/localization';
 import { deleteMedication, resolveMedicationIcon, setMedicationActive } from '../medication-store';
 import { clearNotificationHistoryForMedication } from '../../notifications/notification-history';
 import { clearMedicationReminderNotificationsForMedication } from '../../notifications/local-notifications';
 import { useMedicationStore } from '../use-medication-store';
-import {
-  mergeMedicationActiveOverrides,
-  pruneResolvedActiveOverrides,
-  type MedicationActiveOverrides,
-  type MedicationListItem,
-} from './my-meds-active-overrides';
+import { type MedicationListItem } from './my-meds-active-overrides';
 
 export type MyMedsFilter = 'All' | 'Active' | 'Inactive';
 
@@ -22,7 +17,7 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
   const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<MyMedsFilter>('All');
-  const [activeOverrides, setActiveOverrides] = useState<MedicationActiveOverrides>({});
+  const [pendingMedicationIds, setPendingMedicationIds] = useState<Record<string, boolean>>({});
 
   const takenCountsByMedication = useMemo(() => {
     return store.events.reduce<Record<string, number>>((acc, item) => {
@@ -68,27 +63,21 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
     [locale, store.medications, t.afterMeal, t.beforeMeal, t.startedOn, t.startedOnWithRemaining, takenCountsByMedication],
   );
 
-  useEffect(() => {
-    setActiveOverrides((current) => pruneResolvedActiveOverrides(current, store.medications));
-  }, [store.medications]);
-
-  const items = useMemo(() => mergeMedicationActiveOverrides(baseItems, activeOverrides), [activeOverrides, baseItems]);
-
   const filtered = useMemo(() => {
     if (filter === 'All') {
-      return items;
+      return baseItems;
     }
 
-    return items.filter((item) => (filter === 'Active' ? item.active : !item.active));
-  }, [filter, items]);
+    return baseItems.filter((item) => (filter === 'Active' ? item.active : !item.active));
+  }, [baseItems, filter]);
 
   const counts = useMemo(
     () => ({
-      all: items.length,
-      active: items.filter((item) => item.active).length,
-      inactive: items.filter((item) => !item.active).length,
+      all: baseItems.length,
+      active: baseItems.filter((item) => item.active).length,
+      inactive: baseItems.filter((item) => !item.active).length,
     }),
-    [items],
+    [baseItems],
   );
 
   async function removeMedication(medicationId: string) {
@@ -103,20 +92,19 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
   }
 
   async function toggleMedicationActive(medicationId: string, active: boolean) {
-    setActiveOverrides((current) => ({
+    setPendingMedicationIds((current) => ({
       ...current,
-      [medicationId]: active,
+      [medicationId]: true,
     }));
 
     try {
       await setMedicationActive(medicationId, active);
-    } catch (error) {
-      setActiveOverrides((current) => {
+    } finally {
+      setPendingMedicationIds((current) => {
         const next = { ...current };
         delete next[medicationId];
         return next;
       });
-      throw error;
     }
   }
 
@@ -125,6 +113,7 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
     setFilter,
     filtered,
     counts,
+    isMedicationPending: (medicationId: string) => pendingMedicationIds[medicationId] === true,
     removeMedication,
     toggleMedicationActive,
   };
