@@ -736,6 +736,7 @@ export async function setMedicationActive(medicationId: string, active: boolean)
   if (updated) {
     const updatedMedication: Medication = {
       ...fromApiMedication(updated),
+      active,
       totalQuantity: current.totalQuantity,
     };
     state = {

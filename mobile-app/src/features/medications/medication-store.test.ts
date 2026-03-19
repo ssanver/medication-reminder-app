@@ -103,6 +103,35 @@ describe('medication-store/setMedicationActive', () => {
     expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(false);
   });
 
+  it('backend stale active degeri dondurse bile hedef pasif durumu korur', async () => {
+    loadAccessTokenMock.mockResolvedValue('token');
+    apiRequestJsonMock.mockResolvedValue({
+      id: getMedicationStoreSnapshot().medications[0]?.id,
+      name: 'Lipanthyl',
+      dosage: '1',
+      usageType: 'pill',
+      isBeforeMeal: true,
+      startDate: '2026-03-19',
+      endDate: null,
+      isActive: true,
+      schedules: [
+        {
+          repeatType: 'daily',
+          intervalCount: 1,
+          reminderTime: '09:00:00',
+          daysOfWeek: null,
+        },
+      ],
+    });
+
+    const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
+    expect(medicationId).toBeTruthy();
+
+    await setMedicationActive(medicationId!, false);
+
+    expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(false);
+  });
+
   it('oturum acikken ilac alma durumunu backend cevabi gelmeden degistirmez', async () => {
     loadAccessTokenMock.mockResolvedValue('token');
     apiRequestJsonMock.mockImplementation(() => new Promise<null>(() => undefined));
