@@ -83,6 +83,8 @@ const tabGlyph: Record<TabKey, AppIconName> = {
   settings: 'settings',
 };
 
+const guestSessionTimeoutMs = 2500;
+
 export function AppNavigator() {
   const medicationStore = useMedicationStore();
   const apiRequestState = useSyncExternalStore(subscribeApiRequestState, getApiRequestStateSnapshot, getApiRequestStateSnapshot);
@@ -111,7 +113,12 @@ export function AppNavigator() {
 
   async function requestGuestSession() {
     const deviceId = await loadOrCreateDeviceId();
-    return createGuestSession({ deviceId });
+    return Promise.race([
+      createGuestSession({ deviceId }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Guest session request timed out.')), guestSessionTimeoutMs);
+      }),
+    ]);
   }
 
   async function applyGuestDeviceLocale() {
@@ -122,6 +129,40 @@ export function AppNavigator() {
     } catch {
       // Keep locale from device even when preference sync is unavailable.
     }
+  }
+
+  async function runDeferredStartupSync(session: Awaited<ReturnType<typeof loadAuthSession>>) {
+    setAccountEmail(session.email);
+    setIsGuestMode(session.isGuestMode);
+    setEmailVerifiedState(session.emailVerified || session.email.length === 0);
+
+    const tasks: Array<Promise<unknown>> = [
+      applyRoleToMonetizationStatus(session.role),
+      refreshMonetizationStatus(),
+    ];
+
+    if (session.isGuestMode) {
+      tasks.push(applyGuestDeviceLocale());
+    }
+
+    if (session.email) {
+      tasks.push((async () => {
+        try {
+          const status = await getEmailVerificationStatus(session.email);
+          setEmailVerifiedState(status.isVerified);
+          setEmailResendCooldown(status.resendAvailableInSeconds ?? 0);
+          if (status.isVerified) {
+            await setEmailVerified(true);
+          }
+        } catch {
+          // Keep the current session state when the verification status request fails.
+        }
+      })());
+    } else {
+      setEmailResendCooldown(0);
+    }
+
+    await Promise.allSettled(tasks);
   }
 
   useEffect(() => {
@@ -166,34 +207,12 @@ export function AppNavigator() {
       timer = setTimeout(() => {
         void (async () => {
           try {
-            setAccountEmail(session.email);
-            setIsGuestMode(session.isGuestMode);
-
-            await applyRoleToMonetizationStatus(session.role);
-            await refreshMonetizationStatus();
-
-            if (session.isGuestMode) {
-              await applyGuestDeviceLocale();
-            }
-
-            setEmailVerifiedState(session.emailVerified || session.email.length === 0);
-            if (session.email) {
-              try {
-                const status = await getEmailVerificationStatus(session.email);
-                setEmailVerifiedState(status.isVerified);
-                setEmailResendCooldown(status.resendAvailableInSeconds ?? 0);
-                if (status.isVerified) {
-                  await setEmailVerified(true);
-                }
-              } catch {
-                // Keep current session state when API is not reachable.
-              }
-            }
             await setSplashSeen(true);
           } catch {
             // Always continue past splash even if startup side-effects fail.
           } finally {
             setPhase(resolveInitialPhase(session));
+            void runDeferredStartupSync(session);
           }
         })();
       }, session.hasSeenSplashOnce ? 500 : 1600);
@@ -1012,18 +1031,18 @@ const styles = StyleSheet.create({
   globalLoadingCard: {
     width: '100%',
     maxWidth: 280,
-    borderRadius: theme.radius[20],
+    borderRadius: theme.radius[24],
     backgroundColor: 'rgba(255, 255, 255, 0.96)',
     borderWidth: 1,
     borderColor: theme.colors.semantic.borderSoft,
-    paddingHorizontal: theme.spacing[20],
+    paddingHorizontal: theme.grid.marginWidth,
     paddingVertical: theme.spacing[24],
     alignItems: 'center',
     gap: theme.spacing[8],
     ...theme.elevation.card,
   },
   globalLoadingTitle: {
-    ...theme.typography.bodyScale.lMedium,
+    ...theme.typography.bodyScale.xlMedium,
     color: theme.colors.semantic.textPrimary,
     textAlign: 'center',
   },
@@ -1046,7 +1065,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing[16],
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: theme.spacing[12],
+    gap: theme.spacing[16],
     ...theme.elevation.card,
   },
   globalErrorTextWrap: {
@@ -1063,8 +1082,8 @@ const styles = StyleSheet.create({
   },
   globalErrorDismiss: {
     minHeight: 32,
-    paddingHorizontal: theme.spacing[12],
-    borderRadius: theme.radius[12],
+    paddingHorizontal: theme.spacing[16],
+    borderRadius: theme.radius[16],
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1072,7 +1091,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.error[200],
   },
   globalErrorDismissText: {
-    ...theme.typography.captionScale.lMedium,
+    ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.error[800],
   },
 });
