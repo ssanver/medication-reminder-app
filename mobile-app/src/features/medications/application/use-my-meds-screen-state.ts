@@ -1,10 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { localizeFormLabel, localizeFrequencyLabel } from '../../localization/medication-localization';
 import { getLocaleTag, getTranslations, type Locale } from '../../localization/localization';
 import { deleteMedication, resolveMedicationIcon, setMedicationActive } from '../medication-store';
 import { clearNotificationHistoryForMedication } from '../../notifications/notification-history';
 import { clearMedicationReminderNotificationsForMedication } from '../../notifications/local-notifications';
 import { useMedicationStore } from '../use-medication-store';
+import {
+  mergeMedicationActiveOverrides,
+  pruneResolvedActiveOverrides,
+  type MedicationActiveOverrides,
+  type MedicationListItem,
+} from './my-meds-active-overrides';
 
 export type MyMedsFilter = 'All' | 'Active' | 'Inactive';
 
@@ -16,6 +22,7 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
   const t = getTranslations(locale);
   const store = useMedicationStore();
   const [filter, setFilter] = useState<MyMedsFilter>('All');
+  const [activeOverrides, setActiveOverrides] = useState<MedicationActiveOverrides>({});
 
   const takenCountsByMedication = useMemo(() => {
     return store.events.reduce<Record<string, number>>((acc, item) => {
@@ -27,7 +34,7 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
     }, {});
   }, [store.events]);
 
-  const items = useMemo(
+  const baseItems = useMemo<MedicationListItem[]>(
     () =>
       store.medications.map((item) => {
         const icon = resolveMedicationIcon(item.form, item.iconEmoji);
@@ -61,6 +68,12 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
     [locale, store.medications, t.afterMeal, t.beforeMeal, t.startedOn, t.startedOnWithRemaining, takenCountsByMedication],
   );
 
+  useEffect(() => {
+    setActiveOverrides((current) => pruneResolvedActiveOverrides(current, store.medications));
+  }, [store.medications]);
+
+  const items = useMemo(() => mergeMedicationActiveOverrides(baseItems, activeOverrides), [activeOverrides, baseItems]);
+
   const filtered = useMemo(() => {
     if (filter === 'All') {
       return items;
@@ -90,7 +103,21 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
   }
 
   async function toggleMedicationActive(medicationId: string, active: boolean) {
-    await setMedicationActive(medicationId, active);
+    setActiveOverrides((current) => ({
+      ...current,
+      [medicationId]: active,
+    }));
+
+    try {
+      await setMedicationActive(medicationId, active);
+    } catch (error) {
+      setActiveOverrides((current) => {
+        const next = { ...current };
+        delete next[medicationId];
+        return next;
+      });
+      throw error;
+    }
   }
 
   return {
