@@ -145,10 +145,8 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
 
       {hasPendingMedicationAction ? (
         <View style={styles.loadingOverlay} pointerEvents="auto">
-          <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color={theme.colors.primaryBlue[500]} />
-            <Text style={styles.loadingTitle}>{t.loading}</Text>
-          </View>
+          <ActivityIndicator size="large" color={theme.colors.primaryBlue[500]} />
+          <Text style={styles.loadingTitle}>{t.loading}</Text>
         </View>
       ) : null}
     </View>
@@ -276,25 +274,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.semantic.overlay,
     paddingHorizontal: theme.spacing[24],
-  },
-  loadingCard: {
-    minWidth: 168,
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: theme.spacing[12],
-    borderRadius: theme.radius[20],
-    backgroundColor: theme.colors.semantic.surface,
-    paddingHorizontal: theme.spacing[24],
-    paddingVertical: theme.spacing[20],
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    elevation: 10,
   },
   loadingTitle: {
     ...theme.typography.body.medium,
-    color: theme.colors.semantic.textPrimary,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   emptyCard: {

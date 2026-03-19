@@ -105,8 +105,15 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
         entity.IsActive = command.IsActive;
         entity.UpdatedAt = DateTimeOffset.UtcNow;
 
-        dbContext.MedicationSchedules.RemoveRange(entity.Schedules);
-        entity.Schedules = command.Schedules
+        var existingSchedules = entity.Schedules.ToList();
+        if (existingSchedules.Count > 0)
+        {
+            dbContext.MedicationSchedules.RemoveRange(existingSchedules);
+            entity.Schedules.Clear();
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var replacementSchedules = command.Schedules
             .Select(schedule => new MedicationSchedule
             {
                 Id = Guid.NewGuid(),
@@ -119,6 +126,12 @@ public sealed class EfMedicationRepository(AppDbContext dbContext) : IMedication
             })
             .ToList();
 
+        if (replacementSchedules.Count > 0)
+        {
+            dbContext.MedicationSchedules.AddRange(replacementSchedules);
+        }
+
+        entity.Schedules = replacementSchedules;
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToRecord(entity);
     }

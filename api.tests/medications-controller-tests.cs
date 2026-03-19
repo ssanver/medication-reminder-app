@@ -2,6 +2,7 @@ using api.Controllers;
 using api.contracts;
 using api.data;
 using api.services.medication_persistence;
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -372,6 +373,69 @@ public sealed class MedicationsControllerTests
     }
 
     [Fact]
+    public async Task Update_ShouldPersistInactiveState_WhenReminderTimeStaysTheSame()
+    {
+        await using var dbContext = await CreateSqliteContextAsync();
+        var controller = CreateController(dbContext);
+        var medicationId = Guid.NewGuid();
+
+        dbContext.Medications.Add(new api.models.Medication
+        {
+            Id = medicationId,
+            UserReference = "user@example.com",
+            Name = "Aferin",
+            Dosage = "200mg",
+            UsageType = "Capsule",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+            IsActive = true,
+            Schedules =
+            [
+                new api.models.MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    MedicationId = medicationId,
+                    RepeatType = "daily",
+                    IntervalCount = 1,
+                    ReminderTime = new TimeOnly(8, 0),
+                },
+            ],
+        });
+        await dbContext.SaveChangesAsync();
+
+        var result = await controller.Update(medicationId, new SaveMedicationRequest
+        {
+            Name = "Aferin",
+            Dosage = "200mg",
+            UsageType = "Capsule",
+            IsBeforeMeal = false,
+            StartDate = new DateOnly(2026, 2, 20),
+            EndDate = null,
+            IsActive = false,
+            Schedules =
+            [
+                new MedicationScheduleInput
+                {
+                    RepeatType = "daily",
+                    IntervalCount = 1,
+                    ReminderTime = new TimeOnly(8, 0),
+                    DaysOfWeek = null,
+                },
+            ],
+        });
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<MedicationResponse>(okResult.Value);
+
+        Assert.False(response.IsActive);
+        Assert.Single(response.Schedules);
+
+        var persistedMedication = await dbContext.Medications.AsNoTracking().SingleAsync();
+        Assert.False(persistedMedication.IsActive);
+        Assert.Equal(1, await dbContext.MedicationSchedules.CountAsync());
+    }
+
+    [Fact]
     public async Task Create_ShouldReturnBadRequest_WhenRepeatTypeIsInvalid()
     {
         await using var dbContext = CreateInMemoryContext();
@@ -404,6 +468,20 @@ public sealed class MedicationsControllerTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    private static async Task<AppDbContext> CreateSqliteContextAsync()
+    {
+        var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var context = new AppDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        return context;
     }
 
     private static MedicationsController CreateController(AppDbContext dbContext, string role = "member")
