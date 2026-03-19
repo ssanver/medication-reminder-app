@@ -117,7 +117,6 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
     setFilter,
     filtered,
     counts,
-    hasPendingMedicationAction: Object.keys(pendingMedicationIds).length > 0,
     isMedicationPending: (medicationId: string) => pendingMedicationIds[medicationId] === true,
     removeMedication,
     toggleMedicationActive,

@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { AppState, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomNav } from '../components/ui/bottom-nav';
 import type { AppIconName } from '../components/ui/app-icon';
 import { ReminderPromptModal } from '../components/ui/reminder-prompt-modal';
@@ -24,6 +24,7 @@ import {
   resendEmailVerification,
   verifyEmailCode,
 } from '../features/auth/email-verification-service';
+import { clearApiError, getApiRequestStateSnapshot, subscribeApiRequestState } from '../features/network/api-request-state';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { clearMedicationStore, hydrateMedicationStore } from '../features/medications/medication-store';
@@ -84,6 +85,7 @@ const tabGlyph: Record<TabKey, AppIconName> = {
 
 export function AppNavigator() {
   const medicationStore = useMedicationStore();
+  const apiRequestState = useSyncExternalStore(subscribeApiRequestState, getApiRequestStateSnapshot, getApiRequestStateSnapshot);
   const reminderPrompt = useSyncExternalStore(subscribeReminderPrompt, getReminderPromptSnapshot, getReminderPromptSnapshot);
   const [phase, setPhase] = useState<AppPhase>('splash');
   const [locale, setLocale] = useState<Locale>(resolveDefaultLocale());
@@ -837,6 +839,28 @@ export function AppNavigator() {
           void handleReminderSkip(reminderPrompt);
         }}
       />
+      {apiRequestState.pendingMutations > 0 ? (
+        <View style={styles.globalLoadingOverlay} pointerEvents="auto">
+          <View style={styles.globalLoadingCard}>
+            <ActivityIndicator size="large" color={theme.colors.primaryBlue[500]} />
+            <Text style={styles.globalLoadingTitle}>{t.loading}</Text>
+            <Text style={styles.globalLoadingDescription}>{t.syncingChangesDescription}</Text>
+          </View>
+        </View>
+      ) : null}
+      {apiRequestState.lastError ? (
+        <View style={styles.globalErrorWrap} pointerEvents="box-none">
+          <View style={styles.globalErrorCard}>
+            <View style={styles.globalErrorTextWrap}>
+              <Text style={styles.globalErrorTitle}>{t.apiErrorTitle}</Text>
+              <Text style={styles.globalErrorBody}>{apiRequestState.lastError.message}</Text>
+            </View>
+            <Pressable style={styles.globalErrorDismiss} onPress={() => clearApiError()}>
+              <Text style={styles.globalErrorDismissText}>{t.apiErrorDismiss}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -977,5 +1001,78 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.stateError,
     padding: theme.spacing[16],
+  },
+  globalLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(9, 18, 43, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing[24],
+  },
+  globalLoadingCard: {
+    width: '100%',
+    maxWidth: 280,
+    borderRadius: theme.radius[20],
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderWidth: 1,
+    borderColor: theme.colors.semantic.borderSoft,
+    paddingHorizontal: theme.spacing[20],
+    paddingVertical: theme.spacing[24],
+    alignItems: 'center',
+    gap: theme.spacing[8],
+    ...theme.elevation.card,
+  },
+  globalLoadingTitle: {
+    ...theme.typography.bodyScale.lMedium,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+  },
+  globalLoadingDescription: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
+  },
+  globalErrorWrap: {
+    position: 'absolute',
+    top: theme.spacing[16],
+    left: theme.spacing[16],
+    right: theme.spacing[16],
+  },
+  globalErrorCard: {
+    borderRadius: theme.radius[16],
+    backgroundColor: theme.colors.error[50],
+    borderWidth: 1,
+    borderColor: theme.colors.error[200],
+    padding: theme.spacing[16],
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing[12],
+    ...theme.elevation.card,
+  },
+  globalErrorTextWrap: {
+    flex: 1,
+    gap: theme.spacing[4],
+  },
+  globalErrorTitle: {
+    ...theme.typography.bodyScale.mMedium,
+    color: theme.colors.error[800],
+  },
+  globalErrorBody: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textPrimary,
+  },
+  globalErrorDismiss: {
+    minHeight: 32,
+    paddingHorizontal: theme.spacing[12],
+    borderRadius: theme.radius[12],
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.error[200],
+  },
+  globalErrorDismissText: {
+    ...theme.typography.captionScale.lMedium,
+    color: theme.colors.error[800],
   },
 });

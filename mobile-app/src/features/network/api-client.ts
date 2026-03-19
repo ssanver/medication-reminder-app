@@ -1,4 +1,5 @@
 import { createCorrelationId } from './correlation-id';
+import { beginApiMutation, endApiMutation, reportApiError } from './api-request-state';
 import { loadAccessToken, loadAuthSession, loadOrCreateDeviceId, markGuestMode } from '../auth/auth-session-store';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -8,6 +9,14 @@ type ApiRequestOptions = {
   body?: unknown;
   headers?: Record<string, string>;
   correlationPrefix?: string;
+};
+
+type ApiErrorPayload = {
+  message?: string;
+  title?: string;
+  detail?: string;
+  error?: string;
+  errors?: Record<string, string[]>;
 };
 
 function shouldDebugApi(): boolean {
@@ -67,6 +76,34 @@ async function readResponsePayload(response: Response): Promise<{ text: string; 
   };
 }
 
+function formatApiErrorMessage(status: number, parsed: unknown, fallbackText: string): string {
+  if (parsed && typeof parsed === 'object') {
+    const payload = parsed as ApiErrorPayload;
+    const primaryMessage = payload.message || payload.title || payload.detail || payload.error;
+    if (primaryMessage) {
+      return `${primaryMessage}`.trim();
+    }
+
+    if (payload.errors && typeof payload.errors === 'object') {
+      const firstError = Object.values(payload.errors).flat()[0];
+      if (firstError) {
+        return `${firstError}`.trim();
+      }
+    }
+  }
+
+  const normalizedText = fallbackText.trim();
+  if (!normalizedText) {
+    return `HTTP ${status} - Request failed.`;
+  }
+
+  if (normalizedText.startsWith('<')) {
+    return `HTTP ${status} - Server error.`;
+  }
+
+  return normalizedText.length > 220 ? `${normalizedText.slice(0, 220)}...` : normalizedText;
+}
+
 export class ApiRequestError extends Error {
   status: number;
 
@@ -122,11 +159,12 @@ async function renewGuestSessionIfNeeded(baseUrl: string): Promise<boolean> {
 
 export async function apiRequestJson<TResponse>(path: string, options: ApiRequestOptions = {}): Promise<TResponse> {
   const baseUrl = getApiBaseUrl();
+  const method = options.method ?? 'GET';
+  const mutationId = method === 'GET' ? null : beginApiMutation(method, path);
 
   const execute = async (): Promise<Response> => {
     const accessToken = await loadAccessToken();
     const correlationId = options.correlationPrefix ? createCorrelationId(options.correlationPrefix) : undefined;
-    const method = options.method ?? 'GET';
     const headers = {
       ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
       ...(correlationId ? { 'X-Correlation-ID': correlationId } : undefined),
@@ -149,32 +187,57 @@ export async function apiRequestJson<TResponse>(path: string, options: ApiReques
     });
   };
 
-  let response = await execute();
-  if (response.status === 401) {
-    const renewed = await renewGuestSessionIfNeeded(baseUrl);
-    if (renewed) {
-      response = await execute();
+  try {
+    let response = await execute();
+    if (response.status === 401) {
+      const renewed = await renewGuestSessionIfNeeded(baseUrl);
+      if (renewed) {
+        response = await execute();
+      }
+    }
+
+    if (!response.ok) {
+      const { text, parsed } = await readResponsePayload(response);
+      const message = formatApiErrorMessage(response.status, parsed, text || 'Request failed.');
+      debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+      reportApiError({
+        method,
+        path,
+        status: response.status,
+        message,
+      });
+      throw new ApiRequestError(response.status, message);
+    }
+
+    const { parsed } = await readResponsePayload(response);
+    debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+    return parsed as TResponse;
+  } catch (error) {
+    if (!(error instanceof ApiRequestError)) {
+      const message = error instanceof Error && error.message ? error.message : 'Unexpected network error.';
+      reportApiError({
+        method,
+        path,
+        status: 0,
+        message,
+      });
+    }
+    throw error;
+  } finally {
+    if (mutationId) {
+      endApiMutation(mutationId);
     }
   }
-
-  if (!response.ok) {
-    const { text, parsed } = await readResponsePayload(response);
-    debugApi(`RESPONSE ${response.status} ${path}`, parsed);
-    throw new ApiRequestError(response.status, text || 'Request failed.');
-  }
-
-  const { parsed } = await readResponsePayload(response);
-  debugApi(`RESPONSE ${response.status} ${path}`, parsed);
-  return parsed as TResponse;
 }
 
 export async function apiRequestVoid(path: string, options: ApiRequestOptions = {}): Promise<void> {
   const baseUrl = getApiBaseUrl();
+  const method = options.method ?? 'GET';
+  const mutationId = method === 'GET' ? null : beginApiMutation(method, path);
 
   const execute = async (): Promise<Response> => {
     const accessToken = await loadAccessToken();
     const correlationId = options.correlationPrefix ? createCorrelationId(options.correlationPrefix) : undefined;
-    const method = options.method ?? 'GET';
     const headers = {
       ...(options.body ? { 'Content-Type': 'application/json' } : undefined),
       ...(correlationId ? { 'X-Correlation-ID': correlationId } : undefined),
@@ -197,21 +260,45 @@ export async function apiRequestVoid(path: string, options: ApiRequestOptions = 
     });
   };
 
-  let response = await execute();
-  if (response.status === 401) {
-    const renewed = await renewGuestSessionIfNeeded(baseUrl);
-    if (renewed) {
-      response = await execute();
+  try {
+    let response = await execute();
+    if (response.status === 401) {
+      const renewed = await renewGuestSessionIfNeeded(baseUrl);
+      if (renewed) {
+        response = await execute();
+      }
+    }
+
+    if (!response.ok) {
+      const { text, parsed } = await readResponsePayload(response);
+      const message = formatApiErrorMessage(response.status, parsed, text || 'Request failed.');
+      debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+      debugApi(`RESPONSE ${response.status} ${path}`, text || null);
+      reportApiError({
+        method,
+        path,
+        status: response.status,
+        message,
+      });
+      throw new ApiRequestError(response.status, message);
+    }
+
+    const { parsed } = await readResponsePayload(response);
+    debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+  } catch (error) {
+    if (!(error instanceof ApiRequestError)) {
+      const message = error instanceof Error && error.message ? error.message : 'Unexpected network error.';
+      reportApiError({
+        method,
+        path,
+        status: 0,
+        message,
+      });
+    }
+    throw error;
+  } finally {
+    if (mutationId) {
+      endApiMutation(mutationId);
     }
   }
-
-  if (!response.ok) {
-    const { text, parsed } = await readResponsePayload(response);
-    debugApi(`RESPONSE ${response.status} ${path}`, parsed);
-    debugApi(`RESPONSE ${response.status} ${path}`, text || null);
-    throw new ApiRequestError(response.status, text || 'Request failed.');
-  }
-
-  const { parsed } = await readResponsePayload(response);
-  debugApi(`RESPONSE ${response.status} ${path}`, parsed);
 }

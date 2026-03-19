@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '../components/ui/app-icon';
 import { InlineAdCard } from '../components/ui/inline-ad-card';
 import { MedicationCard } from '../components/ui/medication-card';
@@ -22,7 +22,7 @@ type MedStatus = 'All' | 'Active' | 'Inactive';
 
 export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpenAddMedication }: MyMedsScreenProps) {
   const t = getTranslations(locale);
-  const { filter, setFilter, filtered, counts, hasPendingMedicationAction, isMedicationPending, toggleMedicationActive } =
+  const { filter, setFilter, filtered, counts, isMedicationPending, toggleMedicationActive } =
     useMyMedsScreenState({ locale });
   const [ad, setAd] = useState<{ title: string; body: string; ctaLabel: string; ctaUrl: string } | null>(null);
   const [adsEnabled, setAdsEnabled] = useState(true);
@@ -142,13 +142,6 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      {hasPendingMedicationAction ? (
-        <View style={styles.loadingOverlay} pointerEvents="auto">
-          <ActivityIndicator size="large" color={theme.colors.primaryBlue[500]} />
-          <Text style={styles.loadingTitle}>{t.loading}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -267,19 +260,6 @@ const styles = StyleSheet.create({
   },
   swipeCard: {
     flex: 1,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.semantic.overlay,
-    paddingHorizontal: theme.spacing[24],
-    gap: theme.spacing[12],
-  },
-  loadingTitle: {
-    ...theme.typography.body.medium,
-    color: '#FFFFFF',
-    textAlign: 'center',
   },
   emptyCard: {
     borderRadius: theme.radius[16],
