@@ -43,4 +43,11 @@ describe('api-request-state', () => {
 
     endApiMutation(mutationId);
   });
+
+  it('returns the same snapshot reference when nothing changed', () => {
+    const firstSnapshot = getApiRequestStateSnapshot();
+    const secondSnapshot = getApiRequestStateSnapshot();
+
+    expect(secondSnapshot).toBe(firstSnapshot);
+  });
 });

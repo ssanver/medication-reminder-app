@@ -22,6 +22,22 @@ const listeners = new Set<() => void>();
 
 let pendingMutations: ApiMutationEntry[] = [];
 let lastError: ApiErrorState | null = null;
+let snapshot: ApiRequestStateSnapshot = {
+  pendingMutations: 0,
+  lastError: null,
+};
+
+function updateSnapshot() {
+  const nextPendingMutations = pendingMutations.length;
+  if (snapshot.pendingMutations === nextPendingMutations && snapshot.lastError === lastError) {
+    return;
+  }
+
+  snapshot = {
+    pendingMutations: nextPendingMutations,
+    lastError,
+  };
+}
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -33,16 +49,14 @@ export function subscribeApiRequestState(listener: () => void): () => void {
 }
 
 export function getApiRequestStateSnapshot(): ApiRequestStateSnapshot {
-  return {
-    pendingMutations: pendingMutations.length,
-    lastError,
-  };
+  return snapshot;
 }
 
 export function beginApiMutation(method: string, path: string): string {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   lastError = null;
   pendingMutations = [...pendingMutations, { id, method, path }];
+  updateSnapshot();
   emit();
   return id;
 }
@@ -54,6 +68,7 @@ export function endApiMutation(id: string): void {
   }
 
   pendingMutations = next;
+  updateSnapshot();
   emit();
 }
 
@@ -63,6 +78,7 @@ export function reportApiError(payload: Omit<ApiErrorState, 'id' | 'occurredAt'>
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     occurredAt: Date.now(),
   };
+  updateSnapshot();
   emit();
 }
 
@@ -72,11 +88,13 @@ export function clearApiError(): void {
   }
 
   lastError = null;
+  updateSnapshot();
   emit();
 }
 
 export function resetApiRequestStateForTests(): void {
   pendingMutations = [];
   lastError = null;
+  updateSnapshot();
   emit();
 }
