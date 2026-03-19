@@ -738,7 +738,16 @@ export async function setMedicationActive(medicationId: string, active: boolean)
       correlationPrefix: 'medication-update-active',
     });
     if (updated) {
-      await refreshMedicationStoreFromBackend();
+      const updatedMedication: Medication = {
+        ...fromApiMedication(updated),
+        totalQuantity: current.totalQuantity,
+      };
+      state = {
+        ...state,
+        medications: state.medications.map((item) => (item.id === medicationId ? updatedMedication : item)),
+      };
+      emit();
+      await persist();
     }
   } catch (error) {
     state = previousState;

@@ -70,4 +70,34 @@ describe('medication-store/setMedicationActive', () => {
     await expect(setMedicationActive(medicationId!, false)).rejects.toThrow('network error');
     expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(true);
   });
+
+  it('backend basarili oldugunda ilaci tekrar aktif hale getiren ek refresh yapmaz', async () => {
+    loadAccessTokenMock.mockResolvedValue('token');
+    apiRequestJsonMock.mockResolvedValue({
+      id: getMedicationStoreSnapshot().medications[0]?.id,
+      name: 'Lipanthyl',
+      dosage: '1',
+      usageType: 'pill',
+      isBeforeMeal: true,
+      startDate: '2026-03-19',
+      endDate: null,
+      isActive: false,
+      schedules: [
+        {
+          repeatType: 'daily',
+          intervalCount: 1,
+          reminderTime: '09:00:00',
+          daysOfWeek: null,
+        },
+      ],
+    });
+
+    const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
+    expect(medicationId).toBeTruthy();
+
+    await setMedicationActive(medicationId!, false);
+
+    expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
+    expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(false);
+  });
 });
