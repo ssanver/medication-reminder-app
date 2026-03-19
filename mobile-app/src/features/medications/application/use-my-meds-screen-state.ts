@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { localizeFormLabel, localizeFrequencyLabel } from '../../localization/medication-localization';
 import { getLocaleTag, getTranslations, type Locale } from '../../localization/localization';
-import { deleteMedication, resolveMedicationIcon, setMedicationActive } from '../medication-store';
+import { deleteMedication, getMedicationById, resolveMedicationIcon, setMedicationActive } from '../medication-store';
 import { clearNotificationHistoryForMedication } from '../../notifications/notification-history';
 import { clearMedicationReminderNotificationsForMedication } from '../../notifications/local-notifications';
 import { useMedicationStore } from '../use-medication-store';
@@ -99,6 +99,10 @@ export function useMyMedsScreenState({ locale }: UseMyMedsScreenStateInput) {
 
     try {
       await setMedicationActive(medicationId, active);
+      const updatedMedication = getMedicationById(medicationId);
+      if (updatedMedication?.active !== active) {
+        throw new Error('Medication active state is still out of sync after the backend response.');
+      }
     } finally {
       setPendingMedicationIds((current) => {
         const next = { ...current };

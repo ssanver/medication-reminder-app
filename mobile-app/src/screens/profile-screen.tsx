@@ -29,6 +29,7 @@ export function ProfileScreen({ locale, isGuestMode, onOpenSignUp, onBack }: Pro
     gender,
     setGender,
     savedMessage,
+    isSaving,
     draftBirthDate,
     setDraftBirthDate,
     avatarEmoji,
@@ -85,7 +86,7 @@ export function ProfileScreen({ locale, isGuestMode, onOpenSignUp, onBack }: Pro
           </View>
 
           {savedMessage ? <Text style={styles.savedText}>{savedMessage}</Text> : null}
-          <Button label={t.saveChanges} onPress={() => void save()} />
+          <Button label={t.saveChanges} loading={isSaving} onPress={() => void save()} />
         </View>
       </ScrollView>
 

@@ -30,7 +30,8 @@ export function MyMedsScreen({ locale, fontScale, onOpenMedicationDetails, onOpe
       await toggleMedicationActive(medicationId, nextActive);
       setFilter(nextActive ? 'Active' : 'Inactive');
     } catch {
-      // The action remains on the current tab if the server rejects the change.
+      // The action remains on the current tab if the server rejects the change
+      // or the store does not reflect the confirmed backend state yet.
     }
   }
 

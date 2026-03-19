@@ -500,12 +500,18 @@ function delay(ms: number): Promise<void> {
 async function confirmMedicationActiveState(
   medicationId: string,
   expectedActive: boolean,
-  attempts = 4,
-  delayMs = 250,
+  attempts = 10,
+  delayMs = 350,
 ): Promise<MedicationStoreState | null> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const remoteState = await loadRemoteMedicationStoreState();
     const remoteMedication = remoteState.medications.find((item) => item.id === medicationId);
+
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log(
+        `[MEDICATION-ACTIVE] confirm attempt=${attempt + 1}/${attempts} medicationId=${medicationId} expected=${expectedActive} actual=${remoteMedication?.active ?? 'missing'}`,
+      );
+    }
 
     if (remoteMedication?.active === expectedActive) {
       return remoteState;
@@ -792,6 +798,11 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     state = confirmedRemoteState;
     emit();
     await persist();
+  }
+
+  const confirmedLocalMedication = state.medications.find((item) => item.id === medicationId);
+  if (confirmedLocalMedication?.active !== active) {
+    throw new Error('Medication active state could not be applied locally after backend confirmation.');
   }
 }
 

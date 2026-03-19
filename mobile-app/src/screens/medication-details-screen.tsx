@@ -14,7 +14,7 @@ type MedicationDetailsScreenProps = {
 
 export function MedicationDetailsScreen({ locale, medicationId, onBack }: MedicationDetailsScreenProps) {
   const t = getTranslations(locale);
-  const { medication, name, setName, dosage, setDosage, frequencyLabel, setFrequencyLabel, time, setTime, note, setNote, message, save } =
+  const { medication, name, setName, dosage, setDosage, frequencyLabel, setFrequencyLabel, time, setTime, note, setNote, message, isSaving, save } =
     useMedicationDetailsScreenState(medicationId, t.saved);
 
   if (!medication) {
@@ -42,6 +42,7 @@ export function MedicationDetailsScreen({ locale, medicationId, onBack }: Medica
 
       <Button
         label={t.save}
+        loading={isSaving}
         onPress={() => {
           void (async () => {
             const isSaved = await save();

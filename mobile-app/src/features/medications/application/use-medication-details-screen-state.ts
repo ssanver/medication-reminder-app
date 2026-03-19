@@ -10,21 +10,27 @@ export function useMedicationDetailsScreenState(medicationId: string, savedText:
   const [time, setTime] = useState(medication?.time ?? '09:00');
   const [note, setNote] = useState(medication?.note ?? '');
   const [message, setMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   async function save() {
     if (!medication) {
       return false;
     }
 
-    await updateMedication(medicationId, {
-      name: name.trim() || medication.name,
-      dosage: dosage.trim() || medication.dosage,
-      frequencyLabel: frequencyLabel.trim() || medication.frequencyLabel,
-      time: time.trim() || medication.time,
-      note: note.trim(),
-    });
-    setMessage(savedText);
-    return true;
+    setIsSaving(true);
+    try {
+      await updateMedication(medicationId, {
+        name: name.trim() || medication.name,
+        dosage: dosage.trim() || medication.dosage,
+        frequencyLabel: frequencyLabel.trim() || medication.frequencyLabel,
+        time: time.trim() || medication.time,
+        note: note.trim(),
+      });
+      setMessage(savedText);
+      return true;
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return {
@@ -40,6 +46,7 @@ export function useMedicationDetailsScreenState(medicationId: string, savedText:
     note,
     setNote,
     message,
+    isSaving,
     save,
   };
 }

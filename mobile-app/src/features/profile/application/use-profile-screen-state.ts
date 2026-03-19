@@ -15,6 +15,7 @@ export function useProfileScreenState({ locale }: UseProfileScreenStateInput) {
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [draftBirthDate, setDraftBirthDate] = useState(new Date());
   const avatarEmoji = resolveProfileAvatarEmoji(gender, locale);
 
@@ -42,15 +43,20 @@ export function useProfileScreenState({ locale }: UseProfileScreenStateInput) {
   }, [birthDate, locale]);
 
   async function save() {
-    await saveProfile({
-      fullName: name,
-      email,
-      birthDate,
-      gender,
-      photoUri: '',
-    });
-    setSavedMessage(t.profileUpdated);
-    setTimeout(() => setSavedMessage(''), 2000);
+    setIsSaving(true);
+    try {
+      await saveProfile({
+        fullName: name,
+        email,
+        birthDate,
+        gender,
+        photoUri: '',
+      });
+      setSavedMessage(t.profileUpdated);
+      setTimeout(() => setSavedMessage(''), 2000);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function openDateSheet() {
@@ -71,6 +77,7 @@ export function useProfileScreenState({ locale }: UseProfileScreenStateInput) {
     gender,
     setGender,
     savedMessage,
+    isSaving,
     draftBirthDate,
     setDraftBirthDate,
     avatarEmoji,
