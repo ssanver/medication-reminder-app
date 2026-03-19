@@ -11,7 +11,9 @@ mobile-app/ios/build-archive/
 mobile-app/ios/build-archive-release/
 mobile-app/ios/build-export/
 mobile-app/ios/build-export-release/
+mobile-app/ios/build-release-derived/
 mobile-app/.tmp-ios-artifacts/
+mobile-app/AppStoreConnect/
 qr/*.ipa
 # Keep simulator build output tracked in git
 !mobile-app/ios/build-sim/
