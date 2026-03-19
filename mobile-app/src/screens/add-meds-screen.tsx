@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/ui/app-icon';
 import { BottomSheetHandle } from '../components/ui/bottom-sheet-handle';
@@ -95,6 +95,7 @@ export function AddMedsScreen({
   const [doseTimes, setDoseTimes] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [draftDate, setDraftDate] = useState(startDate);
@@ -364,6 +365,10 @@ export function AddMedsScreen({
           : t.note;
 
   async function handleSave(shouldSkipNote = false) {
+    if (isSaving) {
+      return;
+    }
+
     const normalizedName = name.trim();
     const parsedTotalQuantity = Number(totalQuantity);
     const normalizedTotalQuantity =
@@ -372,27 +377,10 @@ export function AddMedsScreen({
       return;
     }
 
-    if (mode === 'edit' && medicationId) {
-      await updateMedication(medicationId, {
-        name: normalizedName,
-        form,
-        iconEmoji,
-        dosage,
-        isBeforeMeal,
-        intervalUnit,
-        intervalCount,
-        cycleOffDays,
-        note: note.trim(),
-        startDate: effectiveStartDate,
-        endDate: useEndDate ? endDate : null,
-        time: selectedDoseTimes[0],
-        times: selectedDoseTimes,
-        weeklyDays: intervalUnit === 'week' ? selectedWeekdays : undefined,
-        totalQuantity: normalizedTotalQuantity,
-      });
-    } else {
-      try {
-        await addMedication({
+    setIsSaving(true);
+    try {
+      if (mode === 'edit' && medicationId) {
+        await updateMedication(medicationId, {
           name: normalizedName,
           form,
           iconEmoji,
@@ -408,42 +396,64 @@ export function AddMedsScreen({
           times: selectedDoseTimes,
           weeklyDays: intervalUnit === 'week' ? selectedWeekdays : undefined,
           totalQuantity: normalizedTotalQuantity,
-          active: true,
         });
-      } catch (error) {
-        if (error instanceof ApiRequestError && error.status === 403) {
-          onPremiumRequired?.();
-          return;
+      } else {
+        try {
+          await addMedication({
+            name: normalizedName,
+            form,
+            iconEmoji,
+            dosage,
+            isBeforeMeal,
+            intervalUnit,
+            intervalCount,
+            cycleOffDays,
+            note: shouldSkipNote ? '' : note.trim(),
+            startDate: effectiveStartDate,
+            endDate: useEndDate ? endDate : null,
+            time: selectedDoseTimes[0],
+            times: selectedDoseTimes,
+            weeklyDays: intervalUnit === 'week' ? selectedWeekdays : undefined,
+            totalQuantity: normalizedTotalQuantity,
+            active: true,
+          });
+        } catch (error) {
+          if (error instanceof ApiRequestError && error.status === 403) {
+            onPremiumRequired?.();
+            return;
+          }
+
+          throw error;
         }
 
-        throw error;
+        setName('');
+        setForm('');
+        setIconEmoji(medicationIconOptions[0] ?? '');
+        setDosage('0.5');
+        setIsBeforeMeal(false);
+        setIntervalUnit('day');
+        setIntervalCount(1);
+        setCycleOffDays(preferredCycleOffDays);
+        setAdvancedMode('interval');
+        setSelectedWeekdays(orderedWeekdays[0] !== undefined ? [orderedWeekdays[0]] : []);
+        setDosesPerDay(1);
+        setStartDate(formatDate(new Date()));
+        setUseEndDate(false);
+        setEndDate(formatDate(new Date()));
+        setTotalQuantity('');
+        setDoseTimes(defaultDoseTimes);
+        setNote('');
+        setStep('name');
       }
 
-      setName('');
-      setForm('');
-      setIconEmoji(medicationIconOptions[0] ?? '');
-      setDosage('0.5');
-      setIsBeforeMeal(false);
-      setIntervalUnit('day');
-      setIntervalCount(1);
-      setCycleOffDays(preferredCycleOffDays);
-      setAdvancedMode('interval');
-      setSelectedWeekdays(orderedWeekdays[0] !== undefined ? [orderedWeekdays[0]] : []);
-      setDosesPerDay(1);
-      setStartDate(formatDate(new Date()));
-      setUseEndDate(false);
-      setEndDate(formatDate(new Date()));
-      setTotalQuantity('');
-      setDoseTimes(defaultDoseTimes);
-      setNote('');
-      setStep('name');
+      onMedicationSaved();
+    } finally {
+      setIsSaving(false);
     }
-
-    onMedicationSaved();
   }
 
   function onNext() {
-    if (!canProceed) {
+    if (!canProceed || isSaving) {
       return;
     }
 
@@ -456,6 +466,10 @@ export function AddMedsScreen({
   }
 
   function handleBack() {
+    if (isSaving) {
+      return;
+    }
+
     if (stepIndex === 0) {
       onNavigateBack?.();
       return;
@@ -966,13 +980,13 @@ export function AddMedsScreen({
       </View>
 
       <View style={styles.headerRow}>
-        <Pressable onPress={handleBack} disabled={stepIndex === 0 && !onNavigateBack} style={styles.headerIconButton}>
+        <Pressable onPress={handleBack} disabled={isSaving || (stepIndex === 0 && !onNavigateBack)} style={styles.headerIconButton}>
           {stepIndex > 0 || onNavigateBack ? <AppIcon name="back" size={22} color={theme.colors.semantic.textSecondary} /> : null}
         </Pressable>
         <Text style={[styles.headerTitle, { fontSize: theme.typography.heading.h8Semibold.fontSize * _fontScale }]}>{headerTitle}</Text>
         <View style={styles.headerIconButton}>
           {step === 'note' && mode === 'create' ? (
-            <Pressable onPress={() => void handleSave(true)} hitSlop={8}>
+            <Pressable onPress={() => void handleSave(true)} hitSlop={8} disabled={isSaving}>
               <Text style={styles.skipText}>{t.skipLabel}</Text>
             </Pressable>
           ) : null}
@@ -984,8 +998,24 @@ export function AddMedsScreen({
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label={step === 'note' ? (mode === 'edit' ? t.saveChanges : t.done) : t.next} onPress={onNext} disabled={!canProceed} size="m" />
+        <Button
+          label={step === 'note' ? (mode === 'edit' ? t.saveChanges : t.done) : t.next}
+          onPress={onNext}
+          disabled={!canProceed || isSaving}
+          loading={isSaving}
+          size="m"
+        />
       </View>
+
+      {isSaving ? (
+        <View style={styles.savingOverlay} pointerEvents="auto">
+          <View style={styles.savingCard}>
+            <ActivityIndicator size="large" color={theme.colors.primaryBlue[500]} />
+            <Text style={styles.savingTitle}>{t.loading}</Text>
+            <Text style={styles.savingDescription}>{t.syncingChangesDescription}</Text>
+          </View>
+        </View>
+      ) : null}
 
       <Modal transparent visible={sheet !== 'none'} animationType="slide" onRequestClose={() => setSheet('none')}>
         <Pressable style={styles.overlay} onPress={() => setSheet('none')}>
@@ -1566,6 +1596,38 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[8],
     ...theme.typography.bodyScale.mRegular,
     color: theme.colors.semantic.textPrimary,
+  },
+  savingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing[24],
+  },
+  savingCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: theme.radius[24],
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: theme.spacing[20],
+    paddingVertical: theme.spacing[24],
+    alignItems: 'center',
+    gap: theme.spacing[12],
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  savingTitle: {
+    ...theme.typography.bodyScale.lMedium,
+    color: theme.colors.semantic.textPrimary,
+    textAlign: 'center',
+  },
+  savingDescription: {
+    ...theme.typography.bodyScale.xmRegular,
+    color: theme.colors.semantic.textSecondary,
+    textAlign: 'center',
   },
   footer: {
     paddingBottom: theme.spacing[8],

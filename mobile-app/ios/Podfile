@@ -2,6 +2,8 @@ require File.join(File.dirname(`node --print "require.resolve('expo/package.json
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
 
 require 'json'
+require 'shellwords'
+require 'xcodeproj'
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
 
 ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
@@ -21,6 +23,49 @@ unless File.exist?(preferred_project_path)
 end
 
 project preferred_project
+
+class NewArchitectureHelper
+  def self.set_RCTNewArchEnabled_in_info_plist(installer, new_arch_enabled)
+    project_paths = installer.aggregate_targets
+      .map { |target| target.user_project }
+      .uniq { |project| project.path }
+      .map { |project| project.path }
+
+    excluded_info_plist = [
+      "/Pods",
+      "Tests",
+      "metainternal",
+      ".bundle",
+      "/build/",
+      "/build-",
+      "/build_",
+      "DerivedData/",
+    ]
+
+    project_paths.each do |project_path|
+      project_folder_path = File.dirname(project_path)
+      info_plist_files = `find #{project_folder_path.shellescape} -name "Info.plist"`
+        .split("\n")
+        .map(&:strip)
+
+      info_plist_files.each do |info_plist_file|
+        next if excluded_info_plist.any? { |excluded| info_plist_file.include?(excluded) }
+
+        begin
+          info_plist = Xcodeproj::Plist.read_from_path(info_plist_file)
+        rescue ArgumentError, Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError => error
+          Pod::UI.warn("[Podfile] Skipping Info.plist update for #{info_plist_file}: #{error.message}")
+          next
+        end
+
+        next if info_plist["RCTNewArchEnabled"] == new_arch_enabled
+
+        info_plist["RCTNewArchEnabled"] = new_arch_enabled ? true : false
+        Xcodeproj::Plist.write_to_path(info_plist, info_plist_file)
+      end
+    end
+  end
+end
 
 target 'PillMind' do
   use_expo_modules!
