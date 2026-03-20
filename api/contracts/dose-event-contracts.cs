@@ -20,6 +20,12 @@ public sealed class DoseEventResponse
     public int? SnoozeMinutes { get; set; }
 }
 
+public sealed class DoseActionResultResponse
+{
+    public required DoseEventResponse Event { get; set; }
+    public required IReadOnlyCollection<ScheduledDoseResponse> ScheduledDoses { get; set; }
+}
+
 public sealed class DoseHistoryQuery
 {
     public Guid? MedicationId { get; set; }

@@ -152,6 +152,20 @@ describe('medication-store/setMedicationActive', () => {
     const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
     expect(medicationId).toBeTruthy();
 
+    apiRequestJsonMock.mockResolvedValueOnce([
+      {
+        id: 'dose-1',
+        medicationId: medicationId,
+        scheduledTime: '09:00',
+        dateKey: '2026-03-19',
+        name: 'Lipanthyl',
+        dosage: '1',
+        usageType: 'pill',
+        isBeforeMeal: true,
+        frequencyLabel: 'Every 1 day',
+        status: 'taken',
+      },
+    ]);
     await setDoseStatus(medicationId!, new Date('2026-03-19T09:00:00'), 'taken', '09:00');
     expect(getMedicationStoreSnapshot().events).toHaveLength(1);
 
@@ -161,7 +175,7 @@ describe('medication-store/setMedicationActive', () => {
     void clearDoseStatus(medicationId!, new Date('2026-03-19T09:00:00'), '09:00');
 
     await vi.waitFor(() => {
-      expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
+      expect(apiRequestJsonMock).toHaveBeenCalledTimes(2);
       expect(getMedicationStoreSnapshot().events).toHaveLength(1);
     });
   });

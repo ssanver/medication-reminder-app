@@ -23,8 +23,9 @@ public sealed class DoseEventsControllerTests
         });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var payload = Assert.IsType<DoseEventResponse>(okResult.Value);
-        Assert.Equal("taken", payload.ActionType);
+        var payload = Assert.IsType<DoseActionResultResponse>(okResult.Value);
+        Assert.Equal("taken", payload.Event.ActionType);
+        Assert.Empty(payload.ScheduledDoses);
         Assert.Equal(1, await dbContext.DoseEvents.CountAsync());
     }
 
@@ -302,6 +303,52 @@ public sealed class DoseEventsControllerTests
         Assert.Single(payload);
         Assert.Equal("taken", payload[0].Status);
         Assert.Equal("08:00", payload[0].ScheduledTime);
+    }
+
+    [Fact]
+    public async Task Action_ShouldReturnUpdatedScheduledDoses_ForRequestedDate()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var targetDate = new DateOnly(2026, 3, 20);
+        var medication = new Medication
+        {
+            Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
+            Name = "Parol",
+            Dosage = "500mg",
+            StartDate = targetDate,
+            IsBeforeMeal = false,
+            IsActive = true,
+            Schedules =
+            [
+                new MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    RepeatType = "daily",
+                    IntervalCount = 1,
+                    ReminderTime = new TimeOnly(9, 0),
+                },
+            ],
+        };
+        dbContext.Medications.Add(medication);
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var result = await controller.Action(new DoseActionRequest
+        {
+            MedicationId = medication.Id,
+            ActionType = "taken",
+            DateKey = "2026-03-20",
+            ScheduledTime = "09:00",
+        });
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<DoseActionResultResponse>(okResult.Value);
+        Assert.Equal("taken", payload.Event.ActionType);
+        Assert.Single(payload.ScheduledDoses);
+        var scheduledDose = Assert.Single(payload.ScheduledDoses);
+        Assert.Equal("taken", scheduledDose.Status);
+        Assert.Equal("09:00", scheduledDose.ScheduledTime);
     }
 
     [Fact]

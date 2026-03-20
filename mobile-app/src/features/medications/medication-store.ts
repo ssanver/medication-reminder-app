@@ -239,6 +239,11 @@ type ApiDoseEvent = {
   snoozeMinutes?: number | null;
 };
 
+type ApiDoseActionResponse = {
+  event: ApiDoseEvent;
+  scheduledDoses: ApiScheduledDoseResponse[];
+};
+
 type ApiSaveMedicationRequest = {
   name: string;
   dosage: string;
@@ -763,7 +768,13 @@ export async function deleteMedication(medicationId: string): Promise<void> {
   await persist();
 }
 
-export async function setDoseStatus(medicationId: string, date: Date, status: DoseStatus, scheduledTime = ''): Promise<void> {
+export async function setDoseStatus(
+  medicationId: string,
+  date: Date,
+  status: DoseStatus,
+  scheduledTime = '',
+  locale: Locale = 'en',
+): Promise<ScheduledDoseItem[] | void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
   const accessToken = await loadAccessToken();
@@ -772,10 +783,10 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
     applyDoseEventState(medicationId, dateKey, normalizedScheduledTime, status);
     emit();
     await persist();
-    return;
+    return await getScheduledDosesForDate(date, locale);
   }
 
-  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+  const response = await apiRequestJson<ApiDoseActionResponse>('/api/dose-events/action', {
     method: 'POST',
     body: {
       medicationId,
@@ -788,9 +799,15 @@ export async function setDoseStatus(medicationId: string, date: Date, status: Do
   applyDoseEventState(medicationId, dateKey, normalizedScheduledTime, status);
   emit();
   await persist();
+  return response.scheduledDoses.map((item) => mapScheduledDoseResponse(item, locale));
 }
 
-export async function clearDoseStatus(medicationId: string, date: Date, scheduledTime = ''): Promise<void> {
+export async function clearDoseStatus(
+  medicationId: string,
+  date: Date,
+  scheduledTime = '',
+  locale: Locale = 'en',
+): Promise<ScheduledDoseItem[] | void> {
   const dateKey = toDateKey(date);
   const normalizedScheduledTime = normalizeTime(scheduledTime || '00:00');
   const accessToken = await loadAccessToken();
@@ -799,10 +816,10 @@ export async function clearDoseStatus(medicationId: string, date: Date, schedule
     clearDoseEventState(medicationId, dateKey, normalizedScheduledTime);
     emit();
     await persist();
-    return;
+    return await getScheduledDosesForDate(date, locale);
   }
 
-  await apiRequestJson<ApiDoseEvent>('/api/dose-events/action', {
+  const response = await apiRequestJson<ApiDoseActionResponse>('/api/dose-events/action', {
     method: 'POST',
     body: {
       medicationId,
@@ -815,6 +832,7 @@ export async function clearDoseStatus(medicationId: string, date: Date, schedule
   clearDoseEventState(medicationId, dateKey, normalizedScheduledTime);
   emit();
   await persist();
+  return response.scheduledDoses.map((item) => mapScheduledDoseResponse(item, locale));
 }
 
 export type ScheduledDoseItem = {
@@ -932,6 +950,19 @@ function resolveDoseDetails(dosage: string, usageType?: string | null): string {
   return `${dosage} ${unit}`;
 }
 
+function mapScheduledDoseResponse(item: ApiScheduledDoseResponse, locale: Locale): ScheduledDoseItem {
+  return {
+    id: item.id,
+    medicationId: item.medicationId,
+    scheduledTime: item.scheduledTime,
+    name: item.name,
+    details: resolveDoseDetails(item.dosage, item.usageType),
+    schedule: `${item.scheduledTime} | ${localizeFrequencyLabel(item.frequencyLabel, locale)}`,
+    status: item.status,
+    emoji: resolveMedicationIcon(item.usageType?.trim() || 'Capsule'),
+  };
+}
+
 function toGuestSimulationRequest(): ApiGuestSimulationRequest {
   return {
     medications: state.medications.map((item) => ({
@@ -973,16 +1004,7 @@ export async function getScheduledDosesForDate(date: Date, locale: Locale = 'en'
       },
       correlationPrefix: 'guest-scheduled-doses',
     });
-    return response.map((item) => ({
-      id: item.id,
-      medicationId: item.medicationId,
-      scheduledTime: item.scheduledTime,
-      name: item.name,
-      details: resolveDoseDetails(item.dosage, item.usageType),
-      schedule: `${item.scheduledTime} | ${localizeFrequencyLabel(item.frequencyLabel, locale)}`,
-      status: item.status,
-      emoji: resolveMedicationIcon(item.usageType?.trim() || 'Capsule'),
-    }));
+    return response.map((item) => mapScheduledDoseResponse(item, locale));
   }
 
   const query = encodeURIComponent(dateKey);
@@ -990,16 +1012,7 @@ export async function getScheduledDosesForDate(date: Date, locale: Locale = 'en'
     correlationPrefix: 'dose-events-scheduled',
   });
 
-  return response.map((item) => ({
-    id: item.id,
-    medicationId: item.medicationId,
-    scheduledTime: item.scheduledTime,
-    name: item.name,
-    details: resolveDoseDetails(item.dosage, item.usageType),
-    schedule: `${item.scheduledTime} | ${localizeFrequencyLabel(item.frequencyLabel, locale)}`,
-    status: item.status,
-    emoji: resolveMedicationIcon(item.usageType?.trim() || 'Capsule'),
-  }));
+  return response.map((item) => mapScheduledDoseResponse(item, locale));
 }
 
 export async function getDoseReport(referenceDate: Date, locale: Locale = 'en'): Promise<{

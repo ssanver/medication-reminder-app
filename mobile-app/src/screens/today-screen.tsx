@@ -85,6 +85,9 @@ export function TodayScreen({
     isPastDate,
     weekStrip: _weekStrip,
     sponsoredAd,
+    beginDoseActionReload,
+    completeDoseActionReload,
+    failDoseActionReload,
   } = useTodayScreenState({ locale, weekStartsOn });
   const [dateFilterVisible, setDateFilterVisible] = useState(false);
   const [draftDate, setDraftDate] = useState<Date>(normalizeDate(selectedDate));
@@ -161,11 +164,6 @@ export function TodayScreen({
   }
 
   useEffect(() => {
-    const now = new Date();
-    setSelectedDate(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
-  }, [setSelectedDate]);
-
-  useEffect(() => {
     setDraftDate(normalizeDate(selectedDate));
   }, [selectedDate]);
 
@@ -209,17 +207,24 @@ export function TodayScreen({
   async function handleDoseAction(
     medicationId: string,
     scheduledTime: string,
-    run: () => Promise<void>,
+    run: () => Promise<Awaited<ReturnType<typeof setDoseStatus>>>,
   ) {
     const actionKey = toDoseActionKey(medicationId, scheduledTime);
     setPendingDoseActionKeys((current) => ({
       ...current,
       [actionKey]: true,
     }));
+    beginDoseActionReload();
     try {
-      await run();
+      const nextDoses = await run();
+      if (Array.isArray(nextDoses)) {
+        completeDoseActionReload(nextDoses);
+      } else {
+        failDoseActionReload();
+      }
       setActionWarning(null);
     } catch {
+      failDoseActionReload();
       setActionWarning(t.medicationActionError);
     } finally {
       setPendingDoseActionKeys((current) => {
@@ -478,11 +483,11 @@ export function TodayScreen({
               schedule={item.schedule}
               actionLabel={
                 isPastDate
-                  ? item.status === 'taken'
-                    ? t.markAsMissed
-                    : item.status === 'missed'
-                      ? t.take
-                      : t.markAsTaken
+                    ? item.status === 'taken'
+                      ? t.markAsMissed
+                      : item.status === 'missed'
+                        ? t.take
+                        : t.markAsTaken
                   : item.status === 'taken'
                     ? t.undo
                     : t.take
@@ -511,15 +516,15 @@ export function TodayScreen({
                 if (isPastDate) {
                   if (item.status === 'taken') {
                     void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
-                      await setDoseStatus(item.medicationId, selectedDate, 'missed', item.scheduledTime);
+                      return await setDoseStatus(item.medicationId, selectedDate, 'missed', item.scheduledTime, locale);
                     });
                   } else if (item.status === 'missed') {
                     void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
-                      await clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
+                      return await clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime, locale);
                     });
                   } else {
                     void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
-                      await setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
+                      return await setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime, locale);
                     });
                   }
                   return;
@@ -527,13 +532,13 @@ export function TodayScreen({
 
                 if (item.status === 'taken') {
                   void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
-                    await clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime);
+                    return await clearDoseStatus(item.medicationId, selectedDate, item.scheduledTime, locale);
                   });
                   return;
                 }
 
                 void handleDoseAction(item.medicationId, item.scheduledTime, async () => {
-                  await setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime);
+                  return await setDoseStatus(item.medicationId, selectedDate, 'taken', item.scheduledTime, locale);
                 });
               }}
               secondaryActionLabel={

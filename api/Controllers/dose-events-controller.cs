@@ -23,7 +23,7 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
     };
 
     [HttpPost("action")]
-    public async Task<ActionResult<DoseEventResponse>> Action([FromBody] DoseActionRequest request)
+    public async Task<ActionResult<DoseActionResultResponse>> Action([FromBody] DoseActionRequest request)
     {
         var userReference = ResolveUserReference(out var errorResult);
         if (errorResult is not null)
@@ -72,7 +72,7 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
                 await dbContext.SaveChangesAsync();
             }
 
-            return Ok(new DoseEventResponse
+            var response = new DoseEventResponse
             {
                 Id = existing?.Id ?? Guid.Empty,
                 MedicationId = request.MedicationId,
@@ -81,6 +81,13 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
                 ScheduledTime = normalizedScheduledTime,
                 ActionAt = DateTimeOffset.UtcNow,
                 SnoozeMinutes = null,
+            };
+
+            var scheduledDoses = await BuildScheduledDosesAsync(userReference, DateOnly.ParseExact(normalizedDateKey, "yyyy-MM-dd", CultureInfo.InvariantCulture));
+            return Ok(new DoseActionResultResponse
+            {
+                Event = response,
+                ScheduledDoses = scheduledDoses,
             });
         }
 
@@ -109,7 +116,13 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
 
         await dbContext.SaveChangesAsync();
 
-        return Ok(ToResponse(doseEvent));
+        var actionResponse = ToResponse(doseEvent);
+        var refreshedDoses = await BuildScheduledDosesAsync(userReference, DateOnly.ParseExact(normalizedDateKey, "yyyy-MM-dd", CultureInfo.InvariantCulture));
+        return Ok(new DoseActionResultResponse
+        {
+            Event = actionResponse,
+            ScheduledDoses = refreshedDoses,
+        });
     }
 
     [HttpGet("history")]
@@ -246,12 +259,18 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         }
 
         var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var doses = await BuildScheduledDosesAsync(userReference, targetDate);
+        return Ok(doses);
+    }
+
+    private async Task<ScheduledDoseResponse[]> BuildScheduledDosesAsync(string? userReference, DateOnly targetDate)
+    {
         var targetDateKey = targetDate.ToString("yyyy-MM-dd");
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
 
         var medicationsQuery = dbContext
             .Medications
-            .Include(x => x.Schedules)
+            .AsNoTracking()
             .Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(userReference))
         {
@@ -260,14 +279,37 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
 
         var medications = await medicationsQuery
             .OrderBy(x => x.Name)
+            .Select(x => new ScheduledMedicationProjection(
+                x.Id,
+                x.Name,
+                x.Dosage,
+                x.UsageType,
+                x.IsBeforeMeal,
+                x.StartDate,
+                x.EndDate,
+                x.Schedules
+                    .OrderBy(schedule => schedule.ReminderTime)
+                    .Select(schedule => new ScheduledMedicationScheduleProjection(
+                        schedule.RepeatType,
+                        schedule.IntervalCount,
+                        schedule.ReminderTime,
+                        schedule.DaysOfWeek))
+                    .ToArray()))
             .ToListAsync();
 
         var medicationIds = medications.Select(x => x.Id).ToArray();
+        if (medicationIds.Length == 0)
+        {
+            return [];
+        }
+
         var events = await dbContext
             .DoseEvents
             .AsNoTracking()
             .Where(x => x.DateKey == targetDateKey && medicationIds.Contains(x.MedicationId))
+            .Select(x => new ScheduledDoseEventProjection(x.MedicationId, x.DateKey, x.ScheduledTime, x.ActionType, x.ActionAt))
             .ToListAsync();
+
         var eventByDoseKey = events
             .GroupBy(x => $"{x.MedicationId}:{x.DateKey}:{x.ScheduledTime}")
             .ToDictionary(group => group.Key, group => group.OrderByDescending(x => x.ActionAt).First().ActionType, StringComparer.OrdinalIgnoreCase);
@@ -277,17 +319,10 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         {
             foreach (var schedule in medication.Schedules)
             {
-                var planned = SchedulePlanner.BuildOccurrences(
-                    [schedule],
-                    medication.StartDate,
-                    targetDate,
-                    totalDays: 1,
-                    medication.EndDate);
-
-                foreach (var occurrence in planned)
+                foreach (var scheduledTime in GetScheduledTimesForDate(schedule, medication.StartDate, targetDate, medication.EndDate))
                 {
-                    var scheduledTime = TimeOnly.FromDateTime(occurrence.UtcDateTime).ToString("HH:mm");
-                    var key = $"{medication.Id}:{targetDateKey}:{scheduledTime}";
+                    var formattedScheduledTime = scheduledTime.ToString("HH:mm");
+                    var key = $"{medication.Id}:{targetDateKey}:{formattedScheduledTime}";
                     var status = eventByDoseKey.TryGetValue(key, out var actionType)
                         ? NormalizeDoseStatus(actionType)
                         : targetDate < today
@@ -296,22 +331,163 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
 
                     doses.Add(new ScheduledDoseResponse
                     {
-                        Id = $"{medication.Id}-{targetDateKey}-{scheduledTime}",
+                        Id = $"{medication.Id}-{targetDateKey}-{formattedScheduledTime}",
                         MedicationId = medication.Id,
-                        ScheduledTime = scheduledTime,
+                        ScheduledTime = formattedScheduledTime,
                         DateKey = targetDateKey,
                         Name = medication.Name,
                         Dosage = medication.Dosage,
                         UsageType = medication.UsageType,
                         IsBeforeMeal = medication.IsBeforeMeal,
-                        FrequencyLabel = BuildFrequencyLabel(schedule),
+                        FrequencyLabel = BuildFrequencyLabel(new MedicationSchedule
+                        {
+                            RepeatType = schedule.RepeatType,
+                            IntervalCount = schedule.IntervalCount,
+                            ReminderTime = schedule.ReminderTime,
+                            DaysOfWeek = schedule.DaysOfWeek,
+                        }),
                         Status = status,
                     });
                 }
             }
         }
 
-        return Ok(doses.OrderBy(x => x.ScheduledTime).ThenBy(x => x.Name).ToArray());
+        return doses.OrderBy(x => x.ScheduledTime).ThenBy(x => x.Name).ToArray();
+    }
+
+    private static IReadOnlyCollection<TimeOnly> GetScheduledTimesForDate(
+        ScheduledMedicationScheduleProjection schedule,
+        DateOnly medicationStartDate,
+        DateOnly targetDate,
+        DateOnly? medicationEndDate)
+    {
+        if (targetDate < medicationStartDate)
+        {
+            return [];
+        }
+
+        if (medicationEndDate.HasValue && targetDate > medicationEndDate.Value)
+        {
+            return [];
+        }
+
+        if (schedule.RepeatType.Equals("hourly", StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildHourlyTimesForDate(schedule, medicationStartDate, targetDate, medicationEndDate);
+        }
+
+        if (!ShouldIncludeDate(schedule, targetDate, medicationStartDate))
+        {
+            return [];
+        }
+
+        return [schedule.ReminderTime];
+    }
+
+    private static TimeOnly[] BuildHourlyTimesForDate(
+        ScheduledMedicationScheduleProjection schedule,
+        DateOnly medicationStartDate,
+        DateOnly targetDate,
+        DateOnly? medicationEndDate)
+    {
+        var intervalHours = Math.Max(1, schedule.IntervalCount);
+        var rangeStart = targetDate.ToDateTime(TimeOnly.MinValue);
+        var rangeEnd = targetDate.ToDateTime(TimeOnly.MaxValue);
+        var medicationStart = medicationStartDate.ToDateTime(schedule.ReminderTime);
+        var medicationEnd = medicationEndDate?.ToDateTime(TimeOnly.MaxValue);
+
+        var cursor = medicationStart;
+        if (cursor < rangeStart)
+        {
+            var diffHours = (rangeStart - cursor).TotalHours;
+            var steps = (int)Math.Ceiling(diffHours / intervalHours);
+            cursor = cursor.AddHours(steps * intervalHours);
+        }
+
+        var times = new List<TimeOnly>();
+        while (cursor <= rangeEnd)
+        {
+            if ((!medicationEnd.HasValue || cursor <= medicationEnd.Value) && cursor >= rangeStart)
+            {
+                times.Add(TimeOnly.FromDateTime(cursor));
+            }
+
+            cursor = cursor.AddHours(intervalHours);
+        }
+
+        return times.ToArray();
+    }
+
+    private static bool ShouldIncludeDate(
+        ScheduledMedicationScheduleProjection schedule,
+        DateOnly targetDate,
+        DateOnly medicationStartDate)
+    {
+        var dayDiffFromStart = targetDate.DayNumber - medicationStartDate.DayNumber;
+        if (dayDiffFromStart < 0)
+        {
+            return false;
+        }
+
+        var normalizedIntervalCount = Math.Max(1, schedule.IntervalCount);
+        if (schedule.RepeatType.Equals("daily", StringComparison.OrdinalIgnoreCase))
+        {
+            return dayDiffFromStart % normalizedIntervalCount == 0;
+        }
+
+        if (schedule.RepeatType.Equals("cycle", StringComparison.OrdinalIgnoreCase))
+        {
+            var offDays = ParseCycleOffDays(schedule.DaysOfWeek);
+            var cycleLength = normalizedIntervalCount + offDays;
+            if (cycleLength <= 0)
+            {
+                return false;
+            }
+
+            var cycleIndex = dayDiffFromStart % cycleLength;
+            return cycleIndex < normalizedIntervalCount;
+        }
+
+        if (schedule.RepeatType.Equals("as-needed", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!schedule.RepeatType.Equals("weekly", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(schedule.DaysOfWeek))
+        {
+            return false;
+        }
+
+        var shortDayName = targetDate.DayOfWeek switch
+        {
+            DayOfWeek.Monday => "mon",
+            DayOfWeek.Tuesday => "tue",
+            DayOfWeek.Wednesday => "wed",
+            DayOfWeek.Thursday => "thu",
+            DayOfWeek.Friday => "fri",
+            DayOfWeek.Saturday => "sat",
+            DayOfWeek.Sunday => "sun",
+            _ => string.Empty,
+        };
+
+        var selectedDays = schedule
+            .DaysOfWeek
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => value.ToLowerInvariant())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!selectedDays.Contains(shortDayName))
+        {
+            return false;
+        }
+
+        var weekDiffFromStart = dayDiffFromStart / 7;
+        return weekDiffFromStart % normalizedIntervalCount == 0;
     }
 
     private async Task ApplyInventoryDeltaAsync(Guid medicationId, string? previousActionType, string? nextActionType)
@@ -601,4 +777,27 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         errorResult = null;
         return claimedEmail.Trim().ToLowerInvariant();
     }
+
+    private sealed record ScheduledMedicationProjection(
+        Guid Id,
+        string Name,
+        string Dosage,
+        string? UsageType,
+        bool IsBeforeMeal,
+        DateOnly StartDate,
+        DateOnly? EndDate,
+        ScheduledMedicationScheduleProjection[] Schedules);
+
+    private sealed record ScheduledMedicationScheduleProjection(
+        string RepeatType,
+        int IntervalCount,
+        TimeOnly ReminderTime,
+        string? DaysOfWeek);
+
+    private sealed record ScheduledDoseEventProjection(
+        Guid MedicationId,
+        string DateKey,
+        string ScheduledTime,
+        string ActionType,
+        DateTimeOffset ActionAt);
 }

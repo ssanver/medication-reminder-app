@@ -3,6 +3,7 @@ import { getDateTitle, getWeekStrip } from '../../date/week-strip';
 import { loadAppDefinitions, type AppDefinitions } from '../../definitions/definitions-service';
 import { getLocaleTag, getTranslations, type Locale } from '../../localization/localization';
 import { getScheduledDosesForDate } from '../../medications/medication-store';
+import type { ScheduledDoseItem } from '../../medications/medication-store';
 import { getAdFreeStatus, subscribeAdFreeStatus } from '../../monetization/subscription-service';
 import { useMedicationStore } from '../../medications/use-medication-store';
 import { toShortDisplayName } from '../../profile/display-name';
@@ -39,6 +40,11 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const avatarEmoji = resolveProfileAvatarEmoji(profileGender, locale);
 
   useEffect(() => {
+    if (!store.isHydrated) {
+      setIsLoadingDoses(true);
+      return;
+    }
+
     let isMounted = true;
     void (async () => {
       if (isMounted) {
@@ -65,7 +71,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
     return () => {
       isMounted = false;
     };
-  }, [selectedDate, locale, store.medications, store.events]);
+  }, [selectedDate, locale, store.isHydrated, store.medications]);
 
   const filtered = useMemo(() => {
     if (filter === 'All') {
@@ -185,6 +191,19 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
     return t.medicationsForDate.replace('{{date}}', dateText);
   }, [selectedDate, locale, dateDelta, t.todaysMedication]);
 
+  function beginDoseActionReload() {
+    setIsLoadingDoses(true);
+  }
+
+  function completeDoseActionReload(nextDoses: ScheduledDoseItem[]) {
+    setDoses(nextDoses);
+    setIsLoadingDoses(false);
+  }
+
+  function failDoseActionReload() {
+    setIsLoadingDoses(false);
+  }
+
   return {
     filter,
     setFilter,
@@ -211,5 +230,8 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
     dateTitle,
     sponsoredAd,
     sectionTitle,
+    beginDoseActionReload,
+    completeDoseActionReload,
+    failDoseActionReload,
   };
 }
