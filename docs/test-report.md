@@ -158,3 +158,45 @@
 
 2. `cd mobile-app && npx tsc --noEmit`
 - Sonuc: Basarili
+
+## 9. Scheduled Doses Cache Optimizasyonu
+### 9.1 Problem Ozeti
+- `Today` ekrani acilisinda ve tarih bazli doz listesi yenilemelerinde `GET /api/dose-events/scheduled-doses` cagrisi bazi alt ortam kosullarinda `1.1 - 1.3 s` bandina cikiyordu.
+- Ayni kullanici ve ayni gun icin kisa sure icinde tekrar edilen cagrilar, her seferinde ayni sorgu ve liste uretim maliyetini tekrarliyordu.
+
+### 9.2 Uygulanan Degisiklik
+- Backend'e kullanici + tarih araligi bazli kisa omurlu bellek ici cache eklendi.
+- `scheduled-doses` ve `scheduled-doses-window` ayni builder uzerinden cache kullanir hale getirildi.
+- Doz aksiyonu ve ilac mutasyonlari sonrasi ilgili kullanicinin cache kayitlari invalid edilir hale getirildi; boylece stale veri donme riski kaldirildi.
+
+### 9.3 Kanit ve Dogrulama
+- DB dogrulama: `sqlcmd ... SELECT 1 AS db_ok` -> basarili (`1`)
+- Build: `dotnet build medication-reminder-app.slnx` -> basarili
+- Test: `dotnet test medication-reminder-app.slnx` -> basarili (`100/100`)
+- Tekrar build: `dotnet build medication-reminder-app.slnx` -> basarili
+- Mobile tip kontrolu: `cd mobile-app && npx tsc --noEmit` -> basarili
+- Mobile test: `cd mobile-app && npm test -- --run` -> basarili (`19/19` dosya, `60/60` test)
+- Lokal API dogrulamasi: `ASPNETCORE_ENVIRONMENT=Production dotnet run ... --urls http://127.0.0.1:5199` -> servis ayakta
+
+### 9.4 Performans Sonucu
+- Bos guest kullanici:
+  - `GET /api/dose-events/scheduled-doses?date=2026-03-20`
+    - ilk cagrı: yaklasik `46.6 ms`
+    - ikinci cagri: yaklasik `1.36 ms`
+  - `GET /api/dose-events/scheduled-doses-window?from=2026-03-20&to=2026-04-19`
+    - ilk cagri: yaklasik `51.8 ms`
+    - ikinci cagri: yaklasik `1.46 ms`
+- Tek ilacli guest kullanici:
+  - `GET /api/dose-events/scheduled-doses?date=2026-03-20`
+    - ilk cagri: yaklasik `92.1 ms`
+    - ikinci cagri: yaklasik `1.33 ms`
+  - `POST /api/dose-events/action`
+    - tekil cagri: yaklasik `291.6 ms`
+  - aksiyon sonrasi cache invalidation dogrulamasi:
+    - ilk `scheduled-doses` yenilemesi: yaklasik `1.45 ms`
+    - ikinci `scheduled-doses` yenilemesi: yaklasik `1.16 ms`
+
+### 9.5 Yorum
+- Bu optimizasyon ayni kullanici/gun verisi icin tekrar eden `scheduled-doses` maliyetini iki buyukluk mertebesi kadar dusurdu.
+- `Today` ekranindaki ilk acilis maliyeti tamamen ortadan kalkmis degil; cold start ve ilk hesaplama halen maliyet uretiyor.
+- Buna karsin ayni veri icin tekrar fetch ve doz aksiyonu sonrasi liste yenileme artik cache hit ile milisaniye seviyesinde donebiliyor.

@@ -1,11 +1,13 @@
 using api.Controllers;
 using api.contracts;
 using api.data;
+using api.services;
 using api.services.medication_persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 
 namespace api.tests;
@@ -488,7 +490,8 @@ public sealed class MedicationsControllerTests
     {
         var controller = new MedicationsController(
             new api_application.medication_application.MedicationApplicationService(
-                new EfMedicationRepository(dbContext)));
+                new EfMedicationRepository(dbContext)),
+            new ScheduledDoseCache(new MemoryCache(new MemoryCacheOptions())));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

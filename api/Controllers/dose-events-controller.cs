@@ -12,7 +12,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/dose-events")]
-public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger auditLogger) : ControllerBase
+public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger auditLogger, IScheduledDoseCache scheduledDoseCache) : ControllerBase
 {
     private static readonly HashSet<string> AllowedActions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -72,6 +72,8 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
                 await dbContext.SaveChangesAsync();
             }
 
+            scheduledDoseCache.InvalidateUser(userReference);
+
             var response = new DoseEventResponse
             {
                 Id = existing?.Id ?? Guid.Empty,
@@ -115,6 +117,7 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         await ApplyInventoryDeltaAsync(request.MedicationId, previousActionType, normalizedActionType);
 
         await dbContext.SaveChangesAsync();
+        scheduledDoseCache.InvalidateUser(userReference);
 
         var actionResponse = ToResponse(doseEvent);
         var refreshedDoses = await BuildScheduledDosesAsync(userReference, DateOnly.ParseExact(normalizedDateKey, "yyyy-MM-dd", CultureInfo.InvariantCulture));
@@ -299,6 +302,15 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
     }
 
     private async Task<ScheduledDoseResponse[]> BuildScheduledDosesRangeAsync(string? userReference, DateOnly fromDate, DateOnly toDate)
+    {
+        return await scheduledDoseCache.GetOrCreateAsync(
+            userReference,
+            fromDate,
+            toDate,
+            () => BuildScheduledDosesRangeCoreAsync(userReference, fromDate, toDate));
+    }
+
+    private async Task<ScheduledDoseResponse[]> BuildScheduledDosesRangeCoreAsync(string? userReference, DateOnly fromDate, DateOnly toDate)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var medicationsQuery = dbContext

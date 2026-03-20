@@ -2,8 +2,10 @@ using api.Controllers;
 using api.contracts;
 using api.data;
 using api.models;
+using api.services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace api.tests;
 
@@ -14,7 +16,7 @@ public sealed class DoseEventsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var medication = await AddMedication(dbContext);
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
 
         var result = await controller.Action(new DoseActionRequest
         {
@@ -34,7 +36,7 @@ public sealed class DoseEventsControllerTests
     {
         await using var dbContext = CreateInMemoryContext();
         var medication = await AddMedication(dbContext);
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
 
         var result = await controller.Action(new DoseActionRequest
         {
@@ -64,7 +66,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetHistory(new DoseHistoryQuery { MedicationId = medication.Id });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -100,7 +102,7 @@ public sealed class DoseEventsControllerTests
             });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetHistory(new DoseHistoryQuery { ActionType = "missed" });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -145,7 +147,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetSummary(new DateOnly(2026, 2, 20), new DateOnly(2026, 2, 22));
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -169,7 +171,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         await controller.Action(new DoseActionRequest
         {
             MedicationId = medication.Id,
@@ -194,7 +196,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         await controller.Action(new DoseActionRequest
         {
             MedicationId = medication.Id,
@@ -224,7 +226,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         await controller.Action(new DoseActionRequest
         {
             MedicationId = medication.Id,
@@ -244,7 +246,7 @@ public sealed class DoseEventsControllerTests
     public async Task Action_ShouldWriteAuditLog_WhenMedicationIsMissing()
     {
         await using var dbContext = CreateInMemoryContext();
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
 
         var result = await controller.Action(new DoseActionRequest
         {
@@ -295,7 +297,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetScheduledDoses(targetDate);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -333,7 +335,7 @@ public sealed class DoseEventsControllerTests
         dbContext.Medications.Add(medication);
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.Action(new DoseActionRequest
         {
             MedicationId = medication.Id,
@@ -388,7 +390,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetScheduledDosesWindow(new DateOnly(2026, 3, 20), new DateOnly(2026, 3, 21));
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -418,7 +420,7 @@ public sealed class DoseEventsControllerTests
         dbContext.Medications.Add(medication);
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetScheduledDoses(DateOnly.FromDateTime(DateTime.UtcNow.Date));
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -455,7 +457,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetScheduledDoses(targetDate);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -501,7 +503,7 @@ public sealed class DoseEventsControllerTests
         });
         await dbContext.SaveChangesAsync();
 
-        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
         var result = await controller.GetReport(fromDate, toDate, "en");
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -537,6 +539,11 @@ public sealed class DoseEventsControllerTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    private static IScheduledDoseCache CreateScheduledDoseCache()
+    {
+        return new ScheduledDoseCache(new MemoryCache(new MemoryCacheOptions()));
     }
 
     private sealed class TestAuditLogger(AppDbContext dbContext) : api.services.security.IAuditLogger

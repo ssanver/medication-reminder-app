@@ -10,7 +10,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/medications")]
-public sealed class MedicationsController(MedicationApplicationService applicationService) : ControllerBase
+public sealed class MedicationsController(MedicationApplicationService applicationService, IScheduledDoseCache scheduledDoseCache) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<MedicationResponse>>> GetAll([FromQuery] string? userReference = null)
@@ -37,6 +37,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
         try
         {
             var created = await applicationService.CreateAsync(resolvedUserReference, ResolveUserRole(), ToSaveCommand(request));
+            scheduledDoseCache.InvalidateUser(resolvedUserReference);
             return CreatedAtAction(nameof(GetAll), new { id = created.Id }, ToResponse(created));
         }
         catch (MedicationLimitExceededException ex)
@@ -61,6 +62,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
         try
         {
             var updated = await applicationService.UpdateAsync(id, resolvedUserReference, ToSaveCommand(request));
+            scheduledDoseCache.InvalidateUser(resolvedUserReference);
             return Ok(ToResponse(updated));
         }
         catch (KeyNotFoundException)
@@ -85,6 +87,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
         try
         {
             var updated = await applicationService.AddScheduleAsync(id, resolvedUserReference, ToScheduleInput(request));
+            scheduledDoseCache.InvalidateUser(resolvedUserReference);
             return Ok(ToResponse(updated));
         }
         catch (KeyNotFoundException)
@@ -134,6 +137,7 @@ public sealed class MedicationsController(MedicationApplicationService applicati
         try
         {
             await applicationService.DeleteAsync(id, resolvedUserReference);
+            scheduledDoseCache.InvalidateUser(resolvedUserReference);
             return NoContent();
         }
         catch (KeyNotFoundException)

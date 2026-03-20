@@ -3,6 +3,7 @@ using api.services.medication_persistence;
 using api.middleware;
 using api.services.notification_persistence;
 using api.services.medicine_catalog_persistence;
+using api.services;
 using api.services.security;
 using api.services.auth;
 using api.services.monetization_persistence;
@@ -30,6 +31,7 @@ const string WebCorsPolicy = "web-cors";
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddMemoryCache();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(WebCorsPolicy, policy =>
@@ -69,6 +71,7 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+builder.Services.AddSingleton<IScheduledDoseCache, ScheduledDoseCache>();
 builder.Services.AddScoped<IEmailDispatchService, SmtpEmailDispatchService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddHostedService<MedicineCatalogSeeder>();
