@@ -1,6 +1,7 @@
 import { createCorrelationId } from './correlation-id';
 import { beginApiMutation, endApiMutation, reportApiError } from './api-request-state';
 import { loadAccessToken, loadAuthSession, loadOrCreateDeviceId, markGuestMode } from '../auth/auth-session-store';
+import { reportApiMetric } from '../performance/performance-debug-store';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -161,6 +162,7 @@ export async function apiRequestJson<TResponse>(path: string, options: ApiReques
   const baseUrl = getApiBaseUrl();
   const method = options.method ?? 'GET';
   const mutationId = method === 'GET' ? null : beginApiMutation(method, path);
+  const startedAt = Date.now();
 
   const execute = async (): Promise<Response> => {
     const accessToken = await loadAccessToken();
@@ -200,6 +202,7 @@ export async function apiRequestJson<TResponse>(path: string, options: ApiReques
       const { text, parsed } = await readResponsePayload(response);
       const message = formatApiErrorMessage(response.status, parsed, text || 'Request failed.');
       debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+      reportApiMetric({ method, path, durationMs: Date.now() - startedAt, status: response.status });
       reportApiError({
         method,
         path,
@@ -211,6 +214,7 @@ export async function apiRequestJson<TResponse>(path: string, options: ApiReques
 
     const { parsed } = await readResponsePayload(response);
     debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+    reportApiMetric({ method, path, durationMs: Date.now() - startedAt, status: response.status });
     return parsed as TResponse;
   } catch (error) {
     if (!(error instanceof ApiRequestError)) {
@@ -234,6 +238,7 @@ export async function apiRequestVoid(path: string, options: ApiRequestOptions = 
   const baseUrl = getApiBaseUrl();
   const method = options.method ?? 'GET';
   const mutationId = method === 'GET' ? null : beginApiMutation(method, path);
+  const startedAt = Date.now();
 
   const execute = async (): Promise<Response> => {
     const accessToken = await loadAccessToken();
@@ -274,6 +279,7 @@ export async function apiRequestVoid(path: string, options: ApiRequestOptions = 
       const message = formatApiErrorMessage(response.status, parsed, text || 'Request failed.');
       debugApi(`RESPONSE ${response.status} ${path}`, parsed);
       debugApi(`RESPONSE ${response.status} ${path}`, text || null);
+      reportApiMetric({ method, path, durationMs: Date.now() - startedAt, status: response.status });
       reportApiError({
         method,
         path,
@@ -285,6 +291,7 @@ export async function apiRequestVoid(path: string, options: ApiRequestOptions = 
 
     const { parsed } = await readResponsePayload(response);
     debugApi(`RESPONSE ${response.status} ${path}`, parsed);
+    reportApiMetric({ method, path, durationMs: Date.now() - startedAt, status: response.status });
   } catch (error) {
     if (!(error instanceof ApiRequestError)) {
       const message = error instanceof Error && error.message ? error.message : 'Unexpected network error.';

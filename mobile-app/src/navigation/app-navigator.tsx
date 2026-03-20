@@ -25,6 +25,11 @@ import {
   verifyEmailCode,
 } from '../features/auth/email-verification-service';
 import { clearApiError, getApiRequestStateSnapshot, subscribeApiRequestState } from '../features/network/api-request-state';
+import {
+  getPerformanceDebugSnapshot,
+  isLowerEnvironment,
+  subscribePerformanceDebug,
+} from '../features/performance/performance-debug-store';
 import { setAppFontScale } from '../features/accessibility/app-font-scale';
 import { getTranslations, type Locale } from '../features/localization/localization';
 import { clearMedicationStore, hydrateMedicationStore } from '../features/medications/medication-store';
@@ -88,6 +93,11 @@ const guestSessionTimeoutMs = 2500;
 export function AppNavigator() {
   const medicationStore = useMedicationStore();
   const apiRequestState = useSyncExternalStore(subscribeApiRequestState, getApiRequestStateSnapshot, getApiRequestStateSnapshot);
+  const performanceDebug = useSyncExternalStore(
+    subscribePerformanceDebug,
+    getPerformanceDebugSnapshot,
+    getPerformanceDebugSnapshot,
+  );
   const reminderPrompt = useSyncExternalStore(subscribeReminderPrompt, getReminderPromptSnapshot, getReminderPromptSnapshot);
   const [phase, setPhase] = useState<AppPhase>('splash');
   const [locale, setLocale] = useState<Locale>(resolveDefaultLocale());
@@ -880,6 +890,14 @@ export function AppNavigator() {
           </View>
         </View>
       ) : null}
+      {isLowerEnvironment() && performanceDebug.visible ? (
+        <View style={styles.performanceDebugWrap} pointerEvents="none">
+          <View style={styles.performanceDebugCard}>
+            <Text style={styles.performanceDebugTitle}>{performanceDebug.title}</Text>
+            <Text style={styles.performanceDebugBody}>{performanceDebug.detail}</Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1093,5 +1111,29 @@ const styles = StyleSheet.create({
   globalErrorDismissText: {
     ...theme.typography.bodyScale.xmMedium,
     color: theme.colors.error[800],
+  },
+  performanceDebugWrap: {
+    position: 'absolute',
+    top: theme.spacing[16],
+    left: theme.spacing[16],
+    right: theme.spacing[16],
+  },
+  performanceDebugCard: {
+    borderRadius: theme.radius[16],
+    backgroundColor: theme.colors.warning[200],
+    borderWidth: 1,
+    borderColor: theme.colors.warning[500],
+    paddingHorizontal: theme.spacing[16],
+    paddingVertical: theme.spacing[8],
+    ...theme.elevation.card,
+  },
+  performanceDebugTitle: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.warning[800],
+    fontWeight: '700',
+  },
+  performanceDebugBody: {
+    ...theme.typography.captionScale.lRegular,
+    color: theme.colors.semantic.textPrimary,
   },
 });

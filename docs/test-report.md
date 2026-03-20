@@ -139,3 +139,22 @@
 ### 7.5 Yorum
 - Ana kazanc `Take / al` sonrasi reminder senkronundaki `31` ayrik HTTP round-trip'in `1` toplu cagrida toplanmasi oldu.
 - Beklemenin kalan ana parcasi artik agirlikla `dose-events/action` endpointinin DB yazimi ve gunluk listeyi uretme maliyetinden geliyor.
+
+## 8. Alt Ortam Performans Banner'i
+### 8.1 Ozellik
+- Alt ortamda tum sayfalarda ortak performans banner'i gosterilir.
+- Banner son API cagrisi icin `METHOD route`, sure (`ms`) ve HTTP durum kodunu gosterir.
+- `Today` ekranindaki doz aksiyonu gibi UI akislari da ayni banner'a ozel sure bilgisi yazabilir.
+
+### 8.2 Alt Ortam Kuralı
+- Banner su kosullarda acilir:
+  - `__DEV__ === true`
+  - veya `EXPO_PUBLIC_API_BASE_URL` icinde `localhost`, `127.0.0.1` ya da `stempurl.com` geciyorsa
+- Production benzeri URL'lerde banner kapali kalir.
+
+### 8.3 Kanit
+1. `cd mobile-app && npm test -- --run`
+- Sonuc: Basarili (`19/19` dosya, `60/60` test)
+
+2. `cd mobile-app && npx tsc --noEmit`
+- Sonuc: Basarili

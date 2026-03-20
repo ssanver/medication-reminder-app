@@ -10,6 +10,7 @@ import { SegmentedControl } from '../components/ui/segmented-control';
 import { getLocaleTag, getTranslations, type Locale } from '../features/localization/localization';
 import { clearDoseStatus, setDoseStatus } from '../features/medications/medication-store';
 import { scheduleSnoozeReminder } from '../features/notifications/local-notifications';
+import { reportUiMetric } from '../features/performance/performance-debug-store';
 import { useTodayScreenState, type TodayDoseFilter } from '../features/today/application/use-today-screen-state';
 import { theme } from '../theme';
 
@@ -94,6 +95,12 @@ export function TodayScreen({
   const [hasDateSelectionChanged, setHasDateSelectionChanged] = useState(false);
   const [isDayStripDragging, setIsDayStripDragging] = useState(false);
   const [pendingDoseActionKeys, setPendingDoseActionKeys] = useState<Record<string, boolean>>({});
+  const doseActionTraceRef = useRef<{
+    medicationId: string;
+    scheduledTime: string;
+    startedAt: number;
+    apiCompletedAt?: number;
+  } | null>(null);
   const DAY_ITEM_SIZE = isCompactScreen ? 38 : 44;
   const dayStripRef = useRef<ScrollView | null>(null);
   const dayAnchorRef = useRef(new Date());
@@ -191,6 +198,27 @@ export function TodayScreen({
     };
   }, []);
 
+  useEffect(() => {
+    const trace = doseActionTraceRef.current;
+    if (!trace || isLoadingDoses) {
+      return;
+    }
+
+    const loadingClosedAt = Date.now();
+    reportUiMetric({
+      title: 'Dose Action',
+      detail: `API: ${trace.apiCompletedAt ? trace.apiCompletedAt - trace.startedAt : -1} ms | Loading close: ${
+        loadingClosedAt - trace.startedAt
+      } ms`,
+    });
+    console.log(
+      `[dose-action-timing] loading-closed medicationId=${trace.medicationId} scheduledTime=${trace.scheduledTime} apiMs=${
+        trace.apiCompletedAt ? trace.apiCompletedAt - trace.startedAt : -1
+      } totalMs=${loadingClosedAt - trace.startedAt}`,
+    );
+    doseActionTraceRef.current = null;
+  }, [isLoadingDoses]);
+
   function selectDayFromOffset(offsetX: number) {
     const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
     const target = dayStripItems[index];
@@ -209,7 +237,14 @@ export function TodayScreen({
     scheduledTime: string,
     run: () => Promise<Awaited<ReturnType<typeof setDoseStatus>>>,
   ) {
+    const startedAt = Date.now();
     const actionKey = toDoseActionKey(medicationId, scheduledTime);
+    doseActionTraceRef.current = {
+      medicationId,
+      scheduledTime,
+      startedAt,
+    };
+    console.log(`[dose-action-timing] pressed medicationId=${medicationId} scheduledTime=${scheduledTime}`);
     setPendingDoseActionKeys((current) => ({
       ...current,
       [actionKey]: true,
@@ -217,6 +252,17 @@ export function TodayScreen({
     beginDoseActionReload();
     try {
       const nextDoses = await run();
+      const apiCompletedAt = Date.now();
+      if (doseActionTraceRef.current?.startedAt === startedAt) {
+        doseActionTraceRef.current.apiCompletedAt = apiCompletedAt;
+      }
+      reportUiMetric({
+        title: 'Dose Action',
+        detail: `API done in ${apiCompletedAt - startedAt} ms`,
+      });
+      console.log(
+        `[dose-action-timing] api-complete medicationId=${medicationId} scheduledTime=${scheduledTime} apiMs=${apiCompletedAt - startedAt}`,
+      );
       if (Array.isArray(nextDoses)) {
         completeDoseActionReload(nextDoses);
       } else {
@@ -224,6 +270,14 @@ export function TodayScreen({
       }
       setActionWarning(null);
     } catch {
+      const failedAt = Date.now();
+      reportUiMetric({
+        title: 'Dose Action',
+        detail: `API failed in ${failedAt - startedAt} ms`,
+      });
+      console.log(
+        `[dose-action-timing] api-failed medicationId=${medicationId} scheduledTime=${scheduledTime} apiMs=${failedAt - startedAt}`,
+      );
       failDoseActionReload();
       setActionWarning(t.medicationActionError);
     } finally {
@@ -260,7 +314,6 @@ export function TodayScreen({
           </Pressable>
         </View>
       </View>
-
       <View style={styles.profileRow}>
         <View style={styles.profileLeft}>
           {isGuestMode ? (
