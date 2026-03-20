@@ -59,6 +59,13 @@ public sealed class ScheduledDoseResponse
     public required string Status { get; set; }
 }
 
+public sealed class ScheduledDosesWindowResponse
+{
+    public required DateOnly FromDate { get; set; }
+    public required DateOnly ToDate { get; set; }
+    public required IReadOnlyCollection<ScheduledDoseResponse> Doses { get; set; }
+}
+
 public sealed class DoseTrendPointResponse
 {
     public required string Label { get; set; }

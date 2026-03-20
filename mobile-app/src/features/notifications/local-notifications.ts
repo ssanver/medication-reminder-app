@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { getTranslations, type Locale } from '../localization/localization';
-import { getScheduledDosesForDate, setDoseStatus } from '../medications/medication-store';
+import { getScheduledDosesForDate, getScheduledDosesForRange, setDoseStatus } from '../medications/medication-store';
 import { loadAppPreferences } from '../settings/app-preferences';
 import { recordNotificationHistory } from './notification-history';
 
@@ -374,38 +374,40 @@ export async function syncMedicationReminderNotifications(locale: Locale, enable
 
   const now = new Date();
   const pendingReminders: Array<{ medicationId: string; dateKey: string; scheduledTime: string; name: string; details: string; triggerDate: Date }> = [];
+  const windowStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const windowEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + SCHEDULE_WINDOW_DAYS);
+  const doses = (await getScheduledDosesForRange(windowStartDate, windowEndDate, locale)).filter((dose) => dose.status === 'pending');
 
-  for (let offset = 0; offset <= SCHEDULE_WINDOW_DAYS; offset += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-    const dateKey = toDateKey(date);
-    const doses = (await getScheduledDosesForDate(date, locale)).filter((dose) => dose.status === 'pending');
+  for (const dose of doses) {
+    const date = new Date(`${dose.dateKey}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      continue;
+    }
 
-    for (const dose of doses) {
-      let triggerDate = toScheduledDate(date, dose.scheduledTime);
-      if (triggerDate.getTime() <= now.getTime()) {
-        const delay = now.getTime() - triggerDate.getTime();
-        if (delay > LATE_REMINDER_GRACE_MS) {
-          continue;
-        }
-
-        // If a dose is very recently due, fire a near-immediate notification
-        // instead of silently dropping it during resync.
-        triggerDate = new Date(now.getTime() + 5000);
-      }
-
-      if (triggerDate.getTime() <= now.getTime()) {
+    let triggerDate = toScheduledDate(date, dose.scheduledTime);
+    if (triggerDate.getTime() <= now.getTime()) {
+      const delay = now.getTime() - triggerDate.getTime();
+      if (delay > LATE_REMINDER_GRACE_MS) {
         continue;
       }
 
-      pendingReminders.push({
-        medicationId: dose.medicationId,
-        dateKey,
-        scheduledTime: dose.scheduledTime,
-        name: dose.name,
-        details: dose.details,
-        triggerDate,
-      });
+      // If a dose is very recently due, fire a near-immediate notification
+      // instead of silently dropping it during resync.
+      triggerDate = new Date(now.getTime() + 5000);
     }
+
+    if (triggerDate.getTime() <= now.getTime()) {
+      continue;
+    }
+
+    pendingReminders.push({
+      medicationId: dose.medicationId,
+      dateKey: dose.dateKey,
+      scheduledTime: dose.scheduledTime,
+      name: dose.name,
+      details: dose.details,
+      triggerDate,
+    });
   }
 
   pendingReminders.sort((a, b) => a.triggerDate.getTime() - b.triggerDate.getTime());

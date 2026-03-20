@@ -838,6 +838,7 @@ export async function clearDoseStatus(
 export type ScheduledDoseItem = {
   id: string;
   medicationId: string;
+  dateKey: string;
   scheduledTime: string;
   name: string;
   details: string;
@@ -944,6 +945,12 @@ type ApiGuestDoseReportResponse = {
   medicationRows: ApiDoseMedicationReportRowResponse[];
 };
 
+type ApiScheduledDosesWindowResponse = {
+  fromDate: string;
+  toDate: string;
+  doses: ApiScheduledDoseResponse[];
+};
+
 function resolveDoseDetails(dosage: string, usageType?: string | null): string {
   const normalized = (usageType ?? '').trim().toLowerCase();
   const unit = normalized === 'drop' ? 'Drops' : normalized === 'injection' ? 'Injection' : 'Capsules';
@@ -954,6 +961,7 @@ function mapScheduledDoseResponse(item: ApiScheduledDoseResponse, locale: Locale
   return {
     id: item.id,
     medicationId: item.medicationId,
+    dateKey: item.dateKey,
     scheduledTime: item.scheduledTime,
     name: item.name,
     details: resolveDoseDetails(item.dosage, item.usageType),
@@ -1013,6 +1021,29 @@ export async function getScheduledDosesForDate(date: Date, locale: Locale = 'en'
   });
 
   return response.map((item) => mapScheduledDoseResponse(item, locale));
+}
+
+export async function getScheduledDosesForRange(fromDate: Date, toDate: Date, locale: Locale = 'en'): Promise<ScheduledDoseItem[]> {
+  const accessToken = await loadAccessToken();
+  if (!accessToken) {
+    const allDoses: ScheduledDoseItem[] = [];
+    for (let cursor = new Date(fromDate); cursor <= toDate; cursor.setDate(cursor.getDate() + 1)) {
+      const currentDate = new Date(cursor);
+      const doses = await getScheduledDosesForDate(currentDate, locale);
+      allDoses.push(...doses);
+    }
+
+    return allDoses;
+  }
+
+  const fromDateValue = toDateKey(fromDate);
+  const toDateValue = toDateKey(toDate);
+  const response = await apiRequestJson<ApiScheduledDosesWindowResponse>(
+    `/api/dose-events/scheduled-doses-window?fromDate=${encodeURIComponent(fromDateValue)}&toDate=${encodeURIComponent(toDateValue)}`,
+    { correlationPrefix: 'dose-events-scheduled-window' },
+  );
+
+  return response.doses.map((item) => mapScheduledDoseResponse(item, locale));
 }
 
 export async function getDoseReport(referenceDate: Date, locale: Locale = 'en'): Promise<{

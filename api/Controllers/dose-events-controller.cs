@@ -263,11 +263,44 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
         return Ok(doses);
     }
 
+    [HttpGet("scheduled-doses-window")]
+    public async Task<ActionResult<ScheduledDosesWindowResponse>> GetScheduledDosesWindow(
+        [FromQuery] DateOnly fromDate,
+        [FromQuery] DateOnly toDate)
+    {
+        var userReference = ResolveUserReference(out var errorResult);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        if (toDate < fromDate)
+        {
+            return BadRequest("toDate cannot be earlier than fromDate.");
+        }
+
+        if ((toDate.DayNumber - fromDate.DayNumber) > 31)
+        {
+            return BadRequest("Date window cannot exceed 32 days.");
+        }
+
+        var doses = await BuildScheduledDosesRangeAsync(userReference, fromDate, toDate);
+        return Ok(new ScheduledDosesWindowResponse
+        {
+            FromDate = fromDate,
+            ToDate = toDate,
+            Doses = doses,
+        });
+    }
+
     private async Task<ScheduledDoseResponse[]> BuildScheduledDosesAsync(string? userReference, DateOnly targetDate)
     {
-        var targetDateKey = targetDate.ToString("yyyy-MM-dd");
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        return await BuildScheduledDosesRangeAsync(userReference, targetDate, targetDate);
+    }
 
+    private async Task<ScheduledDoseResponse[]> BuildScheduledDosesRangeAsync(string? userReference, DateOnly fromDate, DateOnly toDate)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var medicationsQuery = dbContext
             .Medications
             .AsNoTracking()
@@ -303,10 +336,13 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
             return [];
         }
 
+        var fromDateKey = fromDate.ToString("yyyy-MM-dd");
+        var toDateKey = toDate.ToString("yyyy-MM-dd");
         var events = await dbContext
             .DoseEvents
             .AsNoTracking()
-            .Where(x => x.DateKey == targetDateKey && medicationIds.Contains(x.MedicationId))
+            .Where(x => medicationIds.Contains(x.MedicationId))
+            .Where(x => x.DateKey.CompareTo(fromDateKey) >= 0 && x.DateKey.CompareTo(toDateKey) <= 0)
             .Select(x => new ScheduledDoseEventProjection(x.MedicationId, x.DateKey, x.ScheduledTime, x.ActionType, x.ActionAt))
             .ToListAsync();
 
@@ -315,44 +351,52 @@ public sealed class DoseEventsController(AppDbContext dbContext, IAuditLogger au
             .ToDictionary(group => group.Key, group => group.OrderByDescending(x => x.ActionAt).First().ActionType, StringComparer.OrdinalIgnoreCase);
 
         var doses = new List<ScheduledDoseResponse>();
-        foreach (var medication in medications)
+        for (var date = fromDate; date <= toDate; date = date.AddDays(1))
         {
-            foreach (var schedule in medication.Schedules)
+            var targetDateKey = date.ToString("yyyy-MM-dd");
+            foreach (var medication in medications)
             {
-                foreach (var scheduledTime in GetScheduledTimesForDate(schedule, medication.StartDate, targetDate, medication.EndDate))
+                foreach (var schedule in medication.Schedules)
                 {
-                    var formattedScheduledTime = scheduledTime.ToString("HH:mm");
-                    var key = $"{medication.Id}:{targetDateKey}:{formattedScheduledTime}";
-                    var status = eventByDoseKey.TryGetValue(key, out var actionType)
-                        ? NormalizeDoseStatus(actionType)
-                        : targetDate < today
-                            ? "missed"
-                            : "pending";
-
-                    doses.Add(new ScheduledDoseResponse
+                    foreach (var scheduledTime in GetScheduledTimesForDate(schedule, medication.StartDate, date, medication.EndDate))
                     {
-                        Id = $"{medication.Id}-{targetDateKey}-{formattedScheduledTime}",
-                        MedicationId = medication.Id,
-                        ScheduledTime = formattedScheduledTime,
-                        DateKey = targetDateKey,
-                        Name = medication.Name,
-                        Dosage = medication.Dosage,
-                        UsageType = medication.UsageType,
-                        IsBeforeMeal = medication.IsBeforeMeal,
-                        FrequencyLabel = BuildFrequencyLabel(new MedicationSchedule
+                        var formattedScheduledTime = scheduledTime.ToString("HH:mm");
+                        var key = $"{medication.Id}:{targetDateKey}:{formattedScheduledTime}";
+                        var status = eventByDoseKey.TryGetValue(key, out var actionType)
+                            ? NormalizeDoseStatus(actionType)
+                            : date < today
+                                ? "missed"
+                                : "pending";
+
+                        doses.Add(new ScheduledDoseResponse
                         {
-                            RepeatType = schedule.RepeatType,
-                            IntervalCount = schedule.IntervalCount,
-                            ReminderTime = schedule.ReminderTime,
-                            DaysOfWeek = schedule.DaysOfWeek,
-                        }),
-                        Status = status,
-                    });
+                            Id = $"{medication.Id}-{targetDateKey}-{formattedScheduledTime}",
+                            MedicationId = medication.Id,
+                            ScheduledTime = formattedScheduledTime,
+                            DateKey = targetDateKey,
+                            Name = medication.Name,
+                            Dosage = medication.Dosage,
+                            UsageType = medication.UsageType,
+                            IsBeforeMeal = medication.IsBeforeMeal,
+                            FrequencyLabel = BuildFrequencyLabel(new MedicationSchedule
+                            {
+                                RepeatType = schedule.RepeatType,
+                                IntervalCount = schedule.IntervalCount,
+                                ReminderTime = schedule.ReminderTime,
+                                DaysOfWeek = schedule.DaysOfWeek,
+                            }),
+                            Status = status,
+                        });
+                    }
                 }
             }
         }
 
-        return doses.OrderBy(x => x.ScheduledTime).ThenBy(x => x.Name).ToArray();
+        return doses
+            .OrderBy(x => x.DateKey, StringComparer.Ordinal)
+            .ThenBy(x => x.ScheduledTime, StringComparer.Ordinal)
+            .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static IReadOnlyCollection<TimeOnly> GetScheduledTimesForDate(

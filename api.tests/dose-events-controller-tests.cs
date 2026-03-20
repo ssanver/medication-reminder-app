@@ -352,6 +352,55 @@ public sealed class DoseEventsControllerTests
     }
 
     [Fact]
+    public async Task GetScheduledDosesWindow_ShouldReturnCombinedRangePayload()
+    {
+        await using var dbContext = CreateInMemoryContext();
+        var medication = new Medication
+        {
+            Id = Guid.NewGuid(),
+            UserReference = "user@example.com",
+            Name = "Parol",
+            Dosage = "500mg",
+            StartDate = new DateOnly(2026, 3, 20),
+            IsBeforeMeal = false,
+            IsActive = true,
+            Schedules =
+            [
+                new MedicationSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    RepeatType = "daily",
+                    IntervalCount = 1,
+                    ReminderTime = new TimeOnly(9, 0),
+                },
+            ],
+        };
+        dbContext.Medications.Add(medication);
+        dbContext.DoseEvents.Add(new DoseEvent
+        {
+            Id = Guid.NewGuid(),
+            MedicationId = medication.Id,
+            ActionType = "taken",
+            DateKey = "2026-03-20",
+            ScheduledTime = "09:00",
+            ActionAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await dbContext.SaveChangesAsync();
+
+        var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext));
+        var result = await controller.GetScheduledDosesWindow(new DateOnly(2026, 3, 20), new DateOnly(2026, 3, 21));
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<ScheduledDosesWindowResponse>(okResult.Value);
+        Assert.Equal(new DateOnly(2026, 3, 20), payload.FromDate);
+        Assert.Equal(new DateOnly(2026, 3, 21), payload.ToDate);
+        Assert.Equal(2, payload.Doses.Count);
+        Assert.Contains(payload.Doses, item => item.DateKey == "2026-03-20" && item.Status == "taken");
+        Assert.Contains(payload.Doses, item => item.DateKey == "2026-03-21" && item.Status == "pending");
+    }
+
+    [Fact]
     public async Task GetScheduledDoses_ShouldSkipMedication_WhenMedicationHasNoSchedules()
     {
         await using var dbContext = CreateInMemoryContext();

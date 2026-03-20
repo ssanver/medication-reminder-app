@@ -101,3 +101,41 @@
 4. Splash bekleme suresi 1500-2000ms araliginda olmalidir.
 5. Sign-in formu acilisinda email/sifre alanlari bos olmalidir.
 6. Acik bulgular kapatilmadan release adayina gecilmemelidir.
+
+## 7. Dose Action Perf Notu
+### 7.1 Problem Ozeti
+- Bulgulanan davranis: `Take / al` aksiyonundan sonra sadece `POST /api/dose-events/action` degil, bildirim senkronu icin gelecek 30 gunun her biri adina ayri `GET /api/dose-events/scheduled-doses` cagrisi tetikleniyordu.
+- Etki: Kullanici tarafinda aksiyon sonrasi bekleme ve arka planda yogun API trafigi olusuyordu.
+
+### 7.2 Uygulanan Degisiklik
+- Backend'e toplu pencere endpointi eklendi: `GET /api/dose-events/scheduled-doses-window?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD`
+- Mobile notification sync akisi, tarih basi tek tek `scheduled-doses` cagirmak yerine yeni toplu endpointi kullanacak sekilde guncellendi.
+- `POST /api/dose-events/action` mevcut gun listesini donmeye devam ediyor; full-screen loading davranisi korunuyor.
+
+### 7.3 Kanit ve Olcum
+- DB dogrulama: `sqlcmd ... SELECT 1 AS db_ok` -> basarili (`1`)
+- Build: `dotnet build medication-reminder-app.slnx` -> basarili
+- Test: `dotnet test medication-reminder-app.slnx` -> basarili (`99/99`)
+- Tekrar build: `dotnet build medication-reminder-app.slnx` -> basarili
+- Mobile tip kontrolu: `cd mobile-app && npx tsc --noEmit` -> basarili
+- Mobile test: `cd mobile-app && npm test -- --run medication-store.test.ts` -> basarili (`7/7`)
+
+### 7.4 Performans Sonucu
+- `POST /api/auth/guest/session` tekil: yaklasik `96 ms`
+- `GET /api/dose-events/scheduled-doses?date=2026-03-20` tekil: yaklasik `92 ms`
+- Eski reminder sync paterni, `31` gun icin ardışık `scheduled-doses` cagrisi: yaklasik `3.39 s`
+- Yeni `GET /api/dose-events/scheduled-doses-window?fromDate=2026-03-20&toDate=2026-04-19` tekil: yaklasik `99 ms`
+- `POST /api/dose-events/action` tekil: yaklasik `300 ms`
+- `scheduled-doses-window` yuk testi (`50 istek / 5 concurrency`):
+  - Ortalama: `133 ms`
+  - p50: `93 ms`
+  - p95: `335 ms`
+  - p99: `790 ms`
+- `dose-events/action` yuk testi (`50 istek / 5 concurrency`):
+  - Ortalama: `369 ms`
+  - p50: `274 ms`
+  - p95: `1218 ms`
+
+### 7.5 Yorum
+- Ana kazanc `Take / al` sonrasi reminder senkronundaki `31` ayrik HTTP round-trip'in `1` toplu cagrida toplanmasi oldu.
+- Beklemenin kalan ana parcasi artik agirlikla `dose-events/action` endpointinin DB yazimi ve gunluk listeyi uretme maliyetinden geliyor.
