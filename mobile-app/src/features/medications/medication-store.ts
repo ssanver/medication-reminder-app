@@ -491,40 +491,6 @@ async function loadRemoteMedicationStoreState(): Promise<MedicationStoreState> {
   };
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function confirmMedicationActiveState(
-  medicationId: string,
-  expectedActive: boolean,
-  attempts = 10,
-  delayMs = 350,
-): Promise<MedicationStoreState | null> {
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const remoteState = await loadRemoteMedicationStoreState();
-    const remoteMedication = remoteState.medications.find((item) => item.id === medicationId);
-
-    if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log(
-        `[MEDICATION-ACTIVE] confirm attempt=${attempt + 1}/${attempts} medicationId=${medicationId} expected=${expectedActive} actual=${remoteMedication?.active ?? 'missing'}`,
-      );
-    }
-
-    if (remoteMedication?.active === expectedActive) {
-      return remoteState;
-    }
-
-    if (attempt < attempts - 1) {
-      await delay(delayMs);
-    }
-  }
-
-  return null;
-}
-
 export async function refreshMedicationStoreFromBackend(): Promise<void> {
   const accessToken = await loadAccessToken();
   if (!accessToken) {
@@ -667,8 +633,6 @@ export async function addMedication(payload: {
       await updateInventoryStock(medication.id, Math.floor(payload.totalQuantity));
       medication.totalQuantity = Math.floor(payload.totalQuantity);
     }
-    await refreshMedicationStoreFromBackend();
-    return;
   }
 
   state = {
@@ -767,43 +731,18 @@ export async function setMedicationActive(medicationId: string, active: boolean)
     body: toApiSaveMedicationRequest(localUpdated),
     correlationPrefix: 'medication-update-active',
   });
-  if (updated) {
-    const updatedMedicationFromResponse: Medication = {
-      ...fromApiMedication(updated),
-      totalQuantity: current.totalQuantity,
-    };
+  const updatedMedicationFromResponse: Medication = {
+    ...fromApiMedication(updated),
+    totalQuantity: current.totalQuantity,
+    active,
+  };
 
-    if (updatedMedicationFromResponse.active === active) {
-      state = {
-        ...state,
-        medications: state.medications.map((item) =>
-          item.id === medicationId
-            ? {
-                ...updatedMedicationFromResponse,
-                active,
-              }
-            : item,
-        ),
-      };
-      emit();
-      await persist();
-      return;
-    }
-
-    const confirmedRemoteState = await confirmMedicationActiveState(medicationId, active);
-    if (!confirmedRemoteState) {
-      throw new Error('Medication active state could not be confirmed from backend.');
-    }
-
-    state = confirmedRemoteState;
-    emit();
-    await persist();
-  }
-
-  const confirmedLocalMedication = state.medications.find((item) => item.id === medicationId);
-  if (confirmedLocalMedication?.active !== active) {
-    throw new Error('Medication active state could not be applied locally after backend confirmation.');
-  }
+  state = {
+    ...state,
+    medications: state.medications.map((item) => (item.id === medicationId ? updatedMedicationFromResponse : item)),
+  };
+  emit();
+  await persist();
 }
 
 export async function deleteMedication(medicationId: string): Promise<void> {

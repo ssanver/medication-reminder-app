@@ -105,53 +105,31 @@ describe('medication-store/setMedicationActive', () => {
 
   it('backend stale active degeri dondurse bile hedef pasif durumu korur', async () => {
     loadAccessTokenMock.mockResolvedValue('token');
-    apiRequestJsonMock
-      .mockResolvedValueOnce({
-        id: getMedicationStoreSnapshot().medications[0]?.id,
-        name: 'Lipanthyl',
-        dosage: '1',
-        usageType: 'pill',
-        isBeforeMeal: true,
-        startDate: '2026-03-19',
-        endDate: null,
-        isActive: true,
-        schedules: [
-          {
-            repeatType: 'daily',
-            intervalCount: 1,
-            reminderTime: '09:00:00',
-            daysOfWeek: null,
-          },
-        ],
-      })
-      .mockResolvedValueOnce([
+    apiRequestJsonMock.mockResolvedValue({
+      id: getMedicationStoreSnapshot().medications[0]?.id,
+      name: 'Lipanthyl',
+      dosage: '1',
+      usageType: 'pill',
+      isBeforeMeal: true,
+      startDate: '2026-03-19',
+      endDate: null,
+      isActive: true,
+      schedules: [
         {
-          id: getMedicationStoreSnapshot().medications[0]?.id,
-          name: 'Lipanthyl',
-          dosage: '1',
-          usageType: 'pill',
-          isBeforeMeal: true,
-          startDate: '2026-03-19',
-          endDate: null,
-          isActive: false,
-          schedules: [
-            {
-              repeatType: 'daily',
-              intervalCount: 1,
-              reminderTime: '09:00:00',
-              daysOfWeek: null,
-            },
-          ],
+          repeatType: 'daily',
+          intervalCount: 1,
+          reminderTime: '09:00:00',
+          daysOfWeek: null,
         },
-      ])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+      ],
+    });
 
     const medicationId = getMedicationStoreSnapshot().medications[0]?.id;
     expect(medicationId).toBeTruthy();
 
     await setMedicationActive(medicationId!, false);
 
+    expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
     expect(getMedicationStoreSnapshot().medications[0]?.active).toBe(false);
   });
 
@@ -185,6 +163,64 @@ describe('medication-store/setMedicationActive', () => {
     await vi.waitFor(() => {
       expect(apiRequestJsonMock).toHaveBeenCalledTimes(1);
       expect(getMedicationStoreSnapshot().events).toHaveLength(1);
+    });
+  });
+});
+
+describe('medication-store/addMedication', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await clearMedicationStore();
+  });
+
+  it('oturum acikken create sonrasi tam refresh yapmadan local statei gunceller', async () => {
+    loadAccessTokenMock.mockResolvedValue('token');
+    apiRequestJsonMock
+      .mockResolvedValueOnce({
+        id: 'med-1',
+        name: 'Parol',
+        dosage: '500',
+        usageType: 'pill',
+        isBeforeMeal: false,
+        startDate: '2026-03-20',
+        endDate: null,
+        isActive: true,
+        schedules: [
+          {
+            repeatType: 'daily',
+            intervalCount: 1,
+            reminderTime: '09:00:00',
+            daysOfWeek: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        medicationId: 'med-1',
+        currentStock: 30,
+        threshold: 5,
+        isBelowThreshold: false,
+        lastAlertAt: null,
+      });
+
+    await addMedication({
+      name: 'Parol',
+      form: 'pill',
+      intervalUnit: 'day',
+      intervalCount: 1,
+      dosage: '500',
+      isBeforeMeal: false,
+      note: '',
+      totalQuantity: 30,
+      active: true,
+    });
+
+    expect(apiRequestJsonMock).toHaveBeenCalledTimes(2);
+    expect(getMedicationStoreSnapshot().medications).toHaveLength(1);
+    expect(getMedicationStoreSnapshot().medications[0]).toMatchObject({
+      id: 'med-1',
+      name: 'Parol',
+      active: true,
+      totalQuantity: 30,
     });
   });
 });
