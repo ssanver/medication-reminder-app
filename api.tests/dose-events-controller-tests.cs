@@ -357,13 +357,15 @@ public sealed class DoseEventsControllerTests
     public async Task GetScheduledDosesWindow_ShouldReturnCombinedRangePayload()
     {
         await using var dbContext = CreateInMemoryContext();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var nextDay = today.AddDays(1);
         var medication = new Medication
         {
             Id = Guid.NewGuid(),
             UserReference = "user@example.com",
             Name = "Parol",
             Dosage = "500mg",
-            StartDate = new DateOnly(2026, 3, 20),
+            StartDate = today,
             IsBeforeMeal = false,
             IsActive = true,
             Schedules =
@@ -383,7 +385,7 @@ public sealed class DoseEventsControllerTests
             Id = Guid.NewGuid(),
             MedicationId = medication.Id,
             ActionType = "taken",
-            DateKey = "2026-03-20",
+            DateKey = today.ToString("yyyy-MM-dd"),
             ScheduledTime = "09:00",
             ActionAt = DateTimeOffset.UtcNow,
             CreatedAt = DateTimeOffset.UtcNow,
@@ -391,15 +393,15 @@ public sealed class DoseEventsControllerTests
         await dbContext.SaveChangesAsync();
 
         var controller = new DoseEventsController(dbContext, new TestAuditLogger(dbContext), CreateScheduledDoseCache());
-        var result = await controller.GetScheduledDosesWindow(new DateOnly(2026, 3, 20), new DateOnly(2026, 3, 21));
+        var result = await controller.GetScheduledDosesWindow(today, nextDay);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var payload = Assert.IsType<ScheduledDosesWindowResponse>(okResult.Value);
-        Assert.Equal(new DateOnly(2026, 3, 20), payload.FromDate);
-        Assert.Equal(new DateOnly(2026, 3, 21), payload.ToDate);
+        Assert.Equal(today, payload.FromDate);
+        Assert.Equal(nextDay, payload.ToDate);
         Assert.Equal(2, payload.Doses.Count);
-        Assert.Contains(payload.Doses, item => item.DateKey == "2026-03-20" && item.Status == "taken");
-        Assert.Contains(payload.Doses, item => item.DateKey == "2026-03-21" && item.Status == "pending");
+        Assert.Contains(payload.Doses, item => item.DateKey == today.ToString("yyyy-MM-dd") && item.Status == "taken");
+        Assert.Contains(payload.Doses, item => item.DateKey == nextDay.ToString("yyyy-MM-dd") && item.Status == "pending");
     }
 
     [Fact]
