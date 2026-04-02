@@ -33,6 +33,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   const [profileGender, setProfileGender] = useState('');
   const [doses, setDoses] = useState<Awaited<ReturnType<typeof getScheduledDosesForDate>>>([]);
   const [isLoadingDoses, setIsLoadingDoses] = useState(true);
+  const [isDoseActionReloading, setIsDoseActionReloading] = useState(false);
   const [definitions, setDefinitions] = useState<AppDefinitions | null>(null);
   const [isAdFree, setIsAdFree] = useState(false);
 
@@ -42,6 +43,12 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   useEffect(() => {
     if (!store.isHydrated) {
       setIsLoadingDoses(true);
+      return;
+    }
+
+    if (store.medications.length === 0) {
+      setDoses([]);
+      setIsLoadingDoses(false);
       return;
     }
 
@@ -192,16 +199,16 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
   }, [selectedDate, locale, dateDelta, t.todaysMedication]);
 
   function beginDoseActionReload() {
-    setIsLoadingDoses(true);
+    setIsDoseActionReloading(true);
   }
 
   function completeDoseActionReload(nextDoses: ScheduledDoseItem[]) {
     setDoses(nextDoses);
-    setIsLoadingDoses(false);
+    setIsDoseActionReloading(false);
   }
 
   function failDoseActionReload() {
-    setIsLoadingDoses(false);
+    setIsDoseActionReloading(false);
   }
 
   return {
@@ -216,6 +223,7 @@ export function useTodayScreenState({ locale, weekStartsOn }: UseTodayScreenStat
     shortDisplayName,
     avatarEmoji,
     isLoadingDoses,
+    isDoseActionReloading,
     filtered,
     counts,
     hasAnyDoseForSelectedDate,

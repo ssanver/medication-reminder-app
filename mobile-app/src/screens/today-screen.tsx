@@ -74,6 +74,7 @@ export function TodayScreen({
     shortDisplayName,
     avatarEmoji,
     isLoadingDoses,
+    isDoseActionReloading,
     filtered,
     counts,
     hasAnyDoseForSelectedDate,
@@ -200,7 +201,7 @@ export function TodayScreen({
 
   useEffect(() => {
     const trace = doseActionTraceRef.current;
-    if (!trace || isLoadingDoses) {
+    if (!trace || isDoseActionReloading) {
       return;
     }
 
@@ -217,7 +218,7 @@ export function TodayScreen({
       } totalMs=${loadingClosedAt - trace.startedAt}`,
     );
     doseActionTraceRef.current = null;
-  }, [isLoadingDoses]);
+  }, [isDoseActionReloading]);
 
   function selectDayFromOffset(offsetX: number) {
     const index = Math.max(0, Math.min(dayStripItems.length - 1, Math.round(offsetX / DAY_ITEM_SNAP)));
